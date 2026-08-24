@@ -326,25 +326,48 @@ export default function StoreSubpageHeader({
 
           <div className="mobile-menu-section">
             <strong>Kategoriler</strong>
-            <a href={categoryUrl("KADIN KOLYE")} onClick={() => setMenuOpen(false)}>
+            <a
+              href={categoryUrl("KADIN KOLYE")}
+              className={activeCategory === "KADIN KOLYE" ? "active" : undefined}
+              onClick={() => setMenuOpen(false)}
+            >
               Kadın Kolye
             </a>
-            <a href={categoryUrl("KADIN BİLEKLİK")} onClick={() => setMenuOpen(false)}>
+            <a
+              href={categoryUrl("KADIN BİLEKLİK")}
+              className={activeCategory === "KADIN BİLEKLİK" ? "active" : undefined}
+              onClick={() => setMenuOpen(false)}
+            >
               Kadın Bileklik
             </a>
-            <a href={categoryUrl("ERKEK BİLEKLİK")} onClick={() => setMenuOpen(false)}>
+            <a
+              href={categoryUrl("ERKEK BİLEKLİK")}
+              className={activeCategory === "ERKEK BİLEKLİK" ? "active" : undefined}
+              onClick={() => setMenuOpen(false)}
+            >
               Erkek Bileklik
             </a>
-            <a href={categoryUrl("KADIN YÜZÜK")} onClick={() => setMenuOpen(false)}>
+            <a
+              href={categoryUrl("KADIN YÜZÜK")}
+              className={activeCategory === "KADIN YÜZÜK" ? "active" : undefined}
+              onClick={() => setMenuOpen(false)}
+            >
               Kadın Yüzük
             </a>
             <a
               href={categoryUrl("KADIN HALHAL & ŞAHMERAN")}
+              className={
+                activeCategory === "KADIN HALHAL & ŞAHMERAN" ? "active" : undefined
+              }
               onClick={() => setMenuOpen(false)}
             >
               Halhal &amp; Şahmeran
             </a>
-            <a href={categoryUrl("Kristaller")} onClick={() => setMenuOpen(false)}>
+            <a
+              href={categoryUrl("Kristaller")}
+              className={activeCategory === "Kristaller" ? "active" : undefined}
+              onClick={() => setMenuOpen(false)}
+            >
               Kristaller
             </a>
             <a
