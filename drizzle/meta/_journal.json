@@ -1,0 +1,90 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1785095457965,
+      "tag": "0000_store_core",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1785097327579,
+      "tag": "0001_customer_orders",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1785103899432,
+      "tag": "0002_product_campaigns",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1785105818146,
+      "tag": "0003_verified_product_reviews",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1785107068929,
+      "tag": "0004_user_roles",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1785109950685,
+      "tag": "0005_payment_provider_orders",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1785113341739,
+      "tag": "0006_discounts_password_reset",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1785124463773,
+      "tag": "0007_admin_operations",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1785129415602,
+      "tag": "0008_delivery_tracking",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1785131347079,
+      "tag": "0009_content_catalog",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1785135133610,
+      "tag": "0010_email_verification_tests",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1787403570907,
+      "tag": "0011_warm_celestials",
+      "breakpoints": true
+    }
+  ]
+}

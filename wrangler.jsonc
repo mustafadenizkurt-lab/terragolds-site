@@ -1,0 +1,32 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "terragolds-storefront",
+  "main": "./worker/index.ts",
+  "compatibility_date": "2026-05-22",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./dist/client",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  },
+  "routes": [
+    { "pattern": "terragolds.com/api/*", "zone_name": "terragolds.com" },
+    { "pattern": "www.terragolds.com/api/*", "zone_name": "terragolds.com" },
+    { "pattern": "terragolds.com/*", "zone_name": "terragolds.com" },
+    { "pattern": "www.terragolds.com/*", "zone_name": "terragolds.com" }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "terragolds-db",
+      "database_id": "749cfd48-7c4c-4ad7-ab5e-979c45ad1ae9",
+      "migrations_dir": "drizzle"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "terragolds-media"
+    }
+  ]
+}

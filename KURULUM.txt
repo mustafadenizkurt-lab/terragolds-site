@@ -1,0 +1,70 @@
+TERRAGOLDS KURULUM NOTLARI
+
+Bu proje Terragolds e-ticaret sitesi icin hazirlanmis web uygulamasidir.
+Magaza vitrini, musteri hesabi, sepet, siparis, yonetim paneli ve odeme
+entegrasyonlari ayni uygulama icinde bulunur.
+
+GEREKSINIMLER
+
+- Node.js 22.13 veya uzeri
+- pnpm 11 veya uzeri
+- Cloudflare hesabi
+- Cloudflare D1 veritabani
+- Cloudflare R2 dosya depolama alani
+- Odeme saglayicisi API bilgileri
+- E-posta gonderimi icin Resend API bilgisi
+
+YEREL CALISTIRMA
+
+1. Proje klasorune girin.
+2. Bagimliliklari kurun:
+
+   pnpm install
+
+3. Gelistirme sunucusunu baslatin:
+
+   pnpm dev
+
+4. Site varsayilan olarak su adreste acilir:
+
+   http://localhost:3000
+
+ORTAM AYARLARI
+
+.env.example dosyasi ornek olarak verilmistir. Gercek API anahtarlari,
+sifreler ve gizli degerler kaynak paketine eklenmemelidir.
+
+Canli ortamda bu degerler Cloudflare Worker secrets olarak tanimlanmalidir.
+Zorunlu temel alanlar:
+
+- NEXT_AUTH_SECRET
+- PAYMENT_CONFIG_ENCRYPTION_KEY
+- ADMIN_EMAILS
+- SHOPIER_PAYMENT_URL
+- SHOPIER_API_KEY
+- SHOPIER_SECRET_KEY
+- RESEND_API_KEY
+- TRANSACTIONAL_EMAIL_FROM
+- PASSWORD_RESET_FROM_EMAIL
+
+VERITABANI
+
+Cloudflare D1 veritabani olusturulduktan sonra drizzle klasorundeki SQL
+dosyalari sirasiyla calistirilmalidir.
+
+YAYIN
+
+Cloudflare Worker, D1 ve R2 baglantilari wrangler.jsonc dosyasindan yonetilir.
+Canli yayin icin once build alinmali, sonra Wrangler ile deploy edilmelidir.
+
+KONTROL KOMUTLARI
+
+pnpm run typecheck
+pnpm run build
+
+GUVENLIK
+
+- .env.local ve benzeri gizli ortam dosyalari paylasilmaz.
+- API anahtarlari kaynak koda yazilmaz.
+- Kullanici sifreleri hashlenerek saklanir.
+- Odeme anahtarlari sifreli olarak tutulur.

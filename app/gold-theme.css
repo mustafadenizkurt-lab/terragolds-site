@@ -1,0 +1,19 @@
+/*
+ * Bu dosya artik kullanilmiyor.
+ *
+ * 2026-08-20 tarihinde, globals.css icinde ust uste yiginlanmis uc ayri tema
+ * revizyonuyla (orijinal marka temasi / "dark gold backup revision" /
+ * "marketplace-style revision") bu dosyadaki kurallar programatik olarak
+ * birlestirildi, cakisan degerler (siyah header/body sizintisi, kirmizi
+ * guven baris, dusuk kontrastli acik renk yazilar) marka gorselleriyle
+ * (og.png, terragolds-gold-showcase.png) tutarli olacak sekilde elle
+ * kuratorlugu yapildi ve tek dosyada (app/globals.css) toplandi.
+ *
+ * app/layout.tsx artik sadece globals.css'i yukluyor. Bu dosya, hicbir yerden
+ * import edilmiyor / referans verilmiyor -- guvenle silinebilir, ama olasi
+ * bir gozden kacirma ihtimaline karsi simdilik diskte birakildi.
+ *
+ * public/app/gold-theme.css ve public/app/gold-theme-card-hover.css de ayni
+ * sekilde artik kullanilmiyor (eskiden layout.tsx'teki manuel <link>
+ * etiketleri buraya isaret ediyordu, o etiketler kaldirildi).
+ */
