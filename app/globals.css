@@ -2233,6 +2233,10 @@ img {
 .mobile-menu-section a:last-child {
   border-bottom: 0;
 }
+.mobile-menu-section a.active {
+  color: var(--gold-dark);
+  font-weight: 700;
+}
 .mobile-menu-discount {
   color: #c8452d !important;
 }
@@ -11927,6 +11931,9 @@ body:has(.market-theme)::before, body:has(.market-theme)::after, .market-theme .
     justify-content: center;
     min-height: 42px;
     font-size: 10px;
+  }
+  .category-page .market-category-nav {
+    display: none;
   }
   .market-theme .shop.section-shell {
     width: calc(100% - 24px);
