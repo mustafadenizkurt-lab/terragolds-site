@@ -73,8 +73,9 @@ function findRecordArray(
   }
 
   const obj = node as Record<string, unknown>;
+  const keys = contentKeys(obj);
   let best: Record<string, unknown>[] | null = null;
-  for (const key of Object.keys(obj)) {
+  for (const key of keys) {
     const value = obj[key];
     if (!Array.isArray(value)) continue;
     const objects = value.filter(
@@ -84,11 +85,16 @@ function findRecordArray(
   }
   if (best) return best;
 
-  for (const key of Object.keys(obj)) {
+  for (const key of keys) {
     const found = findRecordArray(obj[key], depth + 1);
     if (found?.length) return found;
   }
   return null;
+}
+
+/** Skips XML declaration (`?xml`), doctype/comment (`!...`) pseudo-nodes fast-xml-parser emits. */
+function contentKeys(obj: Record<string, unknown>): string[] {
+  return Object.keys(obj).filter((key) => !key.startsWith("?") && !key.startsWith("!"));
 }
 
 /** Fallback: a feed with exactly one product won't produce a repeated array. */
@@ -100,13 +106,14 @@ function findSingleRecord(
     return null;
   }
   const obj = node as Record<string, unknown>;
-  const values = Object.values(obj);
+  const keys = contentKeys(obj);
+  const values = keys.map((key) => obj[key]);
   const leafCount = values.filter(
     (value) => typeof value !== "object" || value === null,
   ).length;
   if (values.length > 0 && leafCount / values.length >= 0.5) return obj;
 
-  for (const key of Object.keys(obj)) {
+  for (const key of keys) {
     const found = findSingleRecord(obj[key], depth + 1);
     if (found) return found;
   }
@@ -259,7 +266,9 @@ export function applyMapping(
     throw new Error("Ürün adı ve fiyat alanları eşleştirilmeden aktarım yapılamaz.");
   }
 
-  const markup = Number.isFinite(markupPercent) ? markupPercent : 0;
+  const markup = Number.isFinite(markupPercent)
+    ? Math.min(1000, Math.max(0, markupPercent))
+    : 0;
   const rows: ImportRow[] = [];
   const errors: ImportRowError[] = [];
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   targetFields,
   type FieldMapping,
@@ -76,6 +76,16 @@ export default function SupplierImportPanel({
   const [result, setResult] = useState<CommitResponse | null>(null);
 
   const [error, setError] = useState("");
+  const [existingCategories, setExistingCategories] = useState<string[]>([]);
+
+  useEffect(() => {
+    fetch("/api/admin/categories", { cache: "no-store" })
+      .then((response) => response.json() as Promise<{ categories?: { name: string }[] }>)
+      .then((body) =>
+        setExistingCategories((body.categories ?? []).map((category) => category.name)),
+      )
+      .catch(() => setExistingCategories([]));
+  }, []);
 
   const buildForm = (extra?: { mapping?: FieldMapping; includeMarkup?: boolean }) => {
     const form = new FormData();
@@ -301,6 +311,13 @@ export default function SupplierImportPanel({
               </label>
             ))}
           </div>
+          {existingCategories.length > 0 && (
+            <p className="admin-supplier-hint">
+              Mevcut kategoriler (Kategori alanındaki metin bunlarla birebir
+              eşleşirse ürün o kategoriye eklenir, eşleşmezse yeni bir kategori
+              adı olarak kaydedilir): {existingCategories.join(", ")}
+            </p>
+          )}
 
           <h3>3. Kâr marjı</h3>
           <label className="admin-field">
