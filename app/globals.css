@@ -7768,6 +7768,103 @@ footer {
   border-color: var(--admin-gold);
   box-shadow: 0 0 0 3px rgba(185, 144, 91, 0.11);
 }
+.admin-supplier-step {
+  padding-top: 22px;
+  margin-top: 22px;
+  border-top: 1px solid var(--admin-line);
+  display: grid;
+  gap: 14px;
+}
+.admin-supplier-step:first-of-type {
+  padding-top: 0;
+  margin-top: 0;
+  border-top: 0;
+}
+.admin-supplier-step h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #182620;
+}
+.admin-supplier-source-toggle {
+  display: flex;
+  gap: 22px;
+  font-size: 12px;
+  color: #182620;
+}
+.admin-supplier-source-toggle label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.admin-supplier-hint {
+  margin: 0;
+  font-size: 11px;
+  color: #5f6b66;
+}
+.admin-supplier-mapping {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.admin-supplier-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--admin-line);
+}
+.admin-supplier-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.admin-supplier-table th, .admin-supplier-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--admin-line);
+  white-space: nowrap;
+}
+.admin-supplier-table th {
+  background: #fbfaf6;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #5f6b66;
+}
+.admin-supplier-image-cell {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #5f6b66;
+}
+.admin-supplier-errors {
+  padding: 14px 16px;
+  border: 1px solid rgba(200, 69, 45, 0.3);
+  background: rgba(200, 69, 45, 0.06);
+  font-size: 12px;
+}
+.admin-supplier-errors strong {
+  display: block;
+  margin-bottom: 8px;
+  color: #c8452d;
+}
+.admin-supplier-errors ul {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+  color: #182620;
+}
+.admin-supplier-result p {
+  font-size: 13px;
+  color: #182620;
+}
+@media (max-width: 900px) {
+  .admin-supplier-mapping {
+    grid-template-columns: 1fr 1fr;
+  }
+}
 .admin-campaign-preview {
   grid-column: 1 / -1;
   min-height: 72px;
