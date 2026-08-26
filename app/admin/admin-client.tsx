@@ -16,6 +16,7 @@ import OperationsPanel from "./operations-panel";
 import ReportsPanel from "./reports-panel";
 import MediaLibraryPanel from "./media-library-panel";
 import SavedCardsPanel from "./saved-cards-panel";
+import SupplierImportPanel from "./supplier-import-panel";
 import {
   defaultSettings,
   getDiscountedPrice,
@@ -34,6 +35,7 @@ type AdminView =
   | "editor"
   | "categories"
   | "content"
+  | "supplierImport"
   | "customers"
   | "operations"
   | "reports"
@@ -480,6 +482,13 @@ export default function AdminClient({
           </button>
           <button
             type="button"
+            className={view === "supplierImport" ? "active" : ""}
+            onClick={() => setView("supplierImport")}
+          >
+            <span>⇪</span> Tedarikçi İçe Aktarma
+          </button>
+          <button
+            type="button"
             className={view === "reports" ? "active" : ""}
             onClick={() => setView("reports")}
           >
@@ -583,6 +592,7 @@ export default function AdminClient({
                 (draft.id ? "Ürünü düzenle" : "Yeni ürün")}
               {view === "categories" && "Kategoriler"}
               {view === "content" && "İçerik yönetimi"}
+              {view === "supplierImport" && "Tedarikçi İçe Aktarma"}
               {view === "shipping" && "Kargo yönetimi"}
               {view === "payments" && "Ödeme yöntemleri"}
               {view === "discounts" && "İndirim kodları"}
@@ -1728,6 +1738,9 @@ export default function AdminClient({
               <ReturnRequestsPanel onNotice={flash} />
             )}
             {view === "tests" && <SystemTestCenter onNotice={flash} />}
+            {view === "supplierImport" && (
+              <SupplierImportPanel onNotice={flash} />
+            )}
           </>
         )}
       </section>
