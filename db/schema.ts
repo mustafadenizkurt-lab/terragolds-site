@@ -8,6 +8,50 @@ import {
   uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 
+export const xmlSuppliers = sqliteTable(
+  "xml_suppliers",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    name: text("name").notNull(),
+    feedUrl: text("feed_url").notNull(),
+    fieldMapping: text("field_mapping").notNull().default("{}"),
+    defaultMarkupPercent: integer("default_markup_percent").notNull().default(0),
+    active: integer("active", { mode: "boolean" }).notNull().default(true),
+    lastSyncedAt: text("last_synced_at"),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    uniqueIndex("xml_suppliers_feed_url_unique").on(table.feedUrl),
+    index("xml_suppliers_active_idx").on(table.active),
+  ],
+);
+
+export const xmlSyncLogs = sqliteTable(
+  "xml_sync_logs",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    supplierId: integer("supplier_id").references(() => xmlSuppliers.id, {
+      onDelete: "set null",
+    }),
+    status: text("status").notNull(),
+    startedAt: text("started_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    completedAt: text("completed_at"),
+    importedCount: integer("imported_count").notNull().default(0),
+    updatedCount: integer("updated_count").notNull().default(0),
+    skippedCount: integer("skipped_count").notNull().default(0),
+    errorMessage: text("error_message"),
+    details: text("details").notNull().default("{}"),
+  },
+  (table) => [
+    check(
+      "xml_sync_logs_status_check",
+      sql`${table.status} IN ('running', 'success', 'failed')`,
+    ),
+    index("xml_sync_logs_supplier_idx").on(table.supplierId, table.startedAt),
+  ],
+);
+
 export const products = sqliteTable("products", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
@@ -25,11 +69,19 @@ export const products = sqliteTable("products", {
   shopierUrl: text("shopier_url"),
   shopierProductId: text("shopier_product_id"),
   shopierSyncStatus: text("shopier_sync_status").notNull().default("manual"),
+  xmlSupplierId: integer("xml_supplier_id").references(() => xmlSuppliers.id, {
+    onDelete: "set null",
+  }),
+  xmlExternalId: text("xml_external_id"),
+  xmlSyncStatus: text("xml_sync_status").notNull().default("manual"),
   featured: integer("featured", { mode: "boolean" }).notNull().default(false),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-});
+}, (table) => [
+  uniqueIndex("products_xml_source_unique").on(table.xmlSupplierId, table.xmlExternalId),
+  index("products_xml_supplier_idx").on(table.xmlSupplierId, table.xmlSyncStatus),
+]);
 
 export const productCategories = sqliteTable(
   "product_categories",

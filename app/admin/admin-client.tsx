@@ -17,6 +17,7 @@ import ReportsPanel from "./reports-panel";
 import MediaLibraryPanel from "./media-library-panel";
 import SavedCardsPanel from "./saved-cards-panel";
 import SupplierImportPanel from "./supplier-import-panel";
+import XmlSuppliersPanel from "./xml-suppliers-panel";
 import {
   defaultSettings,
   getDiscountedPrice,
@@ -36,6 +37,9 @@ type AdminView =
   | "categories"
   | "content"
   | "supplierImport"
+  | "xmlSuppliers"
+  | "xmlPricing"
+  | "xmlLogs"
   | "customers"
   | "operations"
   | "reports"
@@ -487,6 +491,15 @@ export default function AdminClient({
           >
             <span>⇪</span> Tedarikçi İçe Aktarma
           </button>
+          <button type="button" className={view === "xmlSuppliers" ? "active" : ""} onClick={() => setView("xmlSuppliers")}>
+            <span>⌁</span> XML tedarikçileri
+          </button>
+          <button type="button" className={view === "xmlPricing" ? "active" : ""} onClick={() => setView("xmlPricing")}>
+            <span>₺</span> XML fiyat kuralları
+          </button>
+          <button type="button" className={view === "xmlLogs" ? "active" : ""} onClick={() => setView("xmlLogs")}>
+            <span>▤</span> XML senkron geçmişi
+          </button>
           <button
             type="button"
             className={view === "reports" ? "active" : ""}
@@ -593,6 +606,9 @@ export default function AdminClient({
               {view === "categories" && "Kategoriler"}
               {view === "content" && "İçerik yönetimi"}
               {view === "supplierImport" && "Tedarikçi İçe Aktarma"}
+              {view === "xmlSuppliers" && "XML tedarikçileri"}
+              {view === "xmlPricing" && "XML fiyatlandırma kuralları"}
+              {view === "xmlLogs" && "XML senkron geçmişi"}
               {view === "shipping" && "Kargo yönetimi"}
               {view === "payments" && "Ödeme yöntemleri"}
               {view === "discounts" && "İndirim kodları"}
@@ -991,6 +1007,10 @@ export default function AdminClient({
             )}
 
             {view === "customers" && <CustomersPanel onNotice={flash} />}
+
+            {view === "xmlSuppliers" && <XmlSuppliersPanel tab="suppliers" onNotice={flash} />}
+            {view === "xmlPricing" && <XmlSuppliersPanel tab="pricing" onNotice={flash} />}
+            {view === "xmlLogs" && <XmlSuppliersPanel tab="logs" onNotice={flash} />}
 
             {view === "operations" && (
               <OperationsPanel

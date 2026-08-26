@@ -23,6 +23,10 @@ import * as adminShipping from "../app/api/admin/shipping/route";
 import * as adminShippingSettings from "../app/api/admin/shipping-settings/route";
 import * as adminSystemTests from "../app/api/admin/system-tests/route";
 import * as adminUpload from "../app/api/admin/upload/route";
+import * as adminXmlSuppliers from "../app/api/admin/xml-suppliers/route";
+import * as adminXmlSupplierLogs from "../app/api/admin/xml-suppliers/logs/route";
+import * as adminXmlSupplierSync from "../app/api/admin/xml-suppliers/sync/route";
+import * as adminXmlSupplierById from "../app/api/admin/xml-suppliers/[id]/route";
 import * as authEmailVerificationSend from "../app/api/auth/email-verification/send/route";
 import * as authEmailVerificationVerify from "../app/api/auth/email-verification/verify/route";
 import * as authForgotPassword from "../app/api/auth/forgot-password/route";
@@ -78,6 +82,9 @@ const exactRoutes: Record<string, RouteModule> = {
   "/api/admin/shipping-settings": adminShippingSettings,
   "/api/admin/system-tests": adminSystemTests,
   "/api/admin/upload": adminUpload,
+  "/api/admin/xml-suppliers": adminXmlSuppliers,
+  "/api/admin/xml-suppliers/logs": adminXmlSupplierLogs,
+  "/api/admin/xml-suppliers/sync": adminXmlSupplierSync,
   "/api/auth/email-verification/send": authEmailVerificationSend,
   "/api/auth/email-verification/verify": authEmailVerificationVerify,
   "/api/auth/forgot-password": authForgotPassword,
@@ -106,6 +113,11 @@ const dynamicRoutes: {
   module: RouteModule;
   params(match: RegExpMatchArray): Record<string, string | string[]>;
 }[] = [
+  {
+    pattern: /^\/api\/admin\/xml-suppliers\/([^/]+)$/,
+    module: adminXmlSupplierById,
+    params: (match) => ({ id: decodeURIComponent(match[1] ?? "") }),
+  },
   {
     pattern: /^\/api\/account\/payment-methods\/([^/]+)$/,
     module: accountPaymentMethodById,
