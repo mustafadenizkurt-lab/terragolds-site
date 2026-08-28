@@ -1,12 +1,14 @@
 import { calculatePrice } from "./calculatePrice";
 import { fetchFeed } from "./fetchFeed";
 import { parseFeed, readMappedValue, type XmlRecord } from "./parseFeed";
+import { matchesFilters, type ImportFilters } from "../xml-import-filters";
 
 export type SupplierMapping = {
   externalId?: string;
   name?: string;
   stone?: string;
   category?: string;
+  brand?: string;
   price?: string;
   stock?: string;
   image?: string;
@@ -18,6 +20,7 @@ type Supplier = {
   name: string;
   feedUrl: string;
   fieldMapping: string;
+  filters: string;
   defaultMarkupPercent: number;
 };
 
@@ -30,7 +33,7 @@ export type SyncResult = {
 
 export async function syncActiveSuppliers(db: D1Database) {
   const suppliers = await db.prepare(
-    "SELECT id, name, feed_url AS feedUrl, field_mapping AS fieldMapping, default_markup_percent AS defaultMarkupPercent FROM xml_suppliers WHERE active = 1 ORDER BY id",
+    "SELECT id, name, feed_url AS feedUrl, field_mapping AS fieldMapping, filters, default_markup_percent AS defaultMarkupPercent FROM xml_suppliers WHERE active = 1 ORDER BY id",
   ).all<Supplier>();
   const results = [];
   for (const supplier of suppliers.results) {
@@ -50,6 +53,7 @@ export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<
   ).bind(supplier.id, startedAt).first<{ id: number }>();
   try {
     const mapping = JSON.parse(supplier.fieldMapping || "{}") as SupplierMapping;
+    const filters = JSON.parse(supplier.filters || "{}") as ImportFilters;
     const records = parseFeed(await fetchFeed(supplier.feedUrl));
     let imported = 0;
     let updated = 0;
@@ -57,6 +61,15 @@ export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<
     for (const record of records) {
       const product = mapRecord(record, mapping, supplier.defaultMarkupPercent);
       if (!product.externalId || !product.name || product.price === null) {
+        skipped += 1;
+        continue;
+      }
+      if (
+        !matchesFilters(
+          { category: product.category, brand: product.brand, price: product.price, stock: product.stock },
+          filters,
+        )
+      ) {
         skipped += 1;
         continue;
       }
@@ -96,6 +109,7 @@ function mapRecord(record: XmlRecord, mapping: SupplierMapping, markup: number) 
     name: readMappedValue(record, mapping.name),
     stone: readMappedValue(record, mapping.stone),
     category: readMappedValue(record, mapping.category) || "Doğal Taşlar",
+    brand: readMappedValue(record, mapping.brand),
     price: Number.isFinite(cost) ? calculatePrice(cost, markup) : null,
     stock: Math.max(0, Number.parseInt(readMappedValue(record, mapping.stock) || "0", 10) || 0),
     image: readMappedValue(record, mapping.image),
