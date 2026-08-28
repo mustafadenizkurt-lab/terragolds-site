@@ -218,7 +218,7 @@ export default function AdminClient({
       sortOrder: products.length + 1,
     });
     setView("editor");
-    flash("ÃœrÃ¼n kopyalandÄ±, taslak olarak dÃ¼zenleyebilirsiniz.");
+    flash("Ürün kopyalandı, taslak olarak düzenleyebilirsiniz.");
   };
 
   const quickUpdateStock = async (product: Product, nextStock: number) => {
@@ -235,12 +235,12 @@ export default function AdminClient({
       });
       await readJson(response);
       await loadAdminData();
-      flash(`${product.name} stoku gÃ¼ncellendi.`);
+      flash(`${product.name} stoku güncellendi.`);
     } catch (stockError) {
       setError(
         stockError instanceof Error
           ? stockError.message
-          : "Stok gÃ¼ncellenemedi.",
+          : "Stok güncellenemedi.",
       );
     } finally {
       setSaving(false);
