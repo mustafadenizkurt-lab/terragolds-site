@@ -28,7 +28,7 @@ CREATE TABLE `xml_sync_logs` (
 );
 --> statement-breakpoint
 CREATE INDEX `xml_sync_logs_supplier_idx` ON `xml_sync_logs` (`supplier_id`,`started_at`);--> statement-breakpoint
-ALTER TABLE `products` ADD `xml_supplier_id` integer REFERENCES xml_suppliers(id);--> statement-breakpoint
+ALTER TABLE `products` ADD `xml_supplier_id` integer REFERENCES xml_suppliers(id) ON UPDATE no action ON DELETE set null;--> statement-breakpoint
 ALTER TABLE `products` ADD `xml_external_id` text;--> statement-breakpoint
 ALTER TABLE `products` ADD `xml_sync_status` text DEFAULT 'manual' NOT NULL;--> statement-breakpoint
 CREATE UNIQUE INDEX `products_xml_source_unique` ON `products` (`xml_supplier_id`,`xml_external_id`);--> statement-breakpoint

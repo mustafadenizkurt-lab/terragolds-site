@@ -11,7 +11,11 @@ export function parseFeed(xml: string): XmlRecord[] {
 function findProductCollection(value: unknown): unknown[] {
   if (Array.isArray(value)) return value;
   if (!value || typeof value !== "object") return [];
-  const entries = Object.entries(value as Record<string, unknown>);
+  // Skip the "?xml" declaration/comment pseudo-nodes fast-xml-parser emits,
+  // otherwise the length-1 fallback below can return them as the "record".
+  const entries = Object.entries(value as Record<string, unknown>).filter(
+    ([key]) => !key.startsWith("?") && !key.startsWith("!"),
+  );
   for (const [key, child] of entries) {
     if (Array.isArray(child)) return child;
     if (/products?|items?|offers?|urunler/i.test(key)) {
@@ -32,5 +36,12 @@ export function readMappedValue(record: XmlRecord, path: string | undefined): st
     if (!current || typeof current !== "object") return undefined;
     return (current as Record<string, unknown>)[key];
   }, record);
-  return typeof value === "string" || typeof value === "number" ? String(value).trim() : "";
+  if (typeof value === "string" || typeof value === "number") return String(value).trim();
+  // Elements with attributes (e.g. <Fiyat KDVDahil="true">150</Fiyat>) parse to
+  // an object holding the attributes plus a "#text" key for the element's text.
+  if (value && typeof value === "object" && "#text" in (value as Record<string, unknown>)) {
+    const text = (value as Record<string, unknown>)["#text"];
+    return typeof text === "string" || typeof text === "number" ? String(text).trim() : "";
+  }
+  return "";
 }

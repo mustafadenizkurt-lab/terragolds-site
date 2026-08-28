@@ -13,7 +13,7 @@ export type SupplierMapping = {
   description?: string;
 };
 
-type Supplier = {
+export type Supplier = {
   id: number;
   name: string;
   feedUrl: string;
@@ -90,13 +90,17 @@ export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<
 }
 
 function mapRecord(record: XmlRecord, mapping: SupplierMapping, markup: number) {
-  const cost = Number(readMappedValue(record, mapping.price).replace(",", "."));
+  const rawPrice = readMappedValue(record, mapping.price);
+  const cost = rawPrice ? Number(rawPrice.replace(",", ".")) : NaN;
   return {
     externalId: readMappedValue(record, mapping.externalId),
     name: readMappedValue(record, mapping.name),
     stone: readMappedValue(record, mapping.stone),
     category: readMappedValue(record, mapping.category) || "Doğal Taşlar",
-    price: Number.isFinite(cost) ? calculatePrice(cost, markup) : null,
+    // cost must be a positive finite number: an empty/unmapped price string
+    // coerces to 0 via Number(""), which would otherwise pass Number.isFinite
+    // and silently zero out the product's price.
+    price: Number.isFinite(cost) && cost > 0 ? calculatePrice(cost, markup) : null,
     stock: Math.max(0, Number.parseInt(readMappedValue(record, mapping.stock) || "0", 10) || 0),
     image: readMappedValue(record, mapping.image),
     description: readMappedValue(record, mapping.description),
