@@ -315,6 +315,17 @@ export default function ProductDetailClient({
             </span>
           </div>
 
+          <div className="product-authenticity-guarantee">
+            <b>Orijinallik Garantisi</b>
+            <p>
+              Her ürünümüz, mağazamıza eklenmeden önce doğallık ve kalite
+              açısından ekibimizce incelenir. Ürün açıklamasına uygun
+              bulunmayan parçalarda{" "}
+              <Link href="/teslimat-ve-iade">iade ve değişim politikamız</Link>{" "}
+              kapsamında güvencedesiniz.
+            </p>
+          </div>
+
           <div className="product-profile-purchase">
             <div className="quantity-picker">
               <button
