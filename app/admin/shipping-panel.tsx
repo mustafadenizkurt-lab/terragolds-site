@@ -436,7 +436,7 @@ export default function ShippingPanel({
                               target="_blank"
                               rel="noreferrer"
                             >
-                              Takip linkini aÃ§
+                              Takip linkini aç
                             </a>
                           )}
                           {order.status === "shipped" && order.autoDeliverAt && (
