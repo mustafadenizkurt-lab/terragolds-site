@@ -5,12 +5,14 @@ import {
 import {
   applyMapping,
   detectFieldNames,
+  distinctFieldValues,
   guessFieldMapping,
   parseSupplierXml,
   resolveSupplierXml,
   PREVIEW_ROW_COUNT,
   type FieldMapping,
 } from "../../../../../lib/supplier-import";
+import type { ImportFilters } from "../../../../../lib/xml-import-filters";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +40,11 @@ export async function POST(request: Request) {
       mapping = guessFieldMapping(fieldNames);
     }
 
+    const categoryOptions = mapping.category
+      ? distinctFieldValues(records, mapping.category)
+      : [];
+    const brandOptions = mapping.brand ? distinctFieldValues(records, mapping.brand) : [];
+
     if (!mapping.name || !mapping.price) {
       return Response.json({
         fieldNames,
@@ -47,11 +54,24 @@ export async function POST(request: Request) {
         validCount: 0,
         errors: [],
         errorCount: 0,
+        filteredCount: 0,
+        categoryOptions,
+        brandOptions,
       });
     }
 
+    const filtersRaw = String(form.get("filters") ?? "");
+    let filters: ImportFilters = {};
+    if (filtersRaw) {
+      try {
+        filters = JSON.parse(filtersRaw) as ImportFilters;
+      } catch {
+        return Response.json({ error: "Filtre verisi okunamadı." }, { status: 400 });
+      }
+    }
+
     const markupPercent = Number(form.get("markupPercent") ?? 0) || 0;
-    const { rows, errors } = applyMapping(records, mapping, markupPercent);
+    const { rows, errors, filteredCount } = applyMapping(records, mapping, markupPercent, filters);
 
     return Response.json({
       fieldNames,
@@ -61,10 +81,14 @@ export async function POST(request: Request) {
         index: row.index,
         warnings: row.warnings,
         product: row.product,
+        brand: row.brand,
       })),
       validCount: rows.length,
       errors: errors.slice(0, 20),
       errorCount: errors.length,
+      filteredCount,
+      categoryOptions,
+      brandOptions,
     });
   } catch (error) {
     return Response.json(

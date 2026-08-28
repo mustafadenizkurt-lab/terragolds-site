@@ -15,6 +15,7 @@ export const xmlSuppliers = sqliteTable(
     name: text("name").notNull(),
     feedUrl: text("feed_url").notNull(),
     fieldMapping: text("field_mapping").notNull().default("{}"),
+    filters: text("filters").notNull().default("{}"),
     defaultMarkupPercent: integer("default_markup_percent").notNull().default(0),
     active: integer("active", { mode: "boolean" }).notNull().default(true),
     lastSyncedAt: text("last_synced_at"),

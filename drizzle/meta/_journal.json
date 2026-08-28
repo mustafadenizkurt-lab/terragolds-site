@@ -99,6 +99,13 @@
       "when": 1787780267804,
       "tag": "0013_tan_tusk",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1787924800226,
+      "tag": "0014_overrated_champions",
+      "breakpoints": true
     }
   ]
 }

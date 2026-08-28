@@ -5,11 +5,12 @@ import {
 import { getD1 } from "../../../../../lib/store-db";
 import {
   applyMapping,
-  MAX_IMPORT_ROWS,
+  MAX_BATCH_SIZE,
   parseSupplierXml,
   resolveSupplierXml,
   type FieldMapping,
 } from "../../../../../lib/supplier-import";
+import type { ImportFilters } from "../../../../../lib/xml-import-filters";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +20,7 @@ export async function POST(request: Request) {
   try {
     const form = await request.formData();
     const xmlText = await resolveSupplierXml(form);
-    let records = parseSupplierXml(xmlText);
+    const records = parseSupplierXml(xmlText);
 
     const mappingRaw = String(form.get("mapping") ?? "");
     let mapping: FieldMapping;
@@ -32,22 +33,38 @@ export async function POST(request: Request) {
       );
     }
 
-    const markupPercent = Number(form.get("markupPercent") ?? 0) || 0;
-
-    let truncated = false;
-    if (records.length > MAX_IMPORT_ROWS) {
-      records = records.slice(0, MAX_IMPORT_ROWS);
-      truncated = true;
+    const filtersRaw = String(form.get("filters") ?? "");
+    let filters: ImportFilters = {};
+    if (filtersRaw) {
+      try {
+        filters = JSON.parse(filtersRaw) as ImportFilters;
+      } catch {
+        return Response.json({ error: "Filtre verisi okunamadı." }, { status: 400 });
+      }
     }
 
-    const { rows, errors } = applyMapping(records, mapping, markupPercent);
+    const markupPercent = Number(form.get("markupPercent") ?? 0) || 0;
+    const offset = Math.max(0, Math.trunc(Number(form.get("offset") ?? 0)) || 0);
+    const limit = Math.min(
+      MAX_BATCH_SIZE,
+      Math.max(1, Math.trunc(Number(form.get("limit") ?? MAX_BATCH_SIZE)) || MAX_BATCH_SIZE),
+    );
 
-    if (!rows.length) {
-      return Response.json({ imported: 0, skipped: errors.length, errors, truncated });
+    const { rows, errors } = applyMapping(records, mapping, markupPercent, filters);
+    const batch = rows.slice(offset, offset + limit);
+
+    if (!batch.length) {
+      return Response.json({
+        imported: 0,
+        totalValid: rows.length,
+        hasMore: false,
+        errorCount: errors.length,
+        errors: offset === 0 ? errors.slice(0, 200) : [],
+      });
     }
 
     const db = getD1();
-    const statements = rows.map(({ product }) =>
+    const statements = batch.map(({ product }) =>
       db
         .prepare(
           `INSERT INTO products
@@ -80,10 +97,11 @@ export async function POST(request: Request) {
     await db.batch(statements);
 
     return Response.json({
-      imported: rows.length,
-      skipped: errors.length,
-      errors,
-      truncated,
+      imported: batch.length,
+      totalValid: rows.length,
+      hasMore: offset + limit < rows.length,
+      errorCount: errors.length,
+      errors: offset === 0 ? errors.slice(0, 200) : [],
     });
   } catch (error) {
     return Response.json(

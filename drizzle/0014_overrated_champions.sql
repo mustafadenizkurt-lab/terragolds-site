@@ -1,0 +1,1 @@
+ALTER TABLE `xml_suppliers` ADD `filters` text DEFAULT '{}' NOT NULL;
