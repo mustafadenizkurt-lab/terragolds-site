@@ -103,7 +103,7 @@ export default function FavoritesClient({
             {favorites.map((product) => (
               <article className="favorite-card" key={product.id}>
                 <div className="favorite-card-image">
-                  <Link href={`/products/${product.id}`}>
+                  <Link href={`/products/${product.slug || product.id}`}>
                     <img src={product.image} alt={product.name} />
                   </Link>
                   <button
@@ -115,7 +115,7 @@ export default function FavoritesClient({
                   </button>
                 </div>
                 <p>{collectionMessage(product)}</p>
-                <Link className="favorite-card-copy" href={`/products/${product.id}`}>
+                <Link className="favorite-card-copy" href={`/products/${product.slug || product.id}`}>
                   <small>{product.stone}</small>
                   <h2>{product.name}</h2>
                   <span className="favorite-card-rating">
@@ -129,7 +129,7 @@ export default function FavoritesClient({
                     <strong>{money.format(getDiscountedPrice(product))}</strong>
                   </div>
                 </Link>
-                <Link className="favorite-detail-link" href={`/products/${product.id}`}>
+                <Link className="favorite-detail-link" href={`/products/${product.slug || product.id}`}>
                   Ürünü incele
                 </Link>
               </article>

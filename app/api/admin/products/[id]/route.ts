@@ -1,5 +1,6 @@
 import { getAuthorizedAdmin, unauthorizedAdminResponse } from "../../../../../lib/admin-auth";
 import { parseProductInput } from "../../../../../lib/product-input";
+import { resolveProductSlug } from "../../../../../lib/product-slugs";
 import { getD1 } from "../../../../../lib/store-db";
 
 export const dynamic = "force-dynamic";
@@ -18,14 +19,17 @@ export async function PUT(request: Request, context: RouteContext) {
     }
 
     const product = parseProductInput(await request.json());
-    const result = await getD1()
+    const db = getD1();
+    const slug = await resolveProductSlug(db, product.name, id, product.slug);
+    const result = await db
       .prepare(
         `UPDATE products
          SET name = ?, stone = ?, category = ?, price = ?, stock = ?,
              image = ?, hover_image = ?, badge = ?, campaign_label = ?, discount_percent = ?,
              description = ?, status = ?,
              shopier_url = ?, shopier_product_id = ?,
-             shopier_sync_status = ?, featured = ?, sort_order = ?,
+             shopier_sync_status = ?, slug = ?, meta_title = ?, meta_description = ?,
+             featured = ?, sort_order = ?,
              updated_at = CURRENT_TIMESTAMP
          WHERE id = ?`,
       )
@@ -45,6 +49,9 @@ export async function PUT(request: Request, context: RouteContext) {
         product.shopierUrl ?? null,
         product.shopierProductId ?? null,
         product.shopierSyncStatus,
+        slug,
+        product.metaTitle ?? null,
+        product.metaDescription ?? null,
         product.featured ? 1 : 0,
         product.sortOrder,
         id,

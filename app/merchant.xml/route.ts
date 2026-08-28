@@ -44,7 +44,7 @@ export async function GET() {
     <g:id>${product.id}</g:id>
     <title>${escapeXml(product.name)}</title>
     <description>${escapeXml(product.description || product.stone)}</description>
-    <link>${escapeXml(`${siteUrl}/products/${product.id}`)}</link>
+    <link>${escapeXml(`${siteUrl}/products/${product.slug || product.id}`)}</link>
     <g:image_link>${escapeXml(absoluteUrl(product.image))}</g:image_link>
     <g:availability>${product.stock > 0 ? "in_stock" : "out_of_stock"}</g:availability>
     <g:price>${escapeXml(priceWithCurrency(product.price))}</g:price>

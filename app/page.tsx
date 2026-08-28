@@ -488,7 +488,7 @@ function ProductCard({
           className={`product-image-button${
             product.hoverImage ? " has-hover-image" : ""
           }`}
-          href={`/products/${product.id}`}
+          href={`/products/${product.slug || product.id}`}
           aria-label={`${product.name} ayrıntılarını gör`}
         >
           {product.hoverImage && (
@@ -574,7 +574,7 @@ function ProductCard({
       <p className="product-collection-highlight">
         {productCollectionMessage(product, ui)}
       </p>
-      <a className="product-info" href={`/products/${product.id}`}>
+      <a className="product-info" href={`/products/${product.slug || product.id}`}>
         <span className="product-info-copy">
           <small>{product.stone}</small>
           <strong>{product.name}</strong>
@@ -1007,7 +1007,7 @@ export default function Home() {
   const selectSearchProduct = (product: Product) => {
     setSearchOpen(false);
     setSearchQuery("");
-    window.location.href = `/products/${product.id}`;
+    window.location.href = `/products/${product.slug || product.id}`;
   };
 
   const getPurchaseQuantity = (product: Product) =>

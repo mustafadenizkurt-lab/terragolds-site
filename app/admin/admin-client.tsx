@@ -72,6 +72,9 @@ const emptyProduct: ProductDraft = {
   shopierUrl: "",
   shopierProductId: "",
   shopierSyncStatus: "manual",
+  slug: "",
+  metaTitle: "",
+  metaDescription: "",
   featured: false,
   sortOrder: 0,
 };
@@ -216,6 +219,8 @@ export default function AdminClient({
       name: `${product.name} Kopya`,
       status: "draft",
       sortOrder: products.length + 1,
+      // A fresh slug is generated on save — copying the original's would collide.
+      slug: "",
     });
     setView("editor");
     flash("Ürün kopyalandı, taslak olarak düzenleyebilirsiniz.");
@@ -1203,6 +1208,46 @@ export default function AdminClient({
                               })
                             }
                             placeholder="Taşın dokusu, rengi, ölçüsü ve öne çıkan özellikleri…"
+                          />
+                        </label>
+                        <label className="admin-field">
+                          <span>URL (slug)</span>
+                          <input
+                            value={draft.slug}
+                            onChange={(event) =>
+                              setDraft({
+                                ...draft,
+                                slug: event.target.value,
+                              })
+                            }
+                            placeholder="Boş bırakılırsa üründen otomatik oluşturulur"
+                          />
+                        </label>
+                        <label className="admin-field full">
+                          <span>Meta başlık (SEO)</span>
+                          <input
+                            value={draft.metaTitle}
+                            onChange={(event) =>
+                              setDraft({
+                                ...draft,
+                                metaTitle: event.target.value,
+                              })
+                            }
+                            placeholder="Boş bırakılırsa ürün adından oluşturulur"
+                          />
+                        </label>
+                        <label className="admin-field full">
+                          <span>Meta açıklama (SEO)</span>
+                          <textarea
+                            rows={2}
+                            value={draft.metaDescription}
+                            onChange={(event) =>
+                              setDraft({
+                                ...draft,
+                                metaDescription: event.target.value,
+                              })
+                            }
+                            placeholder="Boş bırakılırsa ürün açıklamasından oluşturulur"
                           />
                         </label>
                       </div>

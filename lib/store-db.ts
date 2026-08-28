@@ -26,6 +26,9 @@ type ProductRow = {
   shopier_url: string | null;
   shopier_product_id: string | null;
   shopier_sync_status: string;
+  slug: string;
+  meta_title: string | null;
+  meta_description: string | null;
   featured: number;
   sort_order: number;
   created_at: string;
@@ -88,8 +91,8 @@ export async function ensureSeedData() {
               (id, name, stone, category, price, stock, image, hover_image, badge,
                campaign_label, discount_percent, description,
                status, shopier_url, shopier_product_id, shopier_sync_status,
-               featured, sort_order)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               slug, featured, sort_order)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT(id) DO UPDATE SET
                name = excluded.name,
                stone = excluded.stone,
@@ -104,6 +107,7 @@ export async function ensureSeedData() {
                description = excluded.description,
                status = excluded.status,
                shopier_sync_status = excluded.shopier_sync_status,
+               slug = CASE WHEN products.slug = '' THEN excluded.slug ELSE products.slug END,
                featured = excluded.featured,
                sort_order = excluded.sort_order,
                updated_at = CURRENT_TIMESTAMP`,
@@ -125,6 +129,7 @@ export async function ensureSeedData() {
             product.shopierUrl ?? null,
             product.shopierProductId ?? null,
             product.shopierSyncStatus,
+            product.slug,
             product.featured ? 1 : 0,
             product.sortOrder,
           ),
@@ -190,6 +195,9 @@ function mapProduct(row: ProductRow): Product {
       row.shopier_sync_status === "error"
         ? row.shopier_sync_status
         : "manual",
+    slug: row.slug,
+    metaTitle: row.meta_title ?? undefined,
+    metaDescription: row.meta_description ?? undefined,
     featured: Boolean(row.featured),
     sortOrder: row.sort_order,
     createdAt: row.created_at,

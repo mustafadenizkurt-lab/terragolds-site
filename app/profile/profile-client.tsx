@@ -1016,7 +1016,7 @@ export default function ProfileClient({
                         <p>Şu an kritik stokta ürün yok.</p>
                       ) : (
                         stockAlertProducts.map((product) => (
-                          <Link href={`/products/${product.id}`} key={product.id}>
+                          <Link href={`/products/${product.slug || product.id}`} key={product.id}>
                             <span>{product.name}</span>
                             <b>{product.stock} adet</b>
                           </Link>
@@ -1091,7 +1091,7 @@ function ProductRail({
   return (
     <div className="profile-product-rail">
       {products.map((product) => (
-        <Link href={`/products/${product.id}`} key={product.id}>
+        <Link href={`/products/${product.slug || product.id}`} key={product.id}>
           <img src={product.image} alt={product.name} />
           <span>{product.stone}</span>
           <strong>{product.name}</strong>

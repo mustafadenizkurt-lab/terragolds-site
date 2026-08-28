@@ -1,3 +1,4 @@
+import { slugify } from "./slugify";
 import type { Product } from "./store-data";
 
 export type ProductInput = Omit<Product, "id">;
@@ -42,6 +43,11 @@ export function parseProductInput(payload: unknown): ProductInput {
     shopierProductId:
       String(body.shopierProductId ?? "").trim() || undefined,
     shopierSyncStatus: syncStatus,
+    // Empty string means "not set by the caller" — the insert/update route
+    // generates one from the name (with collision handling) in that case.
+    slug: slugify(String(body.slug ?? "").trim()),
+    metaTitle: String(body.metaTitle ?? "").trim() || undefined,
+    metaDescription: String(body.metaDescription ?? "").trim() || undefined,
     featured: Boolean(body.featured),
     sortOrder: Math.max(0, Math.round(Number(body.sortOrder) || 0)),
   };
