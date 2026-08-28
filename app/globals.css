@@ -1240,6 +1240,29 @@ body::before {
   color: var(--forest);
   font-size: 11px;
 }
+.product-authenticity-guarantee {
+  margin-bottom: 26px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--forest);
+}
+.product-authenticity-guarantee b {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--forest);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+.product-authenticity-guarantee p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+.product-authenticity-guarantee a {
+  color: var(--forest);
+  text-decoration: underline;
+}
 .product-profile-purchase {
   display: grid;
   grid-template-columns: 126px minmax(0, 1fr);
