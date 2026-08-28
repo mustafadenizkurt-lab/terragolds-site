@@ -3,6 +3,7 @@ import {
   unauthorizedAdminResponse,
 } from "../../../../../lib/admin-auth";
 import { getD1 } from "../../../../../lib/store-db";
+import { productNameToSlug } from "../../../../../lib/product-slugs";
 import {
   applyMapping,
   MAX_BATCH_SIZE,
@@ -72,7 +73,8 @@ export async function POST(request: Request) {
              campaign_label, discount_percent, description,
              status, shopier_url, shopier_product_id, shopier_sync_status,
              featured, sort_order, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+           RETURNING id`,
         )
         .bind(
           product.name,
@@ -94,7 +96,20 @@ export async function POST(request: Request) {
           product.sortOrder,
         ),
     );
-    await db.batch(statements);
+    const insertResults = await db.batch<{ id: number }>(statements);
+
+    const existingSlugRows = await db
+      .prepare("SELECT slug FROM products WHERE slug <> ''")
+      .all<{ slug: string }>();
+    const existingSlugs = new Set(existingSlugRows.results.map((row) => row.slug));
+    const slugUpdates = insertResults.flatMap((result, index) => {
+      const id = result.results[0]?.id;
+      if (!id) return [];
+      const slug = productNameToSlug(batch[index].product.name, id, existingSlugs);
+      existingSlugs.add(slug);
+      return [db.prepare("UPDATE products SET slug = ? WHERE id = ?").bind(slug, id)];
+    });
+    if (slugUpdates.length) await db.batch(slugUpdates);
 
     return Response.json({
       imported: batch.length,

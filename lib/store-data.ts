@@ -1,3 +1,5 @@
+import { slugify } from "./slugify";
+
 export type Product = {
   id: number;
   name: string;
@@ -14,6 +16,9 @@ export type Product = {
   reviewCount?: number;
   description: string;
   status: "published" | "draft";
+  slug: string;
+  metaTitle?: string;
+  metaDescription?: string;
   shopierUrl?: string;
   shopierProductId?: string;
   shopierSyncStatus: "manual" | "connected" | "pending" | "error";
@@ -43,7 +48,7 @@ export type StoreSettings = {
 
 type DemoProduct = Omit<
   Product,
-  "id" | "status" | "shopierSyncStatus" | "sortOrder"
+  "id" | "status" | "shopierSyncStatus" | "sortOrder" | "slug"
 >;
 
 const demoProducts: DemoProduct[] = [
@@ -595,6 +600,7 @@ export const defaultProducts: Product[] = demoProducts.map((product, index) => (
     product.hoverImage ??
     demoHoverImages[index % demoHoverImages.length],
   sortOrder: index + 1,
+  slug: slugify(product.name),
 }));
 
 export const defaultSettings: StoreSettings = {

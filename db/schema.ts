@@ -75,6 +75,9 @@ export const products = sqliteTable("products", {
   }),
   xmlExternalId: text("xml_external_id"),
   xmlSyncStatus: text("xml_sync_status").notNull().default("manual"),
+  slug: text("slug").notNull().default(""),
+  metaTitle: text("meta_title"),
+  metaDescription: text("meta_description"),
   featured: integer("featured", { mode: "boolean" }).notNull().default(false),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
@@ -82,6 +85,10 @@ export const products = sqliteTable("products", {
 }, (table) => [
   uniqueIndex("products_xml_source_unique").on(table.xmlSupplierId, table.xmlExternalId),
   index("products_xml_supplier_idx").on(table.xmlSupplierId, table.xmlSyncStatus),
+  // Not a DB-level unique constraint: existing rows default to "" before the
+  // one-time backfill runs, which would collide. Uniqueness is guaranteed by
+  // lib/product-slugs.ts's id-suffix collision handling instead.
+  index("products_slug_idx").on(table.slug),
 ]);
 
 export const productCategories = sqliteTable(

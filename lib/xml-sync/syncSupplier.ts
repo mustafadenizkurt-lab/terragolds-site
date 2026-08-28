@@ -2,6 +2,7 @@ import { calculatePrice } from "./calculatePrice";
 import { fetchFeed } from "./fetchFeed";
 import { parseFeed, readMappedValue, type XmlRecord } from "./parseFeed";
 import { matchesFilters, type ImportFilters } from "../xml-import-filters";
+import { resolveProductSlug } from "../product-slugs";
 
 export type SupplierMapping = {
   externalId?: string;
@@ -82,9 +83,13 @@ export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<
         ).bind(product.name, product.stone, product.category, product.price, product.stock, product.image, product.description, existing.id).run();
         updated += 1;
       } else {
-        await db.prepare(
-          `INSERT INTO products (name, stone, category, price, stock, image, description, status, xml_supplier_id, xml_external_id, xml_sync_status, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, 'synced', CURRENT_TIMESTAMP)`,
-        ).bind(product.name, product.stone, product.category, product.price, product.stock, product.image, product.description, supplier.id, product.externalId).run();
+        const created = await db.prepare(
+          `INSERT INTO products (name, stone, category, price, stock, image, description, status, xml_supplier_id, xml_external_id, xml_sync_status, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, 'synced', CURRENT_TIMESTAMP) RETURNING id`,
+        ).bind(product.name, product.stone, product.category, product.price, product.stock, product.image, product.description, supplier.id, product.externalId).first<{ id: number }>();
+        if (created?.id) {
+          const slug = await resolveProductSlug(db, product.name, created.id);
+          await db.prepare("UPDATE products SET slug = ? WHERE id = ?").bind(slug, created.id).run();
+        }
         imported += 1;
       }
     }

@@ -59,7 +59,7 @@ export async function GET() {
       frequency: "weekly",
     })),
     ...products.map((product) => ({
-      loc: `${siteUrl}/products/${product.id}`,
+      loc: `${siteUrl}/products/${product.slug || product.id}`,
       priority: "0.8",
       frequency: "weekly",
     })),

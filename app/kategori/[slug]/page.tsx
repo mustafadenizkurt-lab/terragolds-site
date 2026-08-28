@@ -111,7 +111,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
                     className={`category-product-image${
                       product.hoverImage ? " has-hover-image" : ""
                     }`}
-                    href={`/products/${product.id}`}
+                    href={`/products/${product.slug || product.id}`}
                     aria-label={`${product.name} detaylarını gör`}
                   >
                     {product.stock > 0 && product.stock <= 3 ? (
@@ -148,7 +148,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
                   </Link>
                   <div className="category-product-copy">
                     <small>{product.stone}</small>
-                    <Link href={`/products/${product.id}`}>{product.name}</Link>
+                    <Link href={`/products/${product.slug || product.id}`}>{product.name}</Link>
                     <p>{product.description}</p>
                     <div className="category-product-price">
                       {product.discountPercent > 0 && (
