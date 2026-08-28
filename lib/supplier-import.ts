@@ -1,5 +1,6 @@
 import { XMLParser } from "fast-xml-parser";
 import { parseProductInput, type ProductInput } from "./product-input";
+import { fetchSupplierXmlText } from "./supplier-fetch";
 
 export const MAX_IMPORT_ROWS = 500;
 export const PREVIEW_ROW_COUNT = 8;
@@ -140,17 +141,15 @@ export async function resolveSupplierXml(form: FormData): Promise<string> {
     if (parsedUrl.protocol !== "https:" && parsedUrl.protocol !== "http:") {
       throw new SupplierXmlError("Sadece http(s) linkleri desteklenir.");
     }
-    const response = await fetch(parsedUrl.toString(), {
-      headers: { accept: "application/xml, text/xml, */*" },
-    });
-    if (!response.ok) {
-      throw new SupplierXmlError(`Link'ten XML alınamadı (HTTP ${response.status}).`);
+    try {
+      return await fetchSupplierXmlText(parsedUrl.toString(), {
+        maxBytes: MAX_XML_BYTES,
+      });
+    } catch (error) {
+      throw new SupplierXmlError(
+        error instanceof Error ? error.message : "Link'ten XML alınamadı.",
+      );
     }
-    const text = await response.text();
-    if (text.length > MAX_XML_BYTES) {
-      throw new SupplierXmlError("XML dosyası çok büyük (15MB sınırı).");
-    }
-    return text;
   }
 
   if (sourceType === "file") {
