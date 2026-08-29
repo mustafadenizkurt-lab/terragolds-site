@@ -14,6 +14,7 @@ import {
   type SiteContent,
 } from "../lib/site-content-types";
 import { categoryToSlug } from "../lib/category-slugs";
+import { activeCategoryGroups, type CategoryGroup } from "../lib/category-groups";
 import { useCart } from "../lib/cart-context";
 import StoreSiteFooter from "./store-site-footer";
 import FloatingSocialVisibility from "./floating-social-visibility";
@@ -747,6 +748,12 @@ export default function Home() {
 
   const categoryUrl = (categoryName: string) =>
     `/kategori/${categoryToSlug(categoryName)}`;
+
+  const activeGroups = useMemo(
+    () => activeCategoryGroups(products.map((item) => item.category)),
+    [products],
+  );
+  const groupUrl = (group: CategoryGroup) => `/kategori/${group.slug}`;
 
   const categoryCounts = useMemo(() => {
     const counts = new Map<string, number>();
@@ -1500,42 +1507,15 @@ export default function Home() {
 
           <div className="mobile-menu-section">
             <strong>Kategoriler</strong>
-            <a
-              href={categoryUrl("KADIN KOLYE")}
-              onClick={() => setMenuOpen(false)}
-            >
-              Kadın Kolye
-            </a>
-            <a
-              href={categoryUrl("KADIN BİLEKLİK")}
-              onClick={() => setMenuOpen(false)}
-            >
-              Kadın Bileklik
-            </a>
-            <a
-              href={categoryUrl("ERKEK BİLEKLİK")}
-              onClick={() => setMenuOpen(false)}
-            >
-              Erkek Bileklik
-            </a>
-            <a
-              href={categoryUrl("KADIN YÜZÜK")}
-              onClick={() => setMenuOpen(false)}
-            >
-              Kadın Yüzük
-            </a>
-            <a
-              href={categoryUrl("KADIN HALHAL & ŞAHMERAN")}
-              onClick={() => setMenuOpen(false)}
-            >
-              Halhal &amp; Şahmeran
-            </a>
-            <a
-              href={categoryUrl("Kristaller")}
-              onClick={() => setMenuOpen(false)}
-            >
-              Kristaller
-            </a>
+            {activeGroups.map((group) => (
+              <a
+                key={group.slug}
+                href={groupUrl(group)}
+                onClick={() => setMenuOpen(false)}
+              >
+                {group.label}
+              </a>
+            ))}
             <a
               className="mobile-menu-discount"
               href="#shop"
@@ -1544,7 +1524,7 @@ export default function Home() {
                 setMenuOpen(false);
               }}
             >
-              İndirimdeki Ürünler
+              Outlet
             </a>
           </div>
 
@@ -1564,12 +1544,11 @@ export default function Home() {
       </nav>
 
       <nav className="market-category-nav" id="top" aria-label="Ana kategoriler">
-        <a href={categoryUrl("KADIN KOLYE")}>Kadın Kolye</a>
-        <a href={categoryUrl("KADIN BİLEKLİK")}>Kadın Bileklik</a>
-        <a href={categoryUrl("ERKEK BİLEKLİK")}>Erkek Bileklik</a>
-        <a href={categoryUrl("KADIN YÜZÜK")}>Kadın Yüzük</a>
-        <a href={categoryUrl("KADIN HALHAL & ŞAHMERAN")}>Halhal &amp; Şahmeran</a>
-        <a href={categoryUrl("Kristaller")}>Kristaller</a>
+        {activeGroups.map((group) => (
+          <a key={group.slug} href={groupUrl(group)}>
+            {group.label}
+          </a>
+        ))}
         <button
           type="button"
           onClick={() => {
@@ -1577,7 +1556,7 @@ export default function Home() {
             document.getElementById("shop")?.scrollIntoView({ behavior: "smooth" });
           }}
         >
-          İndirimdeki Ürünler
+          Outlet
         </button>
       </nav>
 
