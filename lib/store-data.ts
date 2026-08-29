@@ -6,6 +6,8 @@ export type Product = {
   stone: string;
   category: string;
   price: number;
+  /** Purchase/supplier cost, when known. 0 means unknown, not free. */
+  cost: number;
   stock: number;
   image: string;
   hoverImage?: string;
@@ -44,11 +46,13 @@ export type StoreSettings = {
   footerNote: string;
   shippingFee: string;
   freeShippingThreshold: string;
+  gaMeasurementId: string;
+  metaPixelId: string;
 };
 
 type DemoProduct = Omit<
   Product,
-  "id" | "status" | "shopierSyncStatus" | "sortOrder" | "slug"
+  "id" | "status" | "shopierSyncStatus" | "sortOrder" | "slug" | "cost"
 >;
 
 const demoProducts: DemoProduct[] = [
@@ -601,6 +605,7 @@ export const defaultProducts: Product[] = demoProducts.map((product, index) => (
     demoHoverImages[index % demoHoverImages.length],
   sortOrder: index + 1,
   slug: slugify(product.name),
+  cost: 0,
 }));
 
 export const defaultSettings: StoreSettings = {
@@ -621,6 +626,8 @@ export const defaultSettings: StoreSettings = {
   footerNote: "Doğadan seçildi, özenle sunuldu.",
   shippingFee: "79.90",
   freeShippingThreshold: "1000",
+  gaMeasurementId: "",
+  metaPixelId: "",
 };
 
 export const settingsKeys = Object.keys(
@@ -632,4 +639,34 @@ export function getDiscountedPrice(
 ) {
   const discount = Math.min(90, Math.max(0, product.discountPercent || 0));
   return Math.max(0, Math.round(product.price * ((100 - discount) / 100)));
+}
+
+// Plain lowercase substrings, matched against a tr-TR-lowercased haystack —
+// a regex /i flag doesn't case-fold Turkish "İ" to ASCII "i", so e.g.
+// /bileklik/i.test("KADIN BİLEKLİK") silently fails to match.
+const jewelryTypeKeywords: { match: string; label: string }[] = [
+  { match: "yüzük", label: "yüzük" },
+  { match: "bileklik", label: "bileklik" },
+  { match: "kolye", label: "kolye" },
+  { match: "küpe", label: "küpe" },
+  { match: "hal hal", label: "halhal" },
+  { match: "halhal", label: "halhal" },
+  { match: "şahmeran", label: "şahmeran" },
+];
+
+/**
+ * A short noun phrase describing what kind of product this is, for use in
+ * auto-generated meta descriptions/titles. Products with a stone value are
+ * genuine natural-stone pieces; products without one (most of the jewelry
+ * catalog — rings, bracelets, necklaces) get a category-derived phrase
+ * instead of the old hardcoded "doğal taş ürünü", which was factually wrong
+ * for plated/brass jewelry with no stone at all.
+ */
+export function productDescriptorPhrase(
+  product: Pick<Product, "stone" | "category" | "name">,
+): string {
+  if (product.stone.trim()) return `${product.stone} doğal taş ürünü`;
+  const haystack = `${product.category} ${product.name}`.toLocaleLowerCase("tr-TR");
+  const match = jewelryTypeKeywords.find((entry) => haystack.includes(entry.match));
+  return match ? `el işçiliği ${match.label}` : "el işçiliği takı ürünü";
 }

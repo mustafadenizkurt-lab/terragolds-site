@@ -8844,6 +8844,16 @@ footer {
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
+.payment-result-help {
+  margin-top: 16px;
+  font-size: 12px;
+  color: #8a908d;
+}
+.payment-result-help a {
+  color: #28483f;
+  font-weight: 700;
+  text-decoration: underline;
+}
 .paytr-payment-page {
   padding: 22px;
 }

@@ -192,6 +192,15 @@ export default function DashboardOverview({
           <small>{dashboard.summary.paidOrders} başarılı sipariş</small>
         </article>
         <article>
+          <span>Tahmini kâr</span>
+          <strong>{formatCents(dashboard.summary.estimatedProfit)}</strong>
+          <small>
+            {dashboard.summary.costCoveragePercent > 0
+              ? `Satılan ürünlerin %${dashboard.summary.costCoveragePercent}'i için maliyet verisi var`
+              : "Ürünlerde maliyet girilmemiş, tahmin yapılamıyor"}
+          </small>
+        </article>
+        <article>
           <span>Uygulanan indirim</span>
           <strong>{formatCents(dashboard.summary.discountAmount)}</strong>
           <small>Dönemde kullanılan toplam avantaj</small>

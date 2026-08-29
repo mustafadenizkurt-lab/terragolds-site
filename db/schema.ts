@@ -59,6 +59,9 @@ export const products = sqliteTable("products", {
   stone: text("stone").notNull().default(""),
   category: text("category").notNull().default("Doğal Taşlar"),
   price: integer("price").notNull().default(0),
+  // Purchase/supplier cost, when known — used to estimate profit margin.
+  // 0 means "unknown", not "free"; treat 0 as missing data, not a real cost.
+  cost: integer("cost").notNull().default(0),
   stock: integer("stock").notNull().default(0),
   image: text("image").notNull().default(""),
   hoverImage: text("hover_image"),

@@ -30,12 +30,12 @@ export async function POST(request: Request) {
     const created = await db
       .prepare(
         `INSERT INTO products
-          (name, stone, category, price, stock, image, hover_image, badge,
+          (name, stone, category, price, cost, stock, image, hover_image, badge,
            campaign_label, discount_percent, description,
            status, shopier_url, shopier_product_id, shopier_sync_status,
            meta_title, meta_description,
            featured, sort_order, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
          RETURNING id`,
       )
       .bind(
@@ -43,6 +43,7 @@ export async function POST(request: Request) {
         product.stone,
         product.category,
         product.price,
+        product.cost,
         product.stock,
         product.image,
         product.hoverImage ?? null,

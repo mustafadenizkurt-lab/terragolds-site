@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { getDiscountedPrice, type Product } from "./store-data";
+import { trackAddToCart } from "./analytics";
 import type { PaymentProviderId, PaymentProviderSummary } from "./payment-types";
 
 export type CartEntry = {
@@ -431,6 +432,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
     addCooldownUntil.current = Date.now() + 3000;
     setAddCooldownSeconds(3);
     playCartSound();
+    trackAddToCart({
+      id: product.id,
+      name: product.name,
+      price: getDiscountedPrice(product),
+      quantity: safeQuantity,
+    });
     showToast({
       kind: "success",
       title: "Ürün sepete eklendi",

@@ -1,0 +1,1 @@
+ALTER TABLE `products` ADD `cost` integer DEFAULT 0 NOT NULL;

@@ -22,6 +22,28 @@ function priceWithCurrency(price: number) {
   return `${Number(price).toFixed(2)} TRY`;
 }
 
+/**
+ * Google Merchant Center product category, derived from the product instead
+ * of hardcoded — the catalog is now mostly jewelry (rings/bracelets/
+ * necklaces/earrings), not natural-stone decor, so a single fixed category
+ * for every item was wrong and risked listing rejections.
+ */
+function googleProductCategory(product: { category: string; name: string; stone: string }): string {
+  if (product.stone.trim()) return "Home & Garden > Decor";
+  // Plain lowercase substring match against a tr-TR-lowercased haystack — a
+  // regex /i flag doesn't case-fold Turkish "İ" to ASCII "i", so e.g.
+  // /bileklik/i.test("KADIN BİLEKLİK") silently fails to match.
+  const haystack = `${product.category} ${product.name}`.toLocaleLowerCase("tr-TR");
+  if (haystack.includes("yüzük")) return "Apparel & Accessories > Jewelry > Rings";
+  if (haystack.includes("bileklik")) return "Apparel & Accessories > Jewelry > Bracelets";
+  if (haystack.includes("kolye")) return "Apparel & Accessories > Jewelry > Necklaces";
+  if (haystack.includes("küpe")) return "Apparel & Accessories > Jewelry > Earrings";
+  if (haystack.includes("hal hal") || haystack.includes("halhal")) {
+    return "Apparel & Accessories > Jewelry > Anklets";
+  }
+  return "Apparel & Accessories > Jewelry";
+}
+
 export async function GET() {
   const [products, settings] = await Promise.all([readProducts(), readSettings()]);
   const brand = settings.businessName || "Terragolds";
@@ -51,7 +73,7 @@ export async function GET() {
 ${salePrice}    <g:brand>${escapeXml(brand)}</g:brand>
     <g:condition>new</g:condition>
     <g:product_type>${escapeXml(product.category)}</g:product_type>
-    <g:google_product_category>Home &amp; Garden &gt; Decor</g:google_product_category>
+    <g:google_product_category>${escapeXml(googleProductCategory(product))}</g:google_product_category>
   </item>`;
     })
     .join("\n");

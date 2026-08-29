@@ -215,6 +215,7 @@ export async function GET(request: Request) {
       operations,
       inventory,
       itemsSold,
+      profit,
       todayRevenue,
       sales,
       statuses,
@@ -268,6 +269,25 @@ export async function GET(request: Request) {
         )
         .bind(currentStart, currentEnd)
         .first<{ items_sold: number }>(),
+      db
+        .prepare(
+          `SELECT
+             COALESCE(SUM(CASE WHEN products.cost > 0 THEN order_items.quantity * order_items.unit_price ELSE 0 END), 0) AS revenue_with_cost,
+             COALESCE(SUM(CASE WHEN products.cost > 0 THEN order_items.quantity * products.cost * 100 ELSE 0 END), 0) AS cost_of_goods,
+             COALESCE(SUM(CASE WHEN products.cost > 0 THEN order_items.quantity ELSE 0 END), 0) AS items_with_cost
+           FROM order_items
+           INNER JOIN orders ON orders.id = order_items.order_id
+           LEFT JOIN products ON products.id = order_items.product_id
+           WHERE orders.status IN ('paid', 'shipped', 'delivered')
+             AND datetime(COALESCE(orders.paid_at, orders.created_at)) >= datetime(?)
+             AND datetime(COALESCE(orders.paid_at, orders.created_at)) < datetime(?)`,
+        )
+        .bind(currentStart, currentEnd)
+        .first<{
+          revenue_with_cost: number;
+          cost_of_goods: number;
+          items_with_cost: number;
+        }>(),
       db
         .prepare(
           `SELECT COALESCE(SUM(total_amount), 0) AS revenue
@@ -373,6 +393,16 @@ export async function GET(request: Request) {
         todayRevenue: Number(todayRevenue?.revenue) || 0,
         inventoryValue: Number(inventorySummary.inventory_value) || 0,
         itemsSold: Number(itemsSold?.items_sold) || 0,
+        estimatedProfit:
+          (Number(profit?.revenue_with_cost) || 0) -
+          (Number(profit?.cost_of_goods) || 0),
+        costCoveragePercent: itemsSold?.items_sold
+          ? Math.round(
+              ((Number(profit?.items_with_cost) || 0) /
+                Number(itemsSold.items_sold)) *
+                100,
+            )
+          : 0,
       },
       comparison: {
         revenueChange: percentChange(current.revenue, previous.revenue),
