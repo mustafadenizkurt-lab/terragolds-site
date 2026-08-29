@@ -18,9 +18,13 @@ import * as adminPaymentProviderById from "../app/api/admin/payment-providers/[p
 import * as adminProducts from "../app/api/admin/products/route";
 import * as adminProductById from "../app/api/admin/products/[id]/route";
 import * as adminProductsBulk from "../app/api/admin/products/bulk/route";
+import * as adminReturnRequests from "../app/api/admin/return-requests/route";
+import * as adminReturnRequestById from "../app/api/admin/return-requests/[id]/route";
 import * as adminSettings from "../app/api/admin/settings/route";
 import * as adminShipping from "../app/api/admin/shipping/route";
 import * as adminShippingSettings from "../app/api/admin/shipping-settings/route";
+import * as adminSupplierImportPreview from "../app/api/admin/supplier-import/preview/route";
+import * as adminSupplierImportCommit from "../app/api/admin/supplier-import/commit/route";
 import * as adminSystemTests from "../app/api/admin/system-tests/route";
 import * as adminUpload from "../app/api/admin/upload/route";
 import * as adminXmlSuppliers from "../app/api/admin/xml-suppliers/route";
@@ -48,6 +52,7 @@ import * as paymentMethods from "../app/api/payments/methods/route";
 import * as paytrCallback from "../app/api/payments/paytr/callback/route";
 import * as shopierPaymentCallback from "../app/api/payments/shopier/callback/route";
 import * as productReviews from "../app/api/products/[id]/reviews/route";
+import * as returnsRequest from "../app/api/returns/request/route";
 import * as legacyShopierCallback from "../app/api/shopier/callback/route";
 import * as store from "../app/api/store/route";
 
@@ -77,9 +82,12 @@ const exactRoutes: Record<string, RouteModule> = {
   "/api/admin/payment-providers": adminPaymentProviders,
   "/api/admin/products": adminProducts,
   "/api/admin/products/bulk": adminProductsBulk,
+  "/api/admin/return-requests": adminReturnRequests,
   "/api/admin/settings": adminSettings,
   "/api/admin/shipping": adminShipping,
   "/api/admin/shipping-settings": adminShippingSettings,
+  "/api/admin/supplier-import/preview": adminSupplierImportPreview,
+  "/api/admin/supplier-import/commit": adminSupplierImportCommit,
   "/api/admin/system-tests": adminSystemTests,
   "/api/admin/upload": adminUpload,
   "/api/admin/xml-suppliers": adminXmlSuppliers,
@@ -104,6 +112,7 @@ const exactRoutes: Record<string, RouteModule> = {
   "/api/payments/methods": paymentMethods,
   "/api/payments/paytr/callback": paytrCallback,
   "/api/payments/shopier/callback": shopierPaymentCallback,
+  "/api/returns/request": returnsRequest,
   "/api/shopier/callback": legacyShopierCallback,
   "/api/store": store,
 };
@@ -146,6 +155,11 @@ const dynamicRoutes: {
   {
     pattern: /^\/api\/admin\/products\/([^/]+)$/,
     module: adminProductById,
+    params: (match) => ({ id: decodeURIComponent(match[1] ?? "") }),
+  },
+  {
+    pattern: /^\/api\/admin\/return-requests\/([^/]+)$/,
+    module: adminReturnRequestById,
     params: (match) => ({ id: decodeURIComponent(match[1] ?? "") }),
   },
   {
