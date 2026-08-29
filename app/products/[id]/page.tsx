@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import { permanentRedirect } from "next/navigation";
-import { getDiscountedPrice, type Product } from "../../../lib/store-data";
+import {
+  getDiscountedPrice,
+  productDescriptorPhrase,
+  type Product,
+} from "../../../lib/store-data";
 import { readProducts, readSettings } from "../../../lib/store-db";
 import { FloatingSocialLinks } from "../../store-shared-chrome";
 import StoreSubpageHeader from "../../store-subpage-header";
@@ -33,10 +37,11 @@ export async function generateMetadata({
       robots: { index: false, follow: false },
     };
   }
-  const title = product.metaTitle || `${product.name} – ${product.stone}`;
+  const title =
+    product.metaTitle || `${product.name} – ${product.stone || product.category}`;
   const description =
     product.metaDescription ||
-    `${product.name} ${product.stone} doğal taş ürünü. ${product.description}`.slice(
+    `${product.name}, ${productDescriptorPhrase(product)}. ${product.description}`.slice(
       0,
       155,
     );

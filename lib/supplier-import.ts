@@ -339,6 +339,7 @@ export function applyMapping(
       const product = parseProductInput({
         name,
         price: markedUpPrice,
+        cost: parsedPrice,
         stock: rawStock,
         category: rawCategory || undefined,
         image: rawImage,

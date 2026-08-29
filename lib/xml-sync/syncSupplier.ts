@@ -79,13 +79,13 @@ export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<
       ).bind(supplier.id, product.externalId).first<{ id: number }>();
       if (existing) {
         await db.prepare(
-          `UPDATE products SET name = ?, stone = ?, category = ?, price = ?, stock = ?, image = ?, description = ?, xml_sync_status = 'synced', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-        ).bind(product.name, product.stone, product.category, product.price, product.stock, product.image, product.description, existing.id).run();
+          `UPDATE products SET name = ?, stone = ?, category = ?, price = ?, cost = ?, stock = ?, image = ?, description = ?, xml_sync_status = 'synced', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+        ).bind(product.name, product.stone, product.category, product.price, product.cost, product.stock, product.image, product.description, existing.id).run();
         updated += 1;
       } else {
         const created = await db.prepare(
-          `INSERT INTO products (name, stone, category, price, stock, image, description, status, xml_supplier_id, xml_external_id, xml_sync_status, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, 'synced', CURRENT_TIMESTAMP) RETURNING id`,
-        ).bind(product.name, product.stone, product.category, product.price, product.stock, product.image, product.description, supplier.id, product.externalId).first<{ id: number }>();
+          `INSERT INTO products (name, stone, category, price, cost, stock, image, description, status, xml_supplier_id, xml_external_id, xml_sync_status, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, 'synced', CURRENT_TIMESTAMP) RETURNING id`,
+        ).bind(product.name, product.stone, product.category, product.price, product.cost, product.stock, product.image, product.description, supplier.id, product.externalId).first<{ id: number }>();
         if (created?.id) {
           const slug = await resolveProductSlug(db, product.name, created.id);
           await db.prepare("UPDATE products SET slug = ? WHERE id = ?").bind(slug, created.id).run();
@@ -116,6 +116,7 @@ function mapRecord(record: XmlRecord, mapping: SupplierMapping, markup: number) 
     category: readMappedValue(record, mapping.category) || "Doğal Taşlar",
     brand: readMappedValue(record, mapping.brand),
     price: Number.isFinite(cost) ? calculatePrice(cost, markup) : null,
+    cost: Number.isFinite(cost) ? Math.max(0, Math.round(cost)) : 0,
     stock: Math.max(0, Number.parseInt(readMappedValue(record, mapping.stock) || "0", 10) || 0),
     image: readMappedValue(record, mapping.image),
     description: readMappedValue(record, mapping.description),

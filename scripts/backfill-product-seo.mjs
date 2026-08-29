@@ -8,6 +8,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { productNameToSlug } from "../lib/product-slugs.ts";
+import { productDescriptorPhrase } from "../lib/store-data.ts";
 
 const target = process.argv.includes("--remote") ? "--remote" : "--local";
 if (target === "--remote") {
@@ -29,7 +30,7 @@ function sqlEscape(value) {
 }
 
 const rows = runD1(
-  "SELECT id, name, stone, description FROM products WHERE slug = ''",
+  "SELECT id, name, stone, category, description FROM products WHERE slug = ''",
 );
 console.log(`${rows.length} ürün için slug/meta üretilecek.`);
 if (!rows.length) {
@@ -43,9 +44,9 @@ const existingSlugs = new Set(existingRows.map((row) => row.slug));
 const statements = rows.map((row) => {
   const slug = productNameToSlug(row.name, row.id, existingSlugs);
   existingSlugs.add(slug);
-  const metaTitle = `${row.name} – ${row.stone}`;
+  const metaTitle = `${row.name} – ${row.stone || row.category}`;
   const metaDescription =
-    `${row.name} ${row.stone} doğal taş ürünü. ${row.description}`.slice(
+    `${row.name}, ${productDescriptorPhrase(row)}. ${row.description}`.slice(
       0,
       155,
     );

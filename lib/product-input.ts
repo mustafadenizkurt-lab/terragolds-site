@@ -13,6 +13,7 @@ export function parseProductInput(payload: unknown): ProductInput {
   if (!name) throw new Error("Ürün adı zorunludur.");
 
   const price = Math.max(0, Math.round(Number(body.price) || 0));
+  const cost = Math.max(0, Math.round(Number(body.cost) || 0));
   const stock = Math.max(0, Math.round(Number(body.stock) || 0));
   const discountPercent = Math.min(
     90,
@@ -31,6 +32,7 @@ export function parseProductInput(payload: unknown): ProductInput {
     stone: String(body.stone ?? "").trim(),
     category: String(body.category ?? "Doğal Taşlar").trim(),
     price,
+    cost,
     stock,
     image: String(body.image ?? "").trim() || "/stone-collection.jpg",
     hoverImage: String(body.hoverImage ?? "").trim() || undefined,

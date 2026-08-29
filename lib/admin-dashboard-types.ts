@@ -22,6 +22,10 @@ export type AdminDashboardData = {
     paidRate: number;
     failedOrders: number;
     cancelledOrders: number;
+    /** Revenue minus cost, computed only over items whose product has a known cost. */
+    estimatedProfit: number;
+    /** % of sold items (this period) that had a known cost — how trustworthy estimatedProfit is. */
+    costCoveragePercent: number;
   };
   comparison: {
     revenueChange: number;

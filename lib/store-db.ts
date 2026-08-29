@@ -13,6 +13,7 @@ type ProductRow = {
   stone: string;
   category: string;
   price: number;
+  cost: number;
   stock: number;
   image: string;
   hover_image: string | null;
@@ -177,6 +178,7 @@ function mapProduct(row: ProductRow): Product {
     stone: row.stone,
     category: row.category,
     price: row.price,
+    cost: row.cost,
     stock: row.stock,
     image: row.image,
     hoverImage: row.hover_image ?? undefined,
