@@ -19,7 +19,7 @@ function runD1(sql) {
   const output = execFileSync(
     "npx",
     ["wrangler", "d1", "execute", "DB", target, "--json", "--command", sql],
-    { encoding: "utf8", maxBuffer: 1024 * 1024 * 64 },
+    { encoding: "utf8", maxBuffer: 1024 * 1024 * 64, shell: true },
   );
   const parsed = JSON.parse(output);
   return parsed[0]?.results ?? [];
@@ -67,5 +67,6 @@ console.log(`SQL dosyası: ${tmpFile}`);
 
 execFileSync("npx", ["wrangler", "d1", "execute", "DB", target, "--file", tmpFile], {
   stdio: "inherit",
+  shell: true,
 });
 console.log(`${rows.length} ürün güncellendi.`);
