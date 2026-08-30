@@ -56,6 +56,28 @@ type ProductDraft = Omit<Product, "id"> & { id?: number };
 
 const PRODUCTS_PER_PAGE = 10;
 
+// Bulk XML imports can push the catalog into the thousands, which means
+// hundreds of pages - rendering one button per page (as before) overflowed
+// the pagination bar's container. This caps the buttons shown at a handful
+// around the current page plus the first/last, with an ellipsis for gaps.
+type ProductPageItem = number | "start-ellipsis" | "end-ellipsis";
+function buildProductPageWindow(
+  current: number,
+  total: number,
+): ProductPageItem[] {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, index) => index + 1);
+  }
+  const left = Math.max(2, current - 1);
+  const right = Math.min(total - 1, current + 1);
+  const pages: ProductPageItem[] = [1];
+  if (left > 2) pages.push("start-ellipsis");
+  for (let page = left; page <= right; page++) pages.push(page);
+  if (right < total - 1) pages.push("end-ellipsis");
+  pages.push(total);
+  return pages;
+}
+
 const emptyProduct: ProductDraft = {
   name: "",
   stone: "",
@@ -424,6 +446,10 @@ export default function AdminClient({
     Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE),
   );
   const safeProductPage = Math.min(productPage, productPageCount);
+  const productPageWindow = buildProductPageWindow(
+    safeProductPage,
+    productPageCount,
+  );
   const productPageStart = (safeProductPage - 1) * PRODUCTS_PER_PAGE;
   const paginatedProducts = filteredProducts.slice(
     productPageStart,
@@ -977,24 +1003,31 @@ export default function AdminClient({
                       >
                         ‹
                       </button>
-                      {Array.from(
-                        { length: productPageCount },
-                        (_, index) => index + 1,
-                      ).map((page) => (
-                        <button
-                          type="button"
-                          className={
-                            page === safeProductPage ? "active" : ""
-                          }
-                          key={page}
-                          onClick={() => setProductPage(page)}
-                          aria-current={
-                            page === safeProductPage ? "page" : undefined
-                          }
-                        >
-                          {page}
-                        </button>
-                      ))}
+                      {productPageWindow.map((page) =>
+                        typeof page === "number" ? (
+                          <button
+                            type="button"
+                            className={
+                              page === safeProductPage ? "active" : ""
+                            }
+                            key={page}
+                            onClick={() => setProductPage(page)}
+                            aria-current={
+                              page === safeProductPage ? "page" : undefined
+                            }
+                          >
+                            {page}
+                          </button>
+                        ) : (
+                          <span
+                            className="admin-product-pagination-ellipsis"
+                            key={page}
+                            aria-hidden="true"
+                          >
+                            …
+                          </span>
+                        ),
+                      )}
                       <button
                         type="button"
                         disabled={safeProductPage === productPageCount}
