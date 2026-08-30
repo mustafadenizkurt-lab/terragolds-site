@@ -84,16 +84,13 @@ export default function ProductDetailClient({
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/store", { cache: "no-store" }).then(
-        (response) => response.json() as Promise<{ products?: Product[] }>,
+      fetch(`/api/products/${productId}`, { cache: "no-store" }).then(
+        (response) => response.json() as Promise<{ product?: Product }>,
       ),
       fetchReviews(),
     ])
-      .then(([store, reviews]) => {
+      .then(([{ product: selected }, reviews]) => {
         setReviewData(reviews);
-        const selected = (store.products ?? []).find(
-          (item) => item.id === productId,
-        );
         if (!selected) {
           setNotFound(true);
           return;

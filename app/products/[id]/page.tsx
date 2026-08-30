@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
+import { cache } from "react";
 import { permanentRedirect } from "next/navigation";
 import {
   getDiscountedPrice,
   productDescriptorPhrase,
-  type Product,
 } from "../../../lib/store-data";
-import { readProducts, readSettings } from "../../../lib/store-db";
+import { readProductByIdOrSlug, readSettings } from "../../../lib/store-db";
 import { FloatingSocialLinks } from "../../store-shared-chrome";
 import StoreSubpageHeader from "../../store-subpage-header";
 import StoreSiteFooter from "../../store-site-footer";
@@ -18,19 +18,15 @@ type ProductPageProps = {
   params: Promise<{ id: string }>;
 };
 
-/** The [id] segment accepts either the legacy numeric id or the product's slug. */
-function resolveProduct(products: Product[], param: string) {
-  if (/^\d+$/.test(param)) {
-    return products.find((item) => item.id === Number(param));
-  }
-  return products.find((item) => item.slug === param);
-}
+// Shared between generateMetadata and the page body so the (id-or-slug)
+// product lookup only hits the database once per request instead of twice.
+const getProduct = cache((param: string) => readProductByIdOrSlug(param));
 
 export async function generateMetadata({
   params,
 }: ProductPageProps): Promise<Metadata> {
   const { id: param } = await params;
-  const product = resolveProduct(await readProducts(), param);
+  const product = await getProduct(param);
   if (!product) {
     return {
       title: "Ürün Bulunamadı",
@@ -76,11 +72,10 @@ export async function generateMetadata({
 
 export default async function ProductPage({ params }: ProductPageProps) {
   const { id: param } = await params;
-  const [products, settings] = await Promise.all([
-    readProducts(),
+  const [product, settings] = await Promise.all([
+    getProduct(param),
     readSettings(),
   ]);
-  const product = resolveProduct(products, param);
 
   // Canonicalize legacy numeric URLs to the slug URL once a slug exists,
   // so old links/bookmarks/search results keep working via redirect.

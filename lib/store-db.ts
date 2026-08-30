@@ -229,6 +229,29 @@ export async function readProducts(includeDrafts = false) {
   return result.results.map(mapProduct);
 }
 
+/**
+ * Fetches a single product by numeric id or slug, instead of pulling the
+ * whole catalog (with its review JOIN/GROUP BY) just to find one row.
+ */
+export async function readProductByIdOrSlug(idOrSlug: string, includeDrafts = false) {
+  await ensureSeedData();
+  const db = getD1();
+  const isNumericId = /^\d+$/.test(idOrSlug);
+  const statement = `SELECT products.*,
+            COALESCE(ROUND(AVG(product_reviews.rating), 1), 0) AS review_average,
+            COUNT(product_reviews.id) AS review_count
+     FROM products
+     LEFT JOIN product_reviews ON product_reviews.product_id = products.id
+     WHERE ${isNumericId ? "products.id = ?1" : "products.slug = ?1"}${includeDrafts ? "" : " AND products.status = 'published'"}
+     GROUP BY products.id
+     LIMIT 1`;
+  const row = await db
+    .prepare(statement)
+    .bind(isNumericId ? Number(idOrSlug) : idOrSlug)
+    .first<ProductRow>();
+  return row ? mapProduct(row) : null;
+}
+
 export async function readSettings() {
   await ensureSeedData();
   const result = await getD1()
