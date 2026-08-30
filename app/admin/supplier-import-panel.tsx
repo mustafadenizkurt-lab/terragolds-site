@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   targetFields,
   type FieldMapping,
@@ -8,6 +8,8 @@ import {
 } from "../../lib/supplier-import";
 
 type SourceType = "url" | "file";
+
+const BATCH_SIZE = 500;
 
 type PreviewRow = {
   index: number;
@@ -19,6 +21,7 @@ type PreviewRow = {
     category: string;
     image: string;
   };
+  brand: string;
 };
 
 type RowError = { index: number; reason: string };
@@ -31,13 +34,24 @@ type PreviewResponse = {
   validCount: number;
   errors: RowError[];
   errorCount: number;
+  filteredCount: number;
+  categoryOptions: string[];
+  brandOptions: string[];
 };
 
 type CommitResponse = {
   imported: number;
-  skipped: number;
+  totalValid: number;
+  hasMore: boolean;
+  errorCount: number;
   errors: RowError[];
-  truncated: boolean;
+};
+
+type ImportResult = {
+  imported: number;
+  errorCount: number;
+  errors: RowError[];
+  cancelled: boolean;
 };
 
 const money = new Intl.NumberFormat("tr-TR", {
@@ -52,6 +66,10 @@ async function readJson<T>(response: Response): Promise<T> {
     throw new Error(String((body as { error?: string }).error ?? "İşlem tamamlanamadı."));
   }
   return body;
+}
+
+function toggleValue(list: string[], value: string): string[] {
+  return list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
 }
 
 export default function SupplierImportPanel({
@@ -69,11 +87,18 @@ export default function SupplierImportPanel({
   const [totalRecords, setTotalRecords] = useState<number | null>(null);
   const [markupPercent, setMarkupPercent] = useState("0");
 
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
+  const [minPrice, setMinPrice] = useState("");
+  const [excludeZeroStock, setExcludeZeroStock] = useState(false);
+
   const [previewing, setPreviewing] = useState(false);
   const [preview, setPreview] = useState<PreviewResponse | null>(null);
 
   const [importing, setImporting] = useState(false);
-  const [result, setResult] = useState<CommitResponse | null>(null);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const [result, setResult] = useState<ImportResult | null>(null);
+  const cancelRef = useRef(false);
 
   const [error, setError] = useState("");
   const [existingCategories, setExistingCategories] = useState<string[]>([]);
@@ -87,7 +112,23 @@ export default function SupplierImportPanel({
       .catch(() => setExistingCategories([]));
   }, []);
 
-  const buildForm = (extra?: { mapping?: FieldMapping; includeMarkup?: boolean }) => {
+  const buildFilters = () => {
+    const filters: Record<string, unknown> = {};
+    if (selectedCategories.length) filters.categories = selectedCategories;
+    if (selectedBrands.length) filters.brands = selectedBrands;
+    const min = Number(minPrice);
+    if (minPrice.trim() && Number.isFinite(min) && min > 0) filters.minPrice = min;
+    if (excludeZeroStock) filters.excludeZeroStock = true;
+    return filters;
+  };
+
+  const buildForm = (extra?: {
+    mapping?: FieldMapping;
+    includeMarkup?: boolean;
+    includeFilters?: boolean;
+    offset?: number;
+    limit?: number;
+  }) => {
     const form = new FormData();
     form.set("sourceType", sourceType);
     if (sourceType === "url") {
@@ -97,6 +138,9 @@ export default function SupplierImportPanel({
     }
     if (extra?.mapping) form.set("mapping", JSON.stringify(extra.mapping));
     if (extra?.includeMarkup) form.set("markupPercent", markupPercent || "0");
+    if (extra?.includeFilters) form.set("filters", JSON.stringify(buildFilters()));
+    if (extra?.offset !== undefined) form.set("offset", String(extra.offset));
+    if (extra?.limit !== undefined) form.set("limit", String(extra.limit));
     return form;
   };
 
@@ -140,6 +184,8 @@ export default function SupplierImportPanel({
     setMapping((current) => ({ ...current, [target]: field || undefined }));
     setPreview(null);
     setResult(null);
+    if (target === "category") setSelectedCategories([]);
+    if (target === "brand") setSelectedBrands([]);
   };
 
   const runPreview = async () => {
@@ -154,7 +200,7 @@ export default function SupplierImportPanel({
       const body = await readJson<PreviewResponse>(
         await fetch("/api/admin/supplier-import/preview", {
           method: "POST",
-          body: buildForm({ mapping, includeMarkup: true }),
+          body: buildForm({ mapping, includeMarkup: true, includeFilters: true }),
         }),
       );
       setPreview(body);
@@ -181,15 +227,47 @@ export default function SupplierImportPanel({
     }
     setImporting(true);
     setError("");
+    setResult(null);
+    cancelRef.current = false;
+    setProgress({ done: 0, total: preview.validCount });
+
+    let imported = 0;
+    let errorCount = 0;
+    let firstBatchErrors: RowError[] = [];
+    let offset = 0;
+
     try {
-      const body = await readJson<CommitResponse>(
-        await fetch("/api/admin/supplier-import/commit", {
-          method: "POST",
-          body: buildForm({ mapping, includeMarkup: true }),
-        }),
+      while (!cancelRef.current) {
+        const body = await readJson<CommitResponse>(
+          await fetch("/api/admin/supplier-import/commit", {
+            method: "POST",
+            body: buildForm({
+              mapping,
+              includeMarkup: true,
+              includeFilters: true,
+              offset,
+              limit: BATCH_SIZE,
+            }),
+          }),
+        );
+        imported += body.imported;
+        errorCount = body.errorCount;
+        if (offset === 0) firstBatchErrors = body.errors;
+        setProgress({ done: imported, total: body.totalValid });
+        if (!body.hasMore || body.imported === 0) break;
+        offset += BATCH_SIZE;
+      }
+      setResult({
+        imported,
+        errorCount,
+        errors: firstBatchErrors,
+        cancelled: cancelRef.current,
+      });
+      onNotice(
+        cancelRef.current
+          ? `İptal edildi, ${imported} ürün taslak olarak eklendi.`
+          : `${imported} ürün taslak olarak eklendi.`,
       );
-      setResult(body);
-      onNotice(`${body.imported} ürün taslak olarak eklendi.`);
     } catch (importError) {
       setError(
         importError instanceof Error
@@ -198,7 +276,12 @@ export default function SupplierImportPanel({
       );
     } finally {
       setImporting(false);
+      setProgress(null);
     }
+  };
+
+  const cancelImport = () => {
+    cancelRef.current = true;
   };
 
   return (
@@ -344,9 +427,85 @@ export default function SupplierImportPanel({
 
       {preview && (
         <section className="admin-supplier-step">
-          <h3>4. Önizleme</h3>
+          <h3>4. Filtreler</h3>
+          <p className="admin-supplier-hint">
+            Sadece istediğiniz ürünleri içe aktarmak için filtre seçin, sonra
+            değişikliği görmek için tekrar &quot;Önizle&quot;ye tıklayın. Hiçbir
+            şey seçilmezse tüm ürünler alınır.
+          </p>
+          <div className="admin-supplier-filters">
+            {preview.categoryOptions.length > 0 && (
+              <div className="admin-supplier-filter-group">
+                <span>Kategori (seçilenler alınır)</span>
+                <div className="admin-supplier-checkbox-list">
+                  {preview.categoryOptions.map((category) => (
+                    <label key={category}>
+                      <input
+                        type="checkbox"
+                        checked={selectedCategories.includes(category)}
+                        onChange={() =>
+                          setSelectedCategories((current) => toggleValue(current, category))
+                        }
+                      />
+                      {category}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+            {preview.brandOptions.length > 0 && (
+              <div className="admin-supplier-filter-group">
+                <span>Marka (seçilenler alınır)</span>
+                <div className="admin-supplier-checkbox-list">
+                  {preview.brandOptions.map((brand) => (
+                    <label key={brand}>
+                      <input
+                        type="checkbox"
+                        checked={selectedBrands.includes(brand)}
+                        onChange={() =>
+                          setSelectedBrands((current) => toggleValue(current, brand))
+                        }
+                      />
+                      {brand}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+            <label className="admin-field">
+              <span>Minimum fiyat (TL)</span>
+              <input
+                type="number"
+                min="0"
+                value={minPrice}
+                onChange={(event) => setMinPrice(event.target.value)}
+                placeholder="ör. 100"
+              />
+            </label>
+            <div className="admin-supplier-source-toggle">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={excludeZeroStock}
+                  onChange={(event) => setExcludeZeroStock(event.target.checked)}
+                />
+                Stoku 0 olan ürünleri alma
+              </label>
+            </div>
+          </div>
+          <button
+            className="admin-secondary-button"
+            type="button"
+            disabled={previewing}
+            onClick={() => void runPreview()}
+          >
+            {previewing ? "Önizleniyor…" : "Filtreyi uygula (yeniden önizle)"}
+          </button>
+
+          <h3>5. Önizleme</h3>
           <p className="admin-supplier-hint">
             {preview.validCount} / {preview.totalRecords} kayıt geçerli
+            {preview.filteredCount > 0 && `, ${preview.filteredCount} kayıt filtrelendi`}
             {preview.errorCount > 0 && `, ${preview.errorCount} kayıt atlanacak`}.
             İlk {preview.rows.length} geçerli kayıt aşağıda gösteriliyor.
           </p>
@@ -360,6 +519,7 @@ export default function SupplierImportPanel({
                     <th>Fiyat</th>
                     <th>Stok</th>
                     <th>Kategori</th>
+                    {mapping.brand && <th>Marka</th>}
                     <th>Görsel</th>
                     <th>Uyarılar</th>
                   </tr>
@@ -371,6 +531,7 @@ export default function SupplierImportPanel({
                       <td>{money.format(row.product.price)}</td>
                       <td>{row.product.stock}</td>
                       <td>{row.product.category || "—"}</td>
+                      {mapping.brand && <td>{row.brand || "—"}</td>}
                       <td className="admin-supplier-image-cell">
                         {row.product.image || "—"}
                       </td>
@@ -399,16 +560,36 @@ export default function SupplierImportPanel({
             </div>
           )}
 
-          <button
-            className="admin-primary-button"
-            type="button"
-            disabled={importing || preview.validCount === 0}
-            onClick={() => void runImport()}
-          >
-            {importing
-              ? "Aktarılıyor…"
-              : `İçe Aktar (${preview.validCount} ürün, taslak olarak)`}
-          </button>
+          {progress && (
+            <div className="admin-supplier-progress">
+              <p className="admin-supplier-hint">
+                {progress.done} / {progress.total} ürün aktarıldı…
+              </p>
+              <div className="admin-supplier-progress-bar">
+                <span
+                  style={{
+                    width: `${progress.total ? Math.min(100, (progress.done / progress.total) * 100) : 0}%`,
+                  }}
+                />
+              </div>
+              <button className="admin-secondary-button" type="button" onClick={cancelImport}>
+                İptal
+              </button>
+            </div>
+          )}
+
+          {!progress && (
+            <button
+              className="admin-primary-button"
+              type="button"
+              disabled={importing || preview.validCount === 0}
+              onClick={() => void runImport()}
+            >
+              {importing
+                ? "Aktarılıyor…"
+                : `İçe Aktar (${preview.validCount} ürün, taslak olarak)`}
+            </button>
+          )}
         </section>
       )}
 
@@ -416,14 +597,14 @@ export default function SupplierImportPanel({
         <section className="admin-supplier-step admin-supplier-result">
           <h3>Sonuç</h3>
           <p>
-            <strong>{result.imported}</strong> ürün taslak olarak eklendi,{" "}
-            <strong>{result.skipped}</strong> satır atlandı.
-            {result.truncated &&
-              " (XML 500 satırdan uzun olduğu için ilk 500 kayıt işlendi.)"}
+            <strong>{result.imported}</strong> ürün taslak olarak eklendi.
+            {result.cancelled && " (İşlem elle iptal edildi.)"}
+            {result.errorCount > 0 &&
+              ` ${result.errorCount} satır veri hatası nedeniyle atlandı.`}
           </p>
           {result.errors.length > 0 && (
             <div className="admin-supplier-errors">
-              <strong>Atlanan satırlar</strong>
+              <strong>Atlanan satırlar (ilk {result.errors.length})</strong>
               <ul>
                 {result.errors.map((rowError) => (
                   <li key={rowError.index}>

@@ -1,5 +1,10 @@
 import type { Metadata } from "next";
-import { getDiscountedPrice } from "../../../lib/store-data";
+import { permanentRedirect } from "next/navigation";
+import {
+  getDiscountedPrice,
+  productDescriptorPhrase,
+  type Product,
+} from "../../../lib/store-data";
 import { readProducts, readSettings } from "../../../lib/store-db";
 import { FloatingSocialLinks } from "../../store-shared-chrome";
 import StoreSubpageHeader from "../../store-subpage-header";
@@ -13,36 +18,45 @@ type ProductPageProps = {
   params: Promise<{ id: string }>;
 };
 
+/** The [id] segment accepts either the legacy numeric id or the product's slug. */
+function resolveProduct(products: Product[], param: string) {
+  if (/^\d+$/.test(param)) {
+    return products.find((item) => item.id === Number(param));
+  }
+  return products.find((item) => item.slug === param);
+}
+
 export async function generateMetadata({
   params,
 }: ProductPageProps): Promise<Metadata> {
-  const { id } = await params;
-  const product = (await readProducts()).find(
-    (item) => item.id === Number(id),
-  );
+  const { id: param } = await params;
+  const product = resolveProduct(await readProducts(), param);
   if (!product) {
     return {
       title: "Ürün Bulunamadı",
       robots: { index: false, follow: false },
     };
   }
+  const title =
+    product.metaTitle || `${product.name} – ${product.stone || product.category}`;
   const description =
-    `${product.name} ${product.stone} doğal taş ürünü. ${product.description}`.slice(
+    product.metaDescription ||
+    `${product.name}, ${productDescriptorPhrase(product)}. ${product.description}`.slice(
       0,
       155,
     );
-  const url = `https://www.terragolds.com/products/${product.id}`;
+  const url = `https://www.terragolds.com/products/${product.slug || product.id}`;
   const images = [product.image, product.hoverImage]
     .filter(Boolean)
     .map((image) =>
       new URL(image as string, "https://www.terragolds.com").toString(),
     );
   return {
-    title: `${product.name} – ${product.stone}`,
+    title,
     description,
     alternates: { canonical: url },
     openGraph: {
-      title: product.name,
+      title,
       description,
       url,
       type: "website",
@@ -53,7 +67,7 @@ export async function generateMetadata({
     },
     twitter: {
       card: "summary_large_image",
-      title: product.name,
+      title,
       description,
       images,
     },
@@ -61,14 +75,21 @@ export async function generateMetadata({
 }
 
 export default async function ProductPage({ params }: ProductPageProps) {
-  const { id } = await params;
+  const { id: param } = await params;
   const [products, settings] = await Promise.all([
     readProducts(),
     readSettings(),
   ]);
-  const product = products.find((item) => item.id === Number(id));
+  const product = resolveProduct(products, param);
+
+  // Canonicalize legacy numeric URLs to the slug URL once a slug exists,
+  // so old links/bookmarks/search results keep working via redirect.
+  if (product?.slug && param !== product.slug) {
+    permanentRedirect(`/products/${product.slug}`);
+  }
+
   const productUrl = product
-    ? `https://www.terragolds.com/products/${product.id}`
+    ? `https://www.terragolds.com/products/${product.slug || product.id}`
     : "";
   const structuredData = product
     ? {
@@ -119,7 +140,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
       )}
       <StoreSubpageHeader />
       <StoreTrustBar />
-      <ProductDetailClient productId={Number(id)} showHeader={false} />
+      <ProductDetailClient productId={product?.id ?? 0} showHeader={false} />
       <StoreSiteFooter
         businessName={settings.businessName}
         address={[settings.address, settings.district, settings.city]

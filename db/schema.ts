@@ -15,6 +15,7 @@ export const xmlSuppliers = sqliteTable(
     name: text("name").notNull(),
     feedUrl: text("feed_url").notNull(),
     fieldMapping: text("field_mapping").notNull().default("{}"),
+    filters: text("filters").notNull().default("{}"),
     defaultMarkupPercent: integer("default_markup_percent").notNull().default(0),
     active: integer("active", { mode: "boolean" }).notNull().default(true),
     lastSyncedAt: text("last_synced_at"),
@@ -58,6 +59,9 @@ export const products = sqliteTable("products", {
   stone: text("stone").notNull().default(""),
   category: text("category").notNull().default("Doğal Taşlar"),
   price: integer("price").notNull().default(0),
+  // Purchase/supplier cost, when known — used to estimate profit margin.
+  // 0 means "unknown", not "free"; treat 0 as missing data, not a real cost.
+  cost: integer("cost").notNull().default(0),
   stock: integer("stock").notNull().default(0),
   image: text("image").notNull().default(""),
   hoverImage: text("hover_image"),
@@ -74,6 +78,9 @@ export const products = sqliteTable("products", {
   }),
   xmlExternalId: text("xml_external_id"),
   xmlSyncStatus: text("xml_sync_status").notNull().default("manual"),
+  slug: text("slug").notNull().default(""),
+  metaTitle: text("meta_title"),
+  metaDescription: text("meta_description"),
   featured: integer("featured", { mode: "boolean" }).notNull().default(false),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
@@ -81,6 +88,10 @@ export const products = sqliteTable("products", {
 }, (table) => [
   uniqueIndex("products_xml_source_unique").on(table.xmlSupplierId, table.xmlExternalId),
   index("products_xml_supplier_idx").on(table.xmlSupplierId, table.xmlSyncStatus),
+  // Not a DB-level unique constraint: existing rows default to "" before the
+  // one-time backfill runs, which would collide. Uniqueness is guaranteed by
+  // lib/product-slugs.ts's id-suffix collision handling instead.
+  index("products_slug_idx").on(table.slug),
 ]);
 
 export const productCategories = sqliteTable(

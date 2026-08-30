@@ -1,7 +1,9 @@
 import { XMLParser } from "fast-xml-parser";
 import { parseProductInput, type ProductInput } from "./product-input";
+import { fetchSupplierXmlText } from "./supplier-fetch";
+import { matchesFilters, type ImportFilters } from "./xml-import-filters";
 
-export const MAX_IMPORT_ROWS = 500;
+export const MAX_BATCH_SIZE = 500;
 export const PREVIEW_ROW_COUNT = 8;
 
 export type TargetField =
@@ -9,6 +11,7 @@ export type TargetField =
   | "price"
   | "stock"
   | "category"
+  | "brand"
   | "image"
   | "description";
 
@@ -17,6 +20,7 @@ export const targetFields: { key: TargetField; label: string; required: boolean 
   { key: "price", label: "Fiyat", required: true },
   { key: "stock", label: "Stok", required: false },
   { key: "category", label: "Kategori", required: false },
+  { key: "brand", label: "Marka", required: false },
   { key: "image", label: "Görsel", required: false },
   { key: "description", label: "Açıklama", required: false },
 ];
@@ -140,17 +144,15 @@ export async function resolveSupplierXml(form: FormData): Promise<string> {
     if (parsedUrl.protocol !== "https:" && parsedUrl.protocol !== "http:") {
       throw new SupplierXmlError("Sadece http(s) linkleri desteklenir.");
     }
-    const response = await fetch(parsedUrl.toString(), {
-      headers: { accept: "application/xml, text/xml, */*" },
-    });
-    if (!response.ok) {
-      throw new SupplierXmlError(`Link'ten XML alınamadı (HTTP ${response.status}).`);
+    try {
+      return await fetchSupplierXmlText(parsedUrl.toString(), {
+        maxBytes: MAX_XML_BYTES,
+      });
+    } catch (error) {
+      throw new SupplierXmlError(
+        error instanceof Error ? error.message : "Link'ten XML alınamadı.",
+      );
     }
-    const text = await response.text();
-    if (text.length > MAX_XML_BYTES) {
-      throw new SupplierXmlError("XML dosyası çok büyük (15MB sınırı).");
-    }
-    return text;
   }
 
   if (sourceType === "file") {
@@ -196,6 +198,21 @@ export function detectFieldNames(records: FlatRecord[]): string[] {
   return [...names].sort();
 }
 
+/** Distinct non-empty values a mapped field takes across the whole feed — used to build filter pickers. */
+export function distinctFieldValues(
+  records: FlatRecord[],
+  fieldName: string,
+  limit = 300,
+): string[] {
+  const values = new Set<string>();
+  for (const record of records) {
+    const value = (record[fieldName] ?? "").trim();
+    if (value) values.add(value);
+    if (values.size >= limit) break;
+  }
+  return [...values].sort((a, b) => a.localeCompare(b, "tr-TR"));
+}
+
 function normalize(value: string): string {
   return value
     .toLowerCase()
@@ -213,6 +230,7 @@ const keywordsByTarget: Record<TargetField, string[]> = {
   price: ["fiyat", "price", "satisfiyati", "tutar", "birimfiyat"],
   stock: ["stok", "stock", "miktar", "adet", "qty", "quantity"],
   category: ["kategori", "category", "grup", "group", "kategoriadi"],
+  brand: ["marka", "brand", "uretici", "manufacturer"],
   image: ["resim", "gorsel", "image", "img", "foto", "photo", "picture"],
   description: ["aciklama", "description", "detay", "desc", "aciklamasi"],
 };
@@ -224,6 +242,7 @@ export function guessFieldMapping(fieldNames: string[]): FieldMapping {
     "name",
     "price",
     "category",
+    "brand",
     "stock",
     "image",
     "description",
@@ -254,14 +273,20 @@ export function guessFieldMapping(fieldNames: string[]): FieldMapping {
   return mapping;
 }
 
-export type ImportRow = { index: number; product: ProductInput; warnings: string[] };
+export type ImportRow = {
+  index: number;
+  product: ProductInput;
+  brand: string;
+  warnings: string[];
+};
 export type ImportRowError = { index: number; reason: string };
 
 export function applyMapping(
   records: FlatRecord[],
   mapping: FieldMapping,
   markupPercent: number,
-): { rows: ImportRow[]; errors: ImportRowError[] } {
+  filters: ImportFilters = {},
+): { rows: ImportRow[]; errors: ImportRowError[]; filteredCount: number } {
   if (!mapping.name || !mapping.price) {
     throw new Error("Ürün adı ve fiyat alanları eşleştirilmeden aktarım yapılamaz.");
   }
@@ -271,6 +296,7 @@ export function applyMapping(
     : 0;
   const rows: ImportRow[] = [];
   const errors: ImportRowError[] = [];
+  let filteredCount = 0;
 
   records.forEach((record, index) => {
     const name = (record[mapping.name as string] ?? "").trim();
@@ -292,6 +318,7 @@ export function applyMapping(
 
     const rawStock = mapping.stock ? (record[mapping.stock] ?? "").trim() : "";
     const rawCategory = mapping.category ? (record[mapping.category] ?? "").trim() : "";
+    const rawBrand = mapping.brand ? (record[mapping.brand] ?? "").trim() : "";
     const rawImage = mapping.image ? (record[mapping.image] ?? "").trim() : "";
     const rawDescription = mapping.description
       ? (record[mapping.description] ?? "").trim()
@@ -312,13 +339,23 @@ export function applyMapping(
       const product = parseProductInput({
         name,
         price: markedUpPrice,
+        cost: parsedPrice,
         stock: rawStock,
         category: rawCategory || undefined,
         image: rawImage,
         description: rawDescription,
         status: "draft",
       });
-      rows.push({ index, product, warnings });
+      if (
+        !matchesFilters(
+          { category: product.category, brand: rawBrand, price: product.price, stock: product.stock },
+          filters,
+        )
+      ) {
+        filteredCount += 1;
+        return;
+      }
+      rows.push({ index, product, brand: rawBrand, warnings });
     } catch (error) {
       errors.push({
         index,
@@ -327,5 +364,5 @@ export function applyMapping(
     }
   });
 
-  return { rows, errors };
+  return { rows, errors, filteredCount };
 }

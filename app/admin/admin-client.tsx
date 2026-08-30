@@ -61,6 +61,7 @@ const emptyProduct: ProductDraft = {
   stone: "",
   category: "Kristaller",
   price: 0,
+  cost: 0,
   stock: 1,
   image: "/stone-collection.jpg",
   hoverImage: "",
@@ -72,6 +73,9 @@ const emptyProduct: ProductDraft = {
   shopierUrl: "",
   shopierProductId: "",
   shopierSyncStatus: "manual",
+  slug: "",
+  metaTitle: "",
+  metaDescription: "",
   featured: false,
   sortOrder: 0,
 };
@@ -216,6 +220,8 @@ export default function AdminClient({
       name: `${product.name} Kopya`,
       status: "draft",
       sortOrder: products.length + 1,
+      // A fresh slug is generated on save — copying the original's would collide.
+      slug: "",
     });
     setView("editor");
     flash("Ürün kopyalandı, taslak olarak düzenleyebilirsiniz.");
@@ -1149,6 +1155,22 @@ export default function AdminClient({
                           />
                         </label>
                         <label className="admin-field">
+                          <span>Maliyet (TL, opsiyonel)</span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={draft.cost || ""}
+                            onChange={(event) =>
+                              setDraft({
+                                ...draft,
+                                cost: Number(event.target.value) || 0,
+                              })
+                            }
+                            placeholder="Kâr marjı hesaplaması için"
+                          />
+                        </label>
+                        <label className="admin-field">
                           <span>Stok adedi</span>
                           <input
                             type="number"
@@ -1203,6 +1225,46 @@ export default function AdminClient({
                               })
                             }
                             placeholder="Taşın dokusu, rengi, ölçüsü ve öne çıkan özellikleri…"
+                          />
+                        </label>
+                        <label className="admin-field">
+                          <span>URL (slug)</span>
+                          <input
+                            value={draft.slug}
+                            onChange={(event) =>
+                              setDraft({
+                                ...draft,
+                                slug: event.target.value,
+                              })
+                            }
+                            placeholder="Boş bırakılırsa üründen otomatik oluşturulur"
+                          />
+                        </label>
+                        <label className="admin-field full">
+                          <span>Meta başlık (SEO)</span>
+                          <input
+                            value={draft.metaTitle}
+                            onChange={(event) =>
+                              setDraft({
+                                ...draft,
+                                metaTitle: event.target.value,
+                              })
+                            }
+                            placeholder="Boş bırakılırsa ürün adından oluşturulur"
+                          />
+                        </label>
+                        <label className="admin-field full">
+                          <span>Meta açıklama (SEO)</span>
+                          <textarea
+                            rows={2}
+                            value={draft.metaDescription}
+                            onChange={(event) =>
+                              setDraft({
+                                ...draft,
+                                metaDescription: event.target.value,
+                              })
+                            }
+                            placeholder="Boş bırakılırsa ürün açıklamasından oluşturulur"
                           />
                         </label>
                       </div>
@@ -1717,6 +1779,47 @@ export default function AdminClient({
                               footerNote: event.target.value,
                             })
                           }
+                        />
+                      </label>
+                    </div>
+                  </section>
+
+                  <section className="admin-panel">
+                    <div className="admin-form-section-title">
+                      <span>05</span>
+                      <div>
+                        <h2>Analitik</h2>
+                        <p>
+                          Google Analytics ve Meta Pixel kimlikleri —
+                          boş bırakılırsa hiçbir izleme kodu yüklenmez.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="admin-field-grid">
+                      <label className="admin-field">
+                        <span>Google Analytics (GA4) Ölçüm Kimliği</span>
+                        <input
+                          value={settings.gaMeasurementId}
+                          onChange={(event) =>
+                            setSettings({
+                              ...settings,
+                              gaMeasurementId: event.target.value,
+                            })
+                          }
+                          placeholder="G-XXXXXXXXXX"
+                        />
+                      </label>
+                      <label className="admin-field">
+                        <span>Meta (Facebook) Pixel Kimliği</span>
+                        <input
+                          value={settings.metaPixelId}
+                          onChange={(event) =>
+                            setSettings({
+                              ...settings,
+                              metaPixelId: event.target.value,
+                            })
+                          }
+                          placeholder="123456789012345"
                         />
                       </label>
                     </div>

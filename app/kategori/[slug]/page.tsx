@@ -4,8 +4,9 @@ import StoreSubpageHeader from "../../store-subpage-header";
 import StoreSiteFooter from "../../store-site-footer";
 import { FloatingSocialLinks } from "../../store-shared-chrome";
 import StoreTrustBar from "../../store-trust-bar";
-import { categoryToSlug, findCategoryBySlug } from "../../../lib/category-slugs";
-import { getDiscountedPrice } from "../../../lib/store-data";
+import { findCategoryBySlug } from "../../../lib/category-slugs";
+import { findCategoryGroupBySlug, groupForCategory } from "../../../lib/category-groups";
+import { getDiscountedPrice, type Product } from "../../../lib/store-data";
 import { readProducts, readSettings } from "../../../lib/store-db";
 
 export const dynamic = "force-dynamic";
@@ -22,44 +23,67 @@ type CategoryPageProps = {
   params: Promise<{ slug: string }>;
 };
 
+/**
+ * The [slug] segment accepts either a top-level nav group slug (e.g.
+ * "kolyeler", spanning several raw categories) or a single raw category's
+ * own slug — group match is checked first since it's the more specific,
+ * curated nav entry point; single-category URLs keep working unchanged.
+ */
+function resolveCategoryOrGroup(products: Product[], slug: string) {
+  const group = findCategoryGroupBySlug(slug);
+  if (group) {
+    return {
+      title: group.label,
+      products: products.filter(
+        (product) => groupForCategory(product.category)?.slug === group.slug,
+      ),
+    };
+  }
+  const categories = [...new Set(products.map((product) => product.category))];
+  const category = findCategoryBySlug(categories, slug);
+  if (!category) return null;
+  return {
+    title: category,
+    products: products.filter((product) => product.category === category),
+  };
+}
+
 export async function generateMetadata({
   params,
 }: CategoryPageProps): Promise<Metadata> {
   const { slug } = await params;
   const products = await readProducts();
-  const categories = [...new Set(products.map((product) => product.category))];
-  const category = findCategoryBySlug(categories, slug);
+  const resolved = resolveCategoryOrGroup(products, slug);
 
-  if (!category) {
+  if (!resolved) {
     return {
       title: "Kategori Bulunamadı",
       robots: { index: false, follow: false },
     };
   }
 
-  const categoryProducts = products.filter(
-    (product) => product.category === category,
-  );
-  const url = `${SITE_URL}/kategori/${categoryToSlug(category)}`;
+  const { title, products: categoryProducts } = resolved;
+  const url = `${SITE_URL}/kategori/${slug}`;
   const heroImage = categoryProducts[0]?.image
     ? new URL(categoryProducts[0].image, SITE_URL).toString()
     : `${SITE_URL}/og.png`;
-  const description = `${category} kategorisinde ${categoryProducts.length} seçilmiş doğal taş ürünü. Terragolds kristal ve mineral koleksiyonunu inceleyin.`;
+  const isStoneCategory = title === "Kristaller";
+  const description = `${title} kategorisinde ${categoryProducts.length} seçilmiş ${isStoneCategory ? "doğal taş ürünü" : "ürün"}. Terragolds koleksiyonunu inceleyin.`;
 
   return {
-    title: `${category} | Terragolds`,
+    title: `${title} | Terragolds`,
     description,
     alternates: { canonical: url },
     openGraph: {
-      title: `${category} | Terragolds`,
+      title: `${title} | Terragolds`,
       description,
       url,
       type: "website",
-      images: [{ url: heroImage, alt: `${category} Terragolds` }],
+      images: [{ url: heroImage, alt: `${title} Terragolds` }],
     },
     twitter: {
       card: "summary_large_image",
-      title: `${category} | Terragolds`,
+      title: `${title} | Terragolds`,
       description,
       images: [heroImage],
     },
@@ -72,15 +96,13 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
     readProducts(),
     readSettings(),
   ]);
-  const categories = [...new Set(products.map((product) => product.category))];
-  const category = findCategoryBySlug(categories, slug);
-  const categoryProducts = category
-    ? products.filter((product) => product.category === category)
-    : [];
+  const resolved = resolveCategoryOrGroup(products, slug);
+  const title = resolved?.title ?? null;
+  const categoryProducts = resolved?.products ?? [];
 
   return (
     <main className="category-page">
-      <StoreSubpageHeader activeCategory={category} />
+      <StoreSubpageHeader activeGroupSlug={slug} />
       <StoreTrustBar />
 
       <section className="category-hero section-shell">
@@ -89,18 +111,18 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
           <span>/</span>
           <Link href="/#shop">Ürünler</Link>
           <span>/</span>
-          <b>{category ?? "Kategori bulunamadı"}</b>
+          <b>{title ?? "Kategori bulunamadı"}</b>
         </div>
         <p className="eyebrow">Koleksiyon</p>
-        <h1>{category ?? "Kategori bulunamadı"}</h1>
+        <h1>{title ?? "Kategori bulunamadı"}</h1>
         <p>
-          {category
+          {title
             ? `${categoryProducts.length} seçilmiş parça. Doğal form, yüzey ve renk karakteri korunmuş ürünleri inceleyin.`
             : "Aradığınız kategori bulunamadı. Tüm ürünlere geri dönebilirsiniz."}
         </p>
       </section>
 
-      {category ? (
+      {title ? (
         <section className="category-products section-shell">
           <div className="category-grid">
             {categoryProducts.map((product) => {
@@ -111,7 +133,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
                     className={`category-product-image${
                       product.hoverImage ? " has-hover-image" : ""
                     }`}
-                    href={`/products/${product.id}`}
+                    href={`/products/${product.slug || product.id}`}
                     aria-label={`${product.name} detaylarını gör`}
                   >
                     {product.stock > 0 && product.stock <= 3 ? (
@@ -148,7 +170,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
                   </Link>
                   <div className="category-product-copy">
                     <small>{product.stone}</small>
-                    <Link href={`/products/${product.id}`}>{product.name}</Link>
+                    <Link href={`/products/${product.slug || product.id}`}>{product.name}</Link>
                     <p>{product.description}</p>
                     <div className="category-product-price">
                       {product.discountPercent > 0 && (

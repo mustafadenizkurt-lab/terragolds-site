@@ -1,12 +1,15 @@
 import { calculatePrice } from "./calculatePrice";
 import { fetchFeed } from "./fetchFeed";
 import { parseFeed, readMappedValue, type XmlRecord } from "./parseFeed";
+import { matchesFilters, type ImportFilters } from "../xml-import-filters";
+import { resolveProductSlug } from "../product-slugs";
 
 export type SupplierMapping = {
   externalId?: string;
   name?: string;
   stone?: string;
   category?: string;
+  brand?: string;
   price?: string;
   stock?: string;
   image?: string;
@@ -18,6 +21,7 @@ export type Supplier = {
   name: string;
   feedUrl: string;
   fieldMapping: string;
+  filters: string;
   defaultMarkupPercent: number;
 };
 
@@ -30,7 +34,7 @@ export type SyncResult = {
 
 export async function syncActiveSuppliers(db: D1Database) {
   const suppliers = await db.prepare(
-    "SELECT id, name, feed_url AS feedUrl, field_mapping AS fieldMapping, default_markup_percent AS defaultMarkupPercent FROM xml_suppliers WHERE active = 1 ORDER BY id",
+    "SELECT id, name, feed_url AS feedUrl, field_mapping AS fieldMapping, filters, default_markup_percent AS defaultMarkupPercent FROM xml_suppliers WHERE active = 1 ORDER BY id",
   ).all<Supplier>();
   const results = [];
   for (const supplier of suppliers.results) {
@@ -50,6 +54,7 @@ export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<
   ).bind(supplier.id, startedAt).first<{ id: number }>();
   try {
     const mapping = JSON.parse(supplier.fieldMapping || "{}") as SupplierMapping;
+    const filters = JSON.parse(supplier.filters || "{}") as ImportFilters;
     const records = parseFeed(await fetchFeed(supplier.feedUrl));
     let imported = 0;
     let updated = 0;
@@ -60,18 +65,31 @@ export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<
         skipped += 1;
         continue;
       }
+      if (
+        !matchesFilters(
+          { category: product.category, brand: product.brand, price: product.price, stock: product.stock },
+          filters,
+        )
+      ) {
+        skipped += 1;
+        continue;
+      }
       const existing = await db.prepare(
         "SELECT id FROM products WHERE xml_supplier_id = ? AND xml_external_id = ? LIMIT 1",
       ).bind(supplier.id, product.externalId).first<{ id: number }>();
       if (existing) {
         await db.prepare(
-          `UPDATE products SET name = ?, stone = ?, category = ?, price = ?, stock = ?, image = ?, description = ?, xml_sync_status = 'synced', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-        ).bind(product.name, product.stone, product.category, product.price, product.stock, product.image, product.description, existing.id).run();
+          `UPDATE products SET name = ?, stone = ?, category = ?, price = ?, cost = ?, stock = ?, image = ?, description = ?, xml_sync_status = 'synced', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+        ).bind(product.name, product.stone, product.category, product.price, product.cost, product.stock, product.image, product.description, existing.id).run();
         updated += 1;
       } else {
-        await db.prepare(
-          `INSERT INTO products (name, stone, category, price, stock, image, description, status, xml_supplier_id, xml_external_id, xml_sync_status, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, 'synced', CURRENT_TIMESTAMP)`,
-        ).bind(product.name, product.stone, product.category, product.price, product.stock, product.image, product.description, supplier.id, product.externalId).run();
+        const created = await db.prepare(
+          `INSERT INTO products (name, stone, category, price, cost, stock, image, description, status, xml_supplier_id, xml_external_id, xml_sync_status, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, 'synced', CURRENT_TIMESTAMP) RETURNING id`,
+        ).bind(product.name, product.stone, product.category, product.price, product.cost, product.stock, product.image, product.description, supplier.id, product.externalId).first<{ id: number }>();
+        if (created?.id) {
+          const slug = await resolveProductSlug(db, product.name, created.id);
+          await db.prepare("UPDATE products SET slug = ? WHERE id = ?").bind(slug, created.id).run();
+        }
         imported += 1;
       }
     }
@@ -97,10 +115,12 @@ function mapRecord(record: XmlRecord, mapping: SupplierMapping, markup: number) 
     name: readMappedValue(record, mapping.name),
     stone: readMappedValue(record, mapping.stone),
     category: readMappedValue(record, mapping.category) || "Doğal Taşlar",
+    brand: readMappedValue(record, mapping.brand),
     // cost must be a positive finite number: an empty/unmapped price string
     // coerces to 0 via Number(""), which would otherwise pass Number.isFinite
     // and silently zero out the product's price.
     price: Number.isFinite(cost) && cost > 0 ? calculatePrice(cost, markup) : null,
+    cost: Number.isFinite(cost) && cost > 0 ? Math.max(0, Math.round(cost)) : 0,
     stock: Math.max(0, Number.parseInt(readMappedValue(record, mapping.stock) || "0", 10) || 0),
     image: readMappedValue(record, mapping.image),
     description: readMappedValue(record, mapping.description),

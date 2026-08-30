@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { readPaymentOrder } from "../../../lib/order-payment";
+import { readSettings } from "../../../lib/store-db";
 import PaymentResultClient from "./payment-result-client";
 
 export const dynamic = "force-dynamic";
@@ -19,5 +21,18 @@ export default async function PaymentResultPage({
       ? params.status
       : "failed";
   const orderId = String(params.orderId ?? "").slice(0, 80);
-  return <PaymentResultClient status={status} orderId={orderId} />;
+
+  const [order, settings] = await Promise.all([
+    status === "success" && orderId ? readPaymentOrder(orderId) : null,
+    readSettings(),
+  ]);
+
+  return (
+    <PaymentResultClient
+      status={status}
+      orderId={orderId}
+      orderAmount={order ? order.total_amount / 100 : null}
+      whatsapp={settings.whatsapp}
+    />
+  );
 }

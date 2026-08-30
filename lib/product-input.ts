@@ -1,3 +1,4 @@
+import { slugify } from "./slugify";
 import type { Product } from "./store-data";
 
 export type ProductInput = Omit<Product, "id">;
@@ -12,6 +13,7 @@ export function parseProductInput(payload: unknown): ProductInput {
   if (!name) throw new Error("Ürün adı zorunludur.");
 
   const price = Math.max(0, Math.round(Number(body.price) || 0));
+  const cost = Math.max(0, Math.round(Number(body.cost) || 0));
   const stock = Math.max(0, Math.round(Number(body.stock) || 0));
   const discountPercent = Math.min(
     90,
@@ -30,6 +32,7 @@ export function parseProductInput(payload: unknown): ProductInput {
     stone: String(body.stone ?? "").trim(),
     category: String(body.category ?? "Doğal Taşlar").trim(),
     price,
+    cost,
     stock,
     image: String(body.image ?? "").trim() || "/stone-collection.jpg",
     hoverImage: String(body.hoverImage ?? "").trim() || undefined,
@@ -42,6 +45,11 @@ export function parseProductInput(payload: unknown): ProductInput {
     shopierProductId:
       String(body.shopierProductId ?? "").trim() || undefined,
     shopierSyncStatus: syncStatus,
+    // Empty string means "not set by the caller" — the insert/update route
+    // generates one from the name (with collision handling) in that case.
+    slug: slugify(String(body.slug ?? "").trim()),
+    metaTitle: String(body.metaTitle ?? "").trim() || undefined,
+    metaDescription: String(body.metaDescription ?? "").trim() || undefined,
     featured: Boolean(body.featured),
     sortOrder: Math.max(0, Math.round(Number(body.sortOrder) || 0)),
   };

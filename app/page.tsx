@@ -14,6 +14,8 @@ import {
   type SiteContent,
 } from "../lib/site-content-types";
 import { categoryToSlug } from "../lib/category-slugs";
+import { activeCategoryGroups, type CategoryGroup } from "../lib/category-groups";
+import { pickRotatingShowcase } from "../lib/rotating-showcase";
 import { useCart } from "../lib/cart-context";
 import StoreSiteFooter from "./store-site-footer";
 import FloatingSocialVisibility from "./floating-social-visibility";
@@ -95,6 +97,7 @@ const moneyWithCents = new Intl.NumberFormat("tr-TR", {
 const CATALOG_PRODUCTS_PER_PAGE = 15;
 const NEW_ARRIVALS_COUNT = 12;
 const FEATURED_PRODUCTS_COUNT = 10;
+const DISCOUNT_SHOWCASE_COUNT = 12;
 
 type NoticeState = {
   id: number;
@@ -488,7 +491,7 @@ function ProductCard({
           className={`product-image-button${
             product.hoverImage ? " has-hover-image" : ""
           }`}
-          href={`/products/${product.id}`}
+          href={`/products/${product.slug || product.id}`}
           aria-label={`${product.name} ayrıntılarını gör`}
         >
           {product.hoverImage && (
@@ -574,7 +577,7 @@ function ProductCard({
       <p className="product-collection-highlight">
         {productCollectionMessage(product, ui)}
       </p>
-      <a className="product-info" href={`/products/${product.id}`}>
+      <a className="product-info" href={`/products/${product.slug || product.id}`}>
         <span className="product-info-copy">
           <small>{product.stone}</small>
           <strong>{product.name}</strong>
@@ -748,6 +751,12 @@ export default function Home() {
   const categoryUrl = (categoryName: string) =>
     `/kategori/${categoryToSlug(categoryName)}`;
 
+  const activeGroups = useMemo(
+    () => activeCategoryGroups(products.map((item) => item.category)),
+    [products],
+  );
+  const groupUrl = (group: CategoryGroup) => `/kategori/${group.slug}`;
+
   const categoryCounts = useMemo(() => {
     const counts = new Map<string, number>();
     counts.set(categories[0], products.length);
@@ -773,15 +782,26 @@ export default function Home() {
     [products],
   );
 
+  // Rotates to a different random selection every 6 hours (same cadence as
+  // the XML sync cron) so the showcase stays fresh between real imports —
+  // purely cosmetic, it never touches price/discount/stock.
   const newestProducts = useMemo(
     () =>
-      products
-        .filter((product) => product.createdAt)
-        .slice()
-        .sort((first, second) =>
-          (second.createdAt ?? "").localeCompare(first.createdAt ?? ""),
-        )
-        .slice(0, NEW_ARRIVALS_COUNT),
+      pickRotatingShowcase(
+        products.filter((product) => product.stock > 0),
+        NEW_ARRIVALS_COUNT,
+        1,
+      ),
+    [products],
+  );
+
+  const discountShowcase = useMemo(
+    () =>
+      pickRotatingShowcase(
+        products.filter((product) => product.discountPercent > 0 && product.stock > 0),
+        DISCOUNT_SHOWCASE_COUNT,
+        2,
+      ),
     [products],
   );
 
@@ -1007,7 +1027,7 @@ export default function Home() {
   const selectSearchProduct = (product: Product) => {
     setSearchOpen(false);
     setSearchQuery("");
-    window.location.href = `/products/${product.id}`;
+    window.location.href = `/products/${product.slug || product.id}`;
   };
 
   const getPurchaseQuantity = (product: Product) =>
@@ -1500,42 +1520,15 @@ export default function Home() {
 
           <div className="mobile-menu-section">
             <strong>Kategoriler</strong>
-            <a
-              href={categoryUrl("KADIN KOLYE")}
-              onClick={() => setMenuOpen(false)}
-            >
-              Kadın Kolye
-            </a>
-            <a
-              href={categoryUrl("KADIN BİLEKLİK")}
-              onClick={() => setMenuOpen(false)}
-            >
-              Kadın Bileklik
-            </a>
-            <a
-              href={categoryUrl("ERKEK BİLEKLİK")}
-              onClick={() => setMenuOpen(false)}
-            >
-              Erkek Bileklik
-            </a>
-            <a
-              href={categoryUrl("KADIN YÜZÜK")}
-              onClick={() => setMenuOpen(false)}
-            >
-              Kadın Yüzük
-            </a>
-            <a
-              href={categoryUrl("KADIN HALHAL & ŞAHMERAN")}
-              onClick={() => setMenuOpen(false)}
-            >
-              Halhal &amp; Şahmeran
-            </a>
-            <a
-              href={categoryUrl("Kristaller")}
-              onClick={() => setMenuOpen(false)}
-            >
-              Kristaller
-            </a>
+            {activeGroups.map((group) => (
+              <a
+                key={group.slug}
+                href={groupUrl(group)}
+                onClick={() => setMenuOpen(false)}
+              >
+                {group.label}
+              </a>
+            ))}
             <a
               className="mobile-menu-discount"
               href="#shop"
@@ -1544,7 +1537,7 @@ export default function Home() {
                 setMenuOpen(false);
               }}
             >
-              İndirimdeki Ürünler
+              Outlet
             </a>
           </div>
 
@@ -1564,12 +1557,11 @@ export default function Home() {
       </nav>
 
       <nav className="market-category-nav" id="top" aria-label="Ana kategoriler">
-        <a href={categoryUrl("KADIN KOLYE")}>Kadın Kolye</a>
-        <a href={categoryUrl("KADIN BİLEKLİK")}>Kadın Bileklik</a>
-        <a href={categoryUrl("ERKEK BİLEKLİK")}>Erkek Bileklik</a>
-        <a href={categoryUrl("KADIN YÜZÜK")}>Kadın Yüzük</a>
-        <a href={categoryUrl("KADIN HALHAL & ŞAHMERAN")}>Halhal &amp; Şahmeran</a>
-        <a href={categoryUrl("Kristaller")}>Kristaller</a>
+        {activeGroups.map((group) => (
+          <a key={group.slug} href={groupUrl(group)}>
+            {group.label}
+          </a>
+        ))}
         <button
           type="button"
           onClick={() => {
@@ -1577,7 +1569,7 @@ export default function Home() {
             document.getElementById("shop")?.scrollIntoView({ behavior: "smooth" });
           }}
         >
-          İndirimdeki Ürünler
+          Outlet
         </button>
       </nav>
 
@@ -1683,6 +1675,37 @@ export default function Home() {
           </div>
           <div className="featured-row">
             {newestProducts.map((product) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                ui={ui}
+                isLiked={liked.includes(product.id)}
+                onToggleLike={() => toggleLike(product.id)}
+                quantity={getPurchaseQuantity(product)}
+                maxQuantity={Math.min(product.stock, 20)}
+                onQuantityChange={(next) => setPurchaseQuantity(product, next)}
+                addCooldownSeconds={cart.addCooldownSeconds}
+                onAddToCart={() => cart.addToCart(product, getPurchaseQuantity(product))}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {discountShowcase.length > 0 && (
+        <section
+          className="featured-section section-shell"
+          aria-label="İndirimdeki ürünler"
+        >
+          <div className="market-section-title">
+            <span aria-hidden="true">%</span>
+            <div>
+              <small>Şimdi kaçırılmayacak fiyatlar</small>
+              <h2>İndirimde</h2>
+            </div>
+          </div>
+          <div className="featured-row">
+            {discountShowcase.map((product) => (
               <ProductCard
                 key={product.id}
                 product={product}

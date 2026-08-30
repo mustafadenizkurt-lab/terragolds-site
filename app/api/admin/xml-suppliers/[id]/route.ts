@@ -17,8 +17,8 @@ export async function PUT(request: Request, context: { params: Promise<Record<st
     if (!Number.isInteger(id) || id < 1 || !name || !feedUrl) return Response.json({ error: "Geçerli tedarikçi bilgileri girilmelidir." }, { status: 400 });
     new URL(feedUrl);
     await getD1().prepare(
-      "UPDATE xml_suppliers SET name = ?, feed_url = ?, field_mapping = ?, default_markup_percent = ?, active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-    ).bind(name, feedUrl, JSON.stringify(body.fieldMapping ?? {}), Math.max(0, Number(body.defaultMarkupPercent) || 0), body.active === false ? 0 : 1, id).run();
+      "UPDATE xml_suppliers SET name = ?, feed_url = ?, field_mapping = ?, filters = ?, default_markup_percent = ?, active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+    ).bind(name, feedUrl, JSON.stringify(body.fieldMapping ?? {}), JSON.stringify(body.filters ?? {}), Math.max(0, Number(body.defaultMarkupPercent) || 0), body.active === false ? 0 : 1, id).run();
     return Response.json({ ok: true });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "Tedarikçi güncellenemedi." }, { status: 400 });

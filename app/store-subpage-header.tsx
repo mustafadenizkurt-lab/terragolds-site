@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { categoryToSlug } from "../lib/category-slugs";
+import { activeCategoryGroups, type CategoryGroup } from "../lib/category-groups";
 import { useCart } from "../lib/cart-context";
 
-function categoryUrl(categoryName: string) {
-  return `/kategori/${categoryToSlug(categoryName)}`;
+function groupUrl(group: CategoryGroup) {
+  return `/kategori/${group.slug}`;
 }
 
 type HeaderUser = {
@@ -45,10 +45,10 @@ function readStoredFavoriteCount() {
 
 export default function StoreSubpageHeader({
   active,
-  activeCategory,
+  activeGroupSlug,
 }: {
   active?: "favorites";
-  activeCategory?: string;
+  activeGroupSlug?: string;
 }) {
   const cart = useCart();
   const [favoriteCount, setFavoriteCount] = useState(0);
@@ -56,6 +56,7 @@ export default function StoreSubpageHeader({
   const [searchQuery, setSearchQuery] = useState("");
   const [contact, setContact] = useState<ContactSettings>({});
   const [menuOpen, setMenuOpen] = useState(false);
+  const [groups, setGroups] = useState<CategoryGroup[]>([]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -81,8 +82,18 @@ export default function StoreSubpageHeader({
       .then((data) => setUser(data.user ?? null))
       .catch(() => setUser(null));
     fetch("/api/store", { cache: "no-store" })
-      .then((response) => response.json() as Promise<{ settings?: ContactSettings }>)
-      .then((data) => setContact(data.settings ?? {}))
+      .then(
+        (response) =>
+          response.json() as Promise<{
+            settings?: ContactSettings;
+            products?: { category: string }[];
+          }>,
+      )
+      .then((data) => {
+        setContact(data.settings ?? {});
+        const categories = (data.products ?? []).map((product) => product.category);
+        setGroups(activeCategoryGroups(categories));
+      })
       .catch(() => setContact({}));
     return () => {
       window.removeEventListener("storage", refresh);
@@ -221,45 +232,16 @@ export default function StoreSubpageHeader({
       </div>
       </header>
       <nav className="market-category-nav store-market-categories" aria-label="Ana kategoriler">
-        <Link
-          href={categoryUrl("KADIN KOLYE")}
-          className={activeCategory === "KADIN KOLYE" ? "active" : undefined}
-        >
-          Kadın Kolye
-        </Link>
-        <Link
-          href={categoryUrl("KADIN BİLEKLİK")}
-          className={activeCategory === "KADIN BİLEKLİK" ? "active" : undefined}
-        >
-          Kadın Bileklik
-        </Link>
-        <Link
-          href={categoryUrl("ERKEK BİLEKLİK")}
-          className={activeCategory === "ERKEK BİLEKLİK" ? "active" : undefined}
-        >
-          Erkek Bileklik
-        </Link>
-        <Link
-          href={categoryUrl("KADIN YÜZÜK")}
-          className={activeCategory === "KADIN YÜZÜK" ? "active" : undefined}
-        >
-          Kadın Yüzük
-        </Link>
-        <Link
-          href={categoryUrl("KADIN HALHAL & ŞAHMERAN")}
-          className={
-            activeCategory === "KADIN HALHAL & ŞAHMERAN" ? "active" : undefined
-          }
-        >
-          Halhal &amp; Şahmeran
-        </Link>
-        <Link
-          href={categoryUrl("Kristaller")}
-          className={activeCategory === "Kristaller" ? "active" : undefined}
-        >
-          Kristaller
-        </Link>
-        <Link className="sale" href="/#shop">İndirimdeki Ürünler</Link>
+        {groups.map((group) => (
+          <Link
+            key={group.slug}
+            href={groupUrl(group)}
+            className={activeGroupSlug === group.slug ? "active" : undefined}
+          >
+            {group.label}
+          </Link>
+        ))}
+        <Link className="sale" href="/#shop">Outlet</Link>
       </nav>
 
       {menuOpen && (
@@ -326,56 +308,22 @@ export default function StoreSubpageHeader({
 
           <div className="mobile-menu-section">
             <strong>Kategoriler</strong>
-            <a
-              href={categoryUrl("KADIN KOLYE")}
-              className={activeCategory === "KADIN KOLYE" ? "active" : undefined}
-              onClick={() => setMenuOpen(false)}
-            >
-              Kadın Kolye
-            </a>
-            <a
-              href={categoryUrl("KADIN BİLEKLİK")}
-              className={activeCategory === "KADIN BİLEKLİK" ? "active" : undefined}
-              onClick={() => setMenuOpen(false)}
-            >
-              Kadın Bileklik
-            </a>
-            <a
-              href={categoryUrl("ERKEK BİLEKLİK")}
-              className={activeCategory === "ERKEK BİLEKLİK" ? "active" : undefined}
-              onClick={() => setMenuOpen(false)}
-            >
-              Erkek Bileklik
-            </a>
-            <a
-              href={categoryUrl("KADIN YÜZÜK")}
-              className={activeCategory === "KADIN YÜZÜK" ? "active" : undefined}
-              onClick={() => setMenuOpen(false)}
-            >
-              Kadın Yüzük
-            </a>
-            <a
-              href={categoryUrl("KADIN HALHAL & ŞAHMERAN")}
-              className={
-                activeCategory === "KADIN HALHAL & ŞAHMERAN" ? "active" : undefined
-              }
-              onClick={() => setMenuOpen(false)}
-            >
-              Halhal &amp; Şahmeran
-            </a>
-            <a
-              href={categoryUrl("Kristaller")}
-              className={activeCategory === "Kristaller" ? "active" : undefined}
-              onClick={() => setMenuOpen(false)}
-            >
-              Kristaller
-            </a>
+            {groups.map((group) => (
+              <a
+                key={group.slug}
+                href={groupUrl(group)}
+                className={activeGroupSlug === group.slug ? "active" : undefined}
+                onClick={() => setMenuOpen(false)}
+              >
+                {group.label}
+              </a>
+            ))}
             <a
               className="mobile-menu-discount"
               href="/#shop"
               onClick={() => setMenuOpen(false)}
             >
-              İndirimdeki Ürünler
+              Outlet
             </a>
           </div>
 
