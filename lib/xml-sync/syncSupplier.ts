@@ -3,6 +3,8 @@ import { fetchFeed } from "./fetchFeed";
 import { parseFeed, readMappedValue, type XmlRecord } from "./parseFeed";
 import { matchesFilters, type ImportFilters } from "../xml-import-filters";
 import { resolveProductSlug } from "../product-slugs";
+import { rewriteProductDescription } from "../product-description-rewrite";
+import { getOptionalEnv } from "../runtime-env";
 
 export type SupplierMapping = {
   externalId?: string;
@@ -83,9 +85,10 @@ export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<
         ).bind(product.name, product.stone, product.category, product.price, product.cost, product.stock, product.image, product.description, existing.id).run();
         updated += 1;
       } else {
+        const description = await uniqueDescriptionForNewProduct(product);
         const created = await db.prepare(
           `INSERT INTO products (name, stone, category, price, cost, stock, image, description, status, xml_supplier_id, xml_external_id, xml_sync_status, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, 'synced', CURRENT_TIMESTAMP) RETURNING id`,
-        ).bind(product.name, product.stone, product.category, product.price, product.cost, product.stock, product.image, product.description, supplier.id, product.externalId).first<{ id: number }>();
+        ).bind(product.name, product.stone, product.category, product.price, product.cost, product.stock, product.image, description, supplier.id, product.externalId).first<{ id: number }>();
         if (created?.id) {
           const slug = await resolveProductSlug(db, product.name, created.id);
           await db.prepare("UPDATE products SET slug = ? WHERE id = ?").bind(slug, created.id).run();
@@ -104,6 +107,22 @@ export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<
       "UPDATE xml_sync_logs SET status = 'failed', completed_at = ?, error_message = ? WHERE id = ?",
     ).bind(new Date().toISOString(), error instanceof Error ? error.message : "XML senkronu başarısız.", log?.id ?? 0).run();
     throw error;
+  }
+}
+
+async function uniqueDescriptionForNewProduct(product: {
+  name: string;
+  stone: string;
+  category: string;
+  description: string;
+}): Promise<string> {
+  const apiKey = getOptionalEnv("ANTHROPIC_API_KEY");
+  if (!apiKey || !product.description) return product.description;
+  try {
+    return await rewriteProductDescription(apiKey, product);
+  } catch {
+    // AI yeniden yazımı başarısız olursa senkronu bloklamadan ham açıklamayla devam et.
+    return product.description;
   }
 }
 

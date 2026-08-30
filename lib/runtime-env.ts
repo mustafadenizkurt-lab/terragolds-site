@@ -13,6 +13,7 @@ type RuntimeBindings = {
   PASSWORD_RESET_DEV_MODE?: string;
   EMAIL_VERIFICATION_DEV_MODE?: string;
   GOOGLE_SITE_VERIFICATION?: string;
+  ANTHROPIC_API_KEY?: string;
 };
 
 function runtimeBindings() {
