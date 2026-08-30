@@ -2,6 +2,7 @@ import {
   getAuthorizedAdmin,
   unauthorizedAdminResponse,
 } from "../../../../../lib/admin-auth";
+import { getMediaBucket } from "../../../../../lib/store-db";
 import {
   applyMapping,
   detectFieldNames,
@@ -9,8 +10,10 @@ import {
   guessFieldMapping,
   parseSupplierXml,
   resolveSupplierXml,
+  FEED_CACHE_PREFIX,
   PREVIEW_ROW_COUNT,
   type FieldMapping,
+  type FlatRecord,
 } from "../../../../../lib/supplier-import";
 import type { ImportFilters } from "../../../../../lib/xml-import-filters";
 
@@ -21,8 +24,27 @@ export async function POST(request: Request) {
 
   try {
     const form = await request.formData();
-    const xmlText = await resolveSupplierXml(form);
-    const records = parseSupplierXml(xmlText);
+    const requestedImportId = String(form.get("importId") ?? "");
+
+    let importId = requestedImportId;
+    let records: FlatRecord[];
+
+    if (importId) {
+      const cached = await getMediaBucket().get(`${FEED_CACHE_PREFIX}${importId}.json`);
+      if (!cached) {
+        return Response.json(
+          { error: "Önizleme oturumu bulunamadı, lütfen XML'i tekrar getirin." },
+          { status: 400 },
+        );
+      }
+      records = JSON.parse(await cached.text()) as FlatRecord[];
+    } else {
+      const xmlText = await resolveSupplierXml(form);
+      records = parseSupplierXml(xmlText);
+      importId = crypto.randomUUID();
+      await getMediaBucket().put(`${FEED_CACHE_PREFIX}${importId}.json`, JSON.stringify(records));
+    }
+
     const fieldNames = detectFieldNames(records);
 
     const mappingRaw = String(form.get("mapping") ?? "");
@@ -46,6 +68,7 @@ export async function POST(request: Request) {
 
     if (!mapping.name || !mapping.price) {
       return Response.json({
+        importId,
         fieldNames,
         mapping,
         totalRecords: records.length,
@@ -73,6 +96,7 @@ export async function POST(request: Request) {
     const { rows, errors, filteredCount } = applyMapping(records, mapping, markupPercent, filters);
 
     return Response.json({
+      importId,
       fieldNames,
       mapping,
       totalRecords: records.length,

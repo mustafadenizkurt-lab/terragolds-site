@@ -72,11 +72,15 @@ export async function fetchSupplierXmlText(
         throw new NonRetryableError("XML dosyası boyut sınırını aşıyor.");
       }
 
-      const text = await response.text();
-      if (new TextEncoder().encode(text).byteLength > maxBytes) {
+      // Read as bytes first so the size check doesn't need to decode to text
+      // and then re-encode a second full copy just to measure it - large
+      // feeds were briefly held in memory three times over (raw bytes, the
+      // decoded string, and the re-encoded check) for no reason.
+      const buffer = await response.arrayBuffer();
+      if (buffer.byteLength > maxBytes) {
         throw new NonRetryableError("XML dosyası boyut sınırını aşıyor.");
       }
-      return text;
+      return new TextDecoder("utf-8").decode(buffer);
     } catch (error) {
       if (error instanceof NonRetryableError) throw error;
       if (error instanceof RetryableError) {
