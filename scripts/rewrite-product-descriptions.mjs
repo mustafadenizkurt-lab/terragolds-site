@@ -28,9 +28,15 @@ if (target === "--remote") {
 }
 
 function runD1(sql) {
+  // Written to a temp .sql file and run with --file rather than --command:
+  // on Windows, execFileSync needs shell: true to resolve npx.cmd, and
+  // cmd.exe then reparses the whole command line, misreading SQL characters
+  // like `<>` as redirection operators.
+  const tmpFile = join(mkdtempSync(join(tmpdir(), "d1-query-")), "query.sql");
+  writeFileSync(tmpFile, sql, "utf8");
   const output = execFileSync(
     "npx",
-    ["wrangler", "d1", "execute", "DB", target, "--json", "--command", sql],
+    ["wrangler", "d1", "execute", "DB", target, "--json", "--file", tmpFile],
     { encoding: "utf8", maxBuffer: 1024 * 1024 * 64, shell: true },
   );
   const parsed = JSON.parse(output);
