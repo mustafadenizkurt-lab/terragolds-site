@@ -1,11 +1,13 @@
 #!/usr/bin/env node
-// One-time backfill: rewrites every synced product's description with Claude
-// so it's no longer a byte-for-byte copy of the supplier XML feed (duplicate
-// content across every other store using the same feed).
+// One-time backfill: rewrites every product's description with Claude so
+// it's no longer a byte-for-byte copy of the supplier XML feed (duplicate
+// content across every other store using the same feed). Covers products
+// from both import paths (the xml_suppliers cron sync and the admin bulk
+// "supplier-import" panel) since neither reliably marks provenance.
 // Usage: ANTHROPIC_API_KEY=... npx tsx scripts/rewrite-product-descriptions.mjs [--remote] [--limit N]
 // Defaults to the local D1 instance; pass --remote to target production.
-// Re-running reprocesses every synced product again (no "already rewritten"
-// flag), so avoid running it twice against --remote without a reason to.
+// Re-running reprocesses every product again (no "already rewritten" flag),
+// so avoid running it twice against --remote without a reason to.
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -41,7 +43,7 @@ function sqlEscape(value) {
 
 const limitClause = Number.isFinite(limit) ? ` LIMIT ${limit}` : "";
 const rows = runD1(
-  `SELECT id, name, stone, category, description FROM products WHERE xml_sync_status = 'synced' AND description <> '' ORDER BY id${limitClause}`,
+  `SELECT id, name, stone, category, description FROM products WHERE description <> '' ORDER BY id${limitClause}`,
 );
 console.log(`${rows.length} ürün için açıklama yeniden yazılacak.`);
 if (!rows.length) {
