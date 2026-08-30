@@ -40,10 +40,12 @@ function runD1(sql) {
     { encoding: "utf8", maxBuffer: 1024 * 1024 * 64, shell: true },
   );
   // --remote can print progress lines (e.g. "Checking if file needs
-  // uploading") to stdout ahead of the JSON even with --json, so parse from
-  // the first '[' rather than assuming the whole output is clean JSON.
-  const jsonStart = output.indexOf("[");
-  const parsed = JSON.parse(jsonStart >= 0 ? output.slice(jsonStart) : output);
+  // uploading", spinner frames, "[1/2]" counters) to stdout ahead of the
+  // JSON even with --json, and those can themselves contain '[' characters
+  // - so anchor on wrangler's actual response shape ('[{"results":') rather
+  // than the first/last bracket in the output.
+  const match = output.match(/\[\s*\{\s*"results"\s*:/);
+  const parsed = JSON.parse(match ? output.slice(match.index) : output);
   return parsed[0]?.results ?? [];
 }
 
@@ -55,6 +57,10 @@ const limitClause = Number.isFinite(limit) ? ` LIMIT ${limit}` : "";
 const rows = runD1(
   `SELECT id, name, stone, category, description FROM products WHERE description <> '' ORDER BY id${limitClause}`,
 );
+if (rows.some((row) => !row || typeof row.id !== "number" || typeof row.description !== "string")) {
+  console.error("D1 sorgusunun sonucu beklenen şekilde değil, satır:", JSON.stringify(rows[0]));
+  process.exit(1);
+}
 console.log(`${rows.length} ürün için açıklama yeniden yazılacak.`);
 if (!rows.length) {
   console.log("Yapılacak bir şey yok.");
