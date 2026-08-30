@@ -51,6 +51,7 @@ import * as iyzicoCallback from "../app/api/payments/iyzico/callback/route";
 import * as paymentMethods from "../app/api/payments/methods/route";
 import * as paytrCallback from "../app/api/payments/paytr/callback/route";
 import * as shopierPaymentCallback from "../app/api/payments/shopier/callback/route";
+import * as productById from "../app/api/products/[id]/route";
 import * as productReviews from "../app/api/products/[id]/reviews/route";
 import * as returnsRequest from "../app/api/returns/request/route";
 import * as legacyShopierCallback from "../app/api/shopier/callback/route";
@@ -172,6 +173,11 @@ const dynamicRoutes: {
   {
     pattern: /^\/api\/products\/([^/]+)\/reviews$/,
     module: productReviews,
+    params: (match) => ({ id: decodeURIComponent(match[1] ?? "") }),
+  },
+  {
+    pattern: /^\/api\/products\/([^/]+)$/,
+    module: productById,
     params: (match) => ({ id: decodeURIComponent(match[1] ?? "") }),
   },
 ];
