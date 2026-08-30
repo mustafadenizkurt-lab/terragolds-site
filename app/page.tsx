@@ -15,6 +15,7 @@ import {
 } from "../lib/site-content-types";
 import { categoryToSlug } from "../lib/category-slugs";
 import { activeCategoryGroups, type CategoryGroup } from "../lib/category-groups";
+import { pickRotatingShowcase } from "../lib/rotating-showcase";
 import { useCart } from "../lib/cart-context";
 import StoreSiteFooter from "./store-site-footer";
 import FloatingSocialVisibility from "./floating-social-visibility";
@@ -96,6 +97,7 @@ const moneyWithCents = new Intl.NumberFormat("tr-TR", {
 const CATALOG_PRODUCTS_PER_PAGE = 15;
 const NEW_ARRIVALS_COUNT = 12;
 const FEATURED_PRODUCTS_COUNT = 10;
+const DISCOUNT_SHOWCASE_COUNT = 12;
 
 type NoticeState = {
   id: number;
@@ -780,15 +782,26 @@ export default function Home() {
     [products],
   );
 
+  // Rotates to a different random selection every 6 hours (same cadence as
+  // the XML sync cron) so the showcase stays fresh between real imports —
+  // purely cosmetic, it never touches price/discount/stock.
   const newestProducts = useMemo(
     () =>
-      products
-        .filter((product) => product.createdAt)
-        .slice()
-        .sort((first, second) =>
-          (second.createdAt ?? "").localeCompare(first.createdAt ?? ""),
-        )
-        .slice(0, NEW_ARRIVALS_COUNT),
+      pickRotatingShowcase(
+        products.filter((product) => product.stock > 0),
+        NEW_ARRIVALS_COUNT,
+        1,
+      ),
+    [products],
+  );
+
+  const discountShowcase = useMemo(
+    () =>
+      pickRotatingShowcase(
+        products.filter((product) => product.discountPercent > 0 && product.stock > 0),
+        DISCOUNT_SHOWCASE_COUNT,
+        2,
+      ),
     [products],
   );
 
@@ -1662,6 +1675,37 @@ export default function Home() {
           </div>
           <div className="featured-row">
             {newestProducts.map((product) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                ui={ui}
+                isLiked={liked.includes(product.id)}
+                onToggleLike={() => toggleLike(product.id)}
+                quantity={getPurchaseQuantity(product)}
+                maxQuantity={Math.min(product.stock, 20)}
+                onQuantityChange={(next) => setPurchaseQuantity(product, next)}
+                addCooldownSeconds={cart.addCooldownSeconds}
+                onAddToCart={() => cart.addToCart(product, getPurchaseQuantity(product))}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {discountShowcase.length > 0 && (
+        <section
+          className="featured-section section-shell"
+          aria-label="İndirimdeki ürünler"
+        >
+          <div className="market-section-title">
+            <span aria-hidden="true">%</span>
+            <div>
+              <small>Şimdi kaçırılmayacak fiyatlar</small>
+              <h2>İndirimde</h2>
+            </div>
+          </div>
+          <div className="featured-row">
+            {discountShowcase.map((product) => (
               <ProductCard
                 key={product.id}
                 product={product}
