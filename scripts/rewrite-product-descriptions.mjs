@@ -39,7 +39,11 @@ function runD1(sql) {
     ["wrangler", "d1", "execute", "DB", target, "--json", "--file", tmpFile],
     { encoding: "utf8", maxBuffer: 1024 * 1024 * 64, shell: true },
   );
-  const parsed = JSON.parse(output);
+  // --remote can print progress lines (e.g. "Checking if file needs
+  // uploading") to stdout ahead of the JSON even with --json, so parse from
+  // the first '[' rather than assuming the whole output is clean JSON.
+  const jsonStart = output.indexOf("[");
+  const parsed = JSON.parse(jsonStart >= 0 ? output.slice(jsonStart) : output);
   return parsed[0]?.results ?? [];
 }
 
