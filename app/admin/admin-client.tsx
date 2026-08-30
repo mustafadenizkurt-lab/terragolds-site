@@ -100,6 +100,7 @@ export default function AdminClient({
   user: { name: string; email: string };
 }) {
   const [view, setView] = useState<AdminView>("overview");
+  const [editSupplierId, setEditSupplierId] = useState<number | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [settings, setSettings] =
     useState<StoreSettings>(defaultSettings);
@@ -1014,8 +1015,8 @@ export default function AdminClient({
 
             {view === "customers" && <CustomersPanel onNotice={flash} />}
 
-            {view === "xmlSuppliers" && <XmlSuppliersPanel tab="suppliers" onNotice={flash} />}
-            {view === "xmlPricing" && <XmlSuppliersPanel tab="pricing" onNotice={flash} />}
+            {view === "xmlSuppliers" && <XmlSuppliersPanel tab="suppliers" onNotice={flash} initialEditId={editSupplierId} onInitialEditConsumed={() => setEditSupplierId(null)} />}
+            {view === "xmlPricing" && <XmlSuppliersPanel tab="pricing" onNotice={flash} onEditSupplier={id => { setEditSupplierId(id); setView("xmlSuppliers"); }} />}
             {view === "xmlLogs" && <XmlSuppliersPanel tab="logs" onNotice={flash} />}
 
             {view === "operations" && (
