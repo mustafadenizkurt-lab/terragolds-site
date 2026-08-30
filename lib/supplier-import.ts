@@ -213,6 +213,41 @@ export function distinctFieldValues(
   return [...values].sort((a, b) => a.localeCompare(b, "tr-TR"));
 }
 
+/**
+ * Same as calling distinctFieldValues once per field, but walks the records
+ * array a single time instead of once per field - large feeds were getting
+ * scanned twice (once for categories, once for brands) on every preview.
+ */
+export function distinctFieldValuesMulti(
+  records: FlatRecord[],
+  fieldNames: (string | undefined)[],
+  limit = 300,
+): Record<string, string[]> {
+  const activeFields = [...new Set(fieldNames.filter((name): name is string => Boolean(name)))];
+  const valueSets = new Map(activeFields.map((name) => [name, new Set<string>()]));
+
+  if (activeFields.length) {
+    for (const record of records) {
+      let full = 0;
+      for (const name of activeFields) {
+        const values = valueSets.get(name)!;
+        if (values.size < limit) {
+          const value = (record[name] ?? "").trim();
+          if (value) values.add(value);
+        }
+        if (values.size >= limit) full += 1;
+      }
+      if (full === activeFields.length) break;
+    }
+  }
+
+  const result: Record<string, string[]> = {};
+  for (const name of activeFields) {
+    result[name] = [...valueSets.get(name)!].sort((a, b) => a.localeCompare(b, "tr-TR"));
+  }
+  return result;
+}
+
 function normalize(value: string): string {
   return value
     .toLowerCase()
