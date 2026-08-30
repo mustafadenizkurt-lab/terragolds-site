@@ -40,6 +40,7 @@ type PreviewResponse = {
 };
 
 type CommitResponse = {
+  importId: string;
   imported: number;
   totalValid: number;
   hasMore: boolean;
@@ -128,13 +129,21 @@ export default function SupplierImportPanel({
     includeFilters?: boolean;
     offset?: number;
     limit?: number;
+    importId?: string;
   }) => {
     const form = new FormData();
-    form.set("sourceType", sourceType);
-    if (sourceType === "url") {
-      form.set("url", url.trim());
-    } else if (file) {
-      form.set("file", file);
+    // Once the server has parsed+validated the feed once (importId set),
+    // later batches reuse that cached result instead of re-uploading the
+    // whole XML and re-parsing it from scratch on every request.
+    if (!extra?.importId) {
+      form.set("sourceType", sourceType);
+      if (sourceType === "url") {
+        form.set("url", url.trim());
+      } else if (file) {
+        form.set("file", file);
+      }
+    } else {
+      form.set("importId", extra.importId);
     }
     if (extra?.mapping) form.set("mapping", JSON.stringify(extra.mapping));
     if (extra?.includeMarkup) form.set("markupPercent", markupPercent || "0");
@@ -235,6 +244,7 @@ export default function SupplierImportPanel({
     let errorCount = 0;
     let firstBatchErrors: RowError[] = [];
     let offset = 0;
+    let importId: string | undefined;
 
     try {
       while (!cancelRef.current) {
@@ -247,9 +257,11 @@ export default function SupplierImportPanel({
               includeFilters: true,
               offset,
               limit: BATCH_SIZE,
+              importId,
             }),
           }),
         );
+        importId = body.importId;
         imported += body.imported;
         errorCount = body.errorCount;
         if (offset === 0) firstBatchErrors = body.errors;
