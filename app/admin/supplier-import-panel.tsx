@@ -27,6 +27,7 @@ type PreviewRow = {
 type RowError = { index: number; reason: string };
 
 type PreviewResponse = {
+  importId: string;
   fieldNames: string[];
   mapping: FieldMapping;
   totalRecords: number;
@@ -62,9 +63,21 @@ const money = new Intl.NumberFormat("tr-TR", {
 });
 
 async function readJson<T>(response: Response): Promise<T> {
-  const body = (await response.json()) as T & { error?: string };
-  if (!response.ok) {
-    throw new Error(String((body as { error?: string }).error ?? "İşlem tamamlanamadı."));
+  const text = await response.text();
+  let body: (T & { error?: string }) | undefined;
+  try {
+    body = text ? (JSON.parse(text) as T & { error?: string }) : undefined;
+  } catch {
+    // A non-JSON body (e.g. Cloudflare's own HTML error page for a timed
+    // out/crashed Worker request) used to surface as a cryptic
+    // "Unexpected token '<' ... is not valid JSON" - report the real HTTP
+    // status instead so it's clear the request itself failed server-side.
+    throw new Error(
+      `Sunucudan geçersiz yanıt geldi (HTTP ${response.status}). Feed çok büyük olabilir veya sunucu zaman aşımına uğramış olabilir.`,
+    );
+  }
+  if (!response.ok || !body) {
+    throw new Error(body?.error ?? "İşlem tamamlanamadı.");
   }
   return body;
 }
@@ -81,6 +94,12 @@ export default function SupplierImportPanel({
   const [sourceType, setSourceType] = useState<SourceType>("url");
   const [url, setUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
+
+  // Set once the server has fetched+parsed the feed; re-detecting fields or
+  // re-previewing (mapping/filter changes) reuses this instead of
+  // re-fetching the URL/file and re-parsing the whole XML every click.
+  // Cleared whenever the source itself changes.
+  const [feedImportId, setFeedImportId] = useState<string | undefined>();
 
   const [detecting, setDetecting] = useState(false);
   const [fieldNames, setFieldNames] = useState<string[]>([]);
@@ -130,6 +149,9 @@ export default function SupplierImportPanel({
     offset?: number;
     limit?: number;
     importId?: string;
+    // The preview endpoint's cached-feed id - lets the first commit batch
+    // skip re-fetching/re-parsing the XML the preview step already did.
+    feedImportId?: string;
   }) => {
     const form = new FormData();
     // Once the server has parsed+validated the feed once (importId set),
@@ -142,6 +164,7 @@ export default function SupplierImportPanel({
       } else if (file) {
         form.set("file", file);
       }
+      if (extra?.feedImportId) form.set("feedImportId", extra.feedImportId);
     } else {
       form.set("importId", extra.importId);
     }
@@ -169,9 +192,10 @@ export default function SupplierImportPanel({
       const body = await readJson<PreviewResponse>(
         await fetch("/api/admin/supplier-import/preview", {
           method: "POST",
-          body: buildForm(),
+          body: buildForm({ importId: feedImportId }),
         }),
       );
+      setFeedImportId(body.importId);
       setFieldNames(body.fieldNames);
       setMapping(body.mapping);
       setTotalRecords(body.totalRecords);
@@ -209,9 +233,15 @@ export default function SupplierImportPanel({
       const body = await readJson<PreviewResponse>(
         await fetch("/api/admin/supplier-import/preview", {
           method: "POST",
-          body: buildForm({ mapping, includeMarkup: true, includeFilters: true }),
+          body: buildForm({
+            mapping,
+            includeMarkup: true,
+            includeFilters: true,
+            importId: feedImportId,
+          }),
         }),
       );
+      setFeedImportId(body.importId);
       setPreview(body);
     } catch (previewError) {
       setError(
@@ -258,6 +288,7 @@ export default function SupplierImportPanel({
               offset,
               limit: BATCH_SIZE,
               importId,
+              feedImportId,
             }),
           }),
         );
@@ -328,6 +359,7 @@ export default function SupplierImportPanel({
                 setFieldNames([]);
                 setPreview(null);
                 setResult(null);
+                setFeedImportId(undefined);
               }}
             />
             Link (URL)
@@ -342,6 +374,7 @@ export default function SupplierImportPanel({
                 setFieldNames([]);
                 setPreview(null);
                 setResult(null);
+                setFeedImportId(undefined);
               }}
             />
             Dosya yükle
@@ -353,7 +386,10 @@ export default function SupplierImportPanel({
             <input
               type="url"
               value={url}
-              onChange={(event) => setUrl(event.target.value)}
+              onChange={(event) => {
+                setUrl(event.target.value);
+                setFeedImportId(undefined);
+              }}
               placeholder="https://tedarikci.com/urunler.xml"
             />
           </label>
@@ -363,7 +399,10 @@ export default function SupplierImportPanel({
             <input
               type="file"
               accept=".xml,text/xml,application/xml"
-              onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+              onChange={(event) => {
+                setFile(event.target.files?.[0] ?? null);
+                setFeedImportId(undefined);
+              }}
             />
           </label>
         )}

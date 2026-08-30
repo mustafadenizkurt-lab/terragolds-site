@@ -6,10 +6,12 @@ import { getD1, getMediaBucket } from "../../../../../lib/store-db";
 import { productNameToSlug } from "../../../../../lib/product-slugs";
 import {
   applyMapping,
+  FEED_CACHE_PREFIX,
   MAX_BATCH_SIZE,
   parseSupplierXml,
   resolveSupplierXml,
   type FieldMapping,
+  type FlatRecord,
   type ImportRow,
   type ImportRowError,
 } from "../../../../../lib/supplier-import";
@@ -55,8 +57,24 @@ export async function POST(request: Request) {
       }
       cache = JSON.parse(await cached.text()) as ImportCache;
     } else {
-      const xmlText = await resolveSupplierXml(form);
-      const records = parseSupplierXml(xmlText);
+      const feedImportId = String(form.get("feedImportId") ?? "");
+      let records: FlatRecord[];
+      if (feedImportId) {
+        // The admin already previewed this feed, which parsed and cached it
+        // under this id - reuse that instead of re-fetching the URL/file and
+        // re-parsing the XML a second time right before the actual import.
+        const cachedFeed = await getMediaBucket().get(`${FEED_CACHE_PREFIX}${feedImportId}.json`);
+        if (!cachedFeed) {
+          return Response.json(
+            { error: "Önizleme oturumu bulunamadı, lütfen XML'i tekrar getirin." },
+            { status: 400 },
+          );
+        }
+        records = JSON.parse(await cachedFeed.text()) as FlatRecord[];
+      } else {
+        const xmlText = await resolveSupplierXml(form);
+        records = parseSupplierXml(xmlText);
+      }
 
       const mappingRaw = String(form.get("mapping") ?? "");
       let mapping: FieldMapping;

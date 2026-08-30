@@ -6,6 +6,13 @@ import { matchesFilters, type ImportFilters } from "./xml-import-filters";
 export const MAX_BATCH_SIZE = 500;
 export const PREVIEW_ROW_COUNT = 8;
 
+// R2 key prefix for the raw parsed feed cache shared between the preview
+// and commit routes, so re-detecting fields, re-previewing after a
+// mapping/filter change, and starting the actual import all reuse the one
+// fetch+parse of the feed instead of each re-fetching the supplier's URL
+// and re-parsing the whole XML from scratch.
+export const FEED_CACHE_PREFIX = "supplier-import-cache/feed/";
+
 export type TargetField =
   | "name"
   | "price"
