@@ -15,6 +15,25 @@ if (target === "--remote") {
   console.log("UYARI: production (--remote) veritabanına karşı çalışıyor.");
 }
 
+// wrangler's --remote --json output can be preceded by progress lines
+// (spinner frames, "[1/2]" counters, "Checking if file needs uploading")
+// that themselves contain '[' characters, and the parsed array's entries
+// aren't reliably ordered (a query-stats object can appear instead of or
+// alongside the { results, success, meta } entry). So: try parsing from
+// every '[' in the output until one succeeds, then pick whichever parsed
+// entry actually has a `results` array, rather than assuming position 0.
+function parseWranglerJsonArray(output) {
+  for (let i = output.indexOf("["); i !== -1; i = output.indexOf("[", i + 1)) {
+    try {
+      const parsed = JSON.parse(output.slice(i));
+      if (Array.isArray(parsed)) return parsed;
+    } catch {
+      // Not a valid JSON start at this '[' - try the next one.
+    }
+  }
+  throw new Error(`wrangler çıktısından JSON ayrıştırılamadı:\n${output}`);
+}
+
 function runD1(sql) {
   // Written to a temp .sql file and run with --file rather than --command:
   // on Windows, execFileSync needs shell: true to resolve npx.cmd, and
@@ -27,14 +46,9 @@ function runD1(sql) {
     ["wrangler", "d1", "execute", "DB", target, "--json", "--file", tmpFile],
     { encoding: "utf8", maxBuffer: 1024 * 1024 * 64, shell: true },
   );
-  // --remote can print progress lines (e.g. "Checking if file needs
-  // uploading", spinner frames, "[1/2]" counters) to stdout ahead of the
-  // JSON even with --json, and those can themselves contain '[' characters
-  // - so anchor on wrangler's actual response shape ('[{"results":') rather
-  // than the first/last bracket in the output.
-  const match = output.match(/\[\s*\{\s*"results"\s*:/);
-  const parsed = JSON.parse(match ? output.slice(match.index) : output);
-  return parsed[0]?.results ?? [];
+  const parsed = parseWranglerJsonArray(output);
+  const resultEntry = parsed.find((entry) => Array.isArray(entry?.results));
+  return resultEntry?.results ?? [];
 }
 
 function sqlEscape(value) {
