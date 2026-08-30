@@ -5,7 +5,7 @@ import {
 import {
   applyMapping,
   detectFieldNames,
-  distinctFieldValues,
+  distinctFieldValuesMulti,
   guessFieldMapping,
   parseSupplierXml,
   resolveSupplierXml,
@@ -40,10 +40,9 @@ export async function POST(request: Request) {
       mapping = guessFieldMapping(fieldNames);
     }
 
-    const categoryOptions = mapping.category
-      ? distinctFieldValues(records, mapping.category)
-      : [];
-    const brandOptions = mapping.brand ? distinctFieldValues(records, mapping.brand) : [];
+    const distinctValues = distinctFieldValuesMulti(records, [mapping.category, mapping.brand]);
+    const categoryOptions = mapping.category ? distinctValues[mapping.category] : [];
+    const brandOptions = mapping.brand ? distinctValues[mapping.brand] : [];
 
     if (!mapping.name || !mapping.price) {
       return Response.json({
