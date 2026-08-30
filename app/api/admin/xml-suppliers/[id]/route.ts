@@ -27,7 +27,11 @@ export async function PUT(request: Request, context: { params: Promise<Record<st
 
 export async function DELETE(request: Request, context: { params: Promise<Record<string, string | string[]>> }) {
   if (!(await getAuthorizedAdmin(request))) return unauthorizedAdminResponse();
-  const id = await idFrom(context);
-  await getD1().prepare("DELETE FROM xml_suppliers WHERE id = ?").bind(id).run();
-  return Response.json({ ok: true });
+  try {
+    const id = await idFrom(context);
+    await getD1().prepare("DELETE FROM xml_suppliers WHERE id = ?").bind(id).run();
+    return Response.json({ ok: true });
+  } catch (error) {
+    return Response.json({ error: error instanceof Error ? error.message : "Tedarikçi silinemedi." }, { status: 400 });
+  }
 }
