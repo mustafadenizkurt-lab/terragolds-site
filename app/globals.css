@@ -12911,6 +12911,16 @@ body:has(.market-theme)::before, body:has(.market-theme)::after, .market-theme .
   cursor: not-allowed;
   opacity: 0.42;
 }
+.catalog-pagination-ellipsis {
+  display: inline-flex;
+  min-width: 38px;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  color: #b49a6c;
+  font-size: 12px;
+  font-weight: 850;
+}
 .product-low-stock-badge {
   width: max-content;
   max-width: 132px;
