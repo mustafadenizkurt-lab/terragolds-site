@@ -122,3 +122,73 @@ console.log(
     "elle eklenen ürünlerde de cost girilmiş olabilir. xml_external_id sütunu boş\n" +
     "olduğu için daha kesin bir karşılaştırma şu an mümkün değil.",
 );
+
+console.log("\n=== 4. created_at zaman dağılımı (saat bazında, en yoğun 15 dilim) ===\n");
+const hourly = runD1(
+  `SELECT substr(created_at, 1, 13) AS hour_bucket, COUNT(*) AS total
+   FROM products GROUP BY hour_bucket ORDER BY total DESC LIMIT 15;`,
+);
+console.table(hourly);
+console.log(
+  "\nİki keskin kümelenme bekleniyor (bulk import anları); geri kalanı dağınık,\n" +
+    "tek tek ekleme/organik zaman damgaları olmalı.",
+);
+
+console.log("\n=== 5. Görsel URL domain/path deseni (genel) ===\n");
+const imageDomains = runD1(
+  `SELECT
+     CASE
+       WHEN image LIKE 'http%' THEN substr(image, 1, instr(substr(image,9), '/') + 8)
+       ELSE substr(image, 1, 20)
+     END AS url_prefix,
+     COUNT(*) AS total
+   FROM products GROUP BY url_prefix ORDER BY total DESC LIMIT 10;`,
+);
+console.table(imageDomains);
+console.log(
+  "\nBeklenen: tedarikçinin kendi CDN'i (hotlink edilmiş görseller) vs. sitenin\n" +
+    "kendi medya yükleme sistemi (/api/media/...) - ikincisi sadece admin panelinden\n" +
+    "elle görsel yükleyen biri tarafından oluşturulabilir, bu yüzden bu sinyal\n" +
+    "cost/xml_external_id'den daha güvenilir olmalı.",
+);
+
+console.log(
+  '\n=== 6. "Bileklik & Halhal" - created_at + görsel domain birleşik analiz ===\n',
+);
+const combined = runD1(
+  `SELECT
+     CASE WHEN image LIKE 'https://app.ebijuteri.com/%' THEN 'tedarikci_cdn' ELSE 'yerel_yukleme_veya_diger' END AS image_source,
+     COUNT(*) AS total
+   FROM products
+   WHERE category IN (${placeholders})
+   GROUP BY image_source;`,
+);
+console.table(combined);
+
+const dupeStats = runD1(
+  `SELECT SUM(cnt) AS total_rows_in_dupe_groups, SUM(cnt - 1) AS extra_duplicate_rows FROM (
+     SELECT name, COUNT(*) AS cnt FROM products
+     WHERE category IN (${placeholders}) AND image LIKE 'https://app.ebijuteri.com/%'
+     GROUP BY name HAVING COUNT(*) > 1
+   );`,
+);
+console.table(dupeStats);
+
+const cdnRow = combined.find((r) => r.image_source === "tedarikci_cdn");
+const localRow = combined.find((r) => r.image_source === "yerel_yukleme_veya_diger");
+const cdnTotal = Number(cdnRow?.total ?? 0);
+const localTotal = Number(localRow?.total ?? 0);
+const extraDupes = Number(dupeStats[0]?.extra_duplicate_rows ?? 0);
+const distinctCdn = cdnTotal - extraDupes;
+
+console.log(
+  `\nTedarikçi CDN'inden görsel kullanan (tekrarlar dahil): ${cdnTotal}\n` +
+    `Bunların içinde aynı isimle birden fazla kez geçen "fazladan" satır: ${extraDupes}\n` +
+    `  (muhtemelen 28 Ağustos ve 30 Ağustos'ta feed'in iki kez içe aktarılmasından -\n` +
+    `  aynı ürün adı, aynı fiyat, farklı id ve created_at ile örnekleri var)\n` +
+    `Tekil (duplicate'siz) tahmini: ${cdnTotal} - ${extraDupes} = ${distinctCdn}\n` +
+    `Tedarikçi feed'inin bildirdiği: 909\n` +
+    `Fark: ${distinctCdn - 909 >= 0 ? "+" : ""}${distinctCdn - 909} (cost tabanlı tahminin farkından çok daha küçük)\n\n` +
+    `Yerel yükleme / diğer (muhtemelen gerçekten elle eklenmiş): ${localTotal}`,
+);
+
