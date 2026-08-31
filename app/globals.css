@@ -11991,11 +11991,11 @@ body:has(.market-theme)::before, body:has(.market-theme)::after, .market-theme .
   width: 20px;
   height: 100%;
   min-height: 0 !important;
-  margin-left: 2px;
+  margin-left: 4px;
   padding: 0 !important;
   border: 0;
   background: transparent;
-  color: #9a9186;
+  color: #282828; /* matches .market-category-nav a's text color exactly */
   cursor: pointer;
   transition: transform 160ms ease, color 160ms ease;
 }
