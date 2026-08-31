@@ -19,12 +19,15 @@ export async function GET() {
     const categories = categoryRows.length
       ? categoryRows.map((category) => category.name)
       : [...new Set(products.map((product) => product.category))];
-    return Response.json({
-      products,
-      settings,
-      content,
-      categories,
-    });
+    return Response.json(
+      {
+        products,
+        settings,
+        content,
+        categories,
+      },
+      { headers: { "cache-control": "no-store" } },
+    );
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Mağaza verileri alınamadı.";
@@ -38,7 +41,7 @@ export async function GET() {
         ],
         warning: message,
       },
-      { status: 200 },
+      { status: 200, headers: { "cache-control": "no-store" } },
     );
   }
 }
