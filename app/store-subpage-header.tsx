@@ -3,7 +3,13 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { activeCategoryGroups, type CategoryGroup } from "../lib/category-groups";
+import {
+  subgroupsForGroup,
+  tallyCategoryCounts,
+  type CategorySubgroup,
+} from "../lib/category-subgroups";
 import { useCart } from "../lib/cart-context";
+import CategoryNavDropdown from "./category-nav-dropdown";
 
 function groupUrl(group: CategoryGroup) {
   return `/kategori/${group.slug}`;
@@ -57,6 +63,9 @@ export default function StoreSubpageHeader({
   const [contact, setContact] = useState<ContactSettings>({});
   const [menuOpen, setMenuOpen] = useState(false);
   const [groups, setGroups] = useState<CategoryGroup[]>([]);
+  const [subgroupsByGroupSlug, setSubgroupsByGroupSlug] = useState<
+    Map<string, CategorySubgroup[]>
+  >(new Map());
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -92,7 +101,17 @@ export default function StoreSubpageHeader({
       .then((data) => {
         setContact(data.settings ?? {});
         const categories = (data.products ?? []).map((product) => product.category);
-        setGroups(activeCategoryGroups(categories));
+        const activeGroups = activeCategoryGroups(categories);
+        setGroups(activeGroups);
+        const categoryCounts = tallyCategoryCounts(categories);
+        setSubgroupsByGroupSlug(
+          new Map(
+            activeGroups.map((group) => [
+              group.slug,
+              subgroupsForGroup(group, categoryCounts),
+            ]),
+          ),
+        );
       })
       .catch(() => setContact({}));
     return () => {
@@ -233,13 +252,13 @@ export default function StoreSubpageHeader({
       </header>
       <nav className="market-category-nav store-market-categories" aria-label="Ana kategoriler">
         {groups.map((group) => (
-          <Link
+          <CategoryNavDropdown
             key={group.slug}
+            label={group.label}
             href={groupUrl(group)}
-            className={activeGroupSlug === group.slug ? "active" : undefined}
-          >
-            {group.label}
-          </Link>
+            subgroups={subgroupsByGroupSlug.get(group.slug) ?? []}
+            active={activeGroupSlug === group.slug}
+          />
         ))}
         <Link className="sale" href="/#shop">Outlet</Link>
       </nav>
