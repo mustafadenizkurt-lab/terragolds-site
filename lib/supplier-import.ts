@@ -1,4 +1,5 @@
 import { XMLParser } from "fast-xml-parser";
+import { calculatePrice } from "./xml-sync/calculatePrice";
 import { parseProductInput, type ProductInput } from "./product-input";
 import { fetchSupplierXmlText } from "./supplier-fetch";
 import { matchesFilters, type ImportFilters } from "./xml-import-filters";
@@ -356,7 +357,7 @@ export function applyMapping(
       });
       return;
     }
-    const markedUpPrice = Math.round(parsedPrice * (1 + markup / 100));
+    const markedUpPrice = calculatePrice(parsedPrice, markup);
 
     const rawStock = mapping.stock ? (record[mapping.stock] ?? "").trim() : "";
     const rawCategory = mapping.category ? (record[mapping.category] ?? "").trim() : "";
