@@ -7,19 +7,13 @@ import StoreTrustBar from "../../store-trust-bar";
 import { findCategoryBySlug } from "../../../lib/category-slugs";
 import { findCategoryGroupBySlug, groupForCategory } from "../../../lib/category-groups";
 import { subgroupsForGroup, tallyCategoryCounts } from "../../../lib/category-subgroups";
-import { getDiscountedPrice, type Product } from "../../../lib/store-data";
+import type { Product } from "../../../lib/store-data";
 import { readProducts, readSettings } from "../../../lib/store-db";
 import QuickAddToCart from "../../quick-add-to-cart";
 
 export const dynamic = "force-dynamic";
 
 const SITE_URL = "https://www.terragolds.com";
-
-const money = new Intl.NumberFormat("tr-TR", {
-  style: "currency",
-  currency: "TRY",
-  maximumFractionDigits: 0,
-});
 
 type CategoryPageProps = {
   params: Promise<{ slug: string }>;
@@ -153,7 +147,6 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
         <section className="category-products section-shell">
           <div className="category-grid">
             {categoryProducts.map((product) => {
-              const currentPrice = getDiscountedPrice(product);
               return (
                 <article className="category-product-card" key={product.id}>
                   <Link
@@ -199,12 +192,6 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
                     <small>{product.stone}</small>
                     <Link href={`/products/${product.slug || product.id}`}>{product.name}</Link>
                     <p>{product.description}</p>
-                    <div className="category-product-price">
-                      {product.discountPercent > 0 && (
-                        <del>{money.format(product.price)}</del>
-                      )}
-                      <strong>{money.format(currentPrice)}</strong>
-                    </div>
                     <QuickAddToCart product={product} />
                   </div>
                 </article>
