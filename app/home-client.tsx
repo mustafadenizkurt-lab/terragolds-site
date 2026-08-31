@@ -8,7 +8,10 @@ import {
   type StoreSettings,
 } from "../lib/store-data";
 import { syncFavorites } from "../lib/favorite-client";
-import { type SiteContent } from "../lib/site-content-types";
+import {
+  defaultSiteContent,
+  type SiteContent,
+} from "../lib/site-content-types";
 import { activeCategoryGroups, type CategoryGroup } from "../lib/category-groups";
 import {
   subgroupsForGroup,
@@ -540,18 +543,17 @@ function ProductCard({
 }
 
 type HomeClientProps = {
-  initialProducts: Product[];
+  // Only settings is fetched server-side (cheap - a single small row) and
+  // seeded here to kill the flash of unset social/analytics links on first
+  // paint. Products/content/categories are NOT server-fetched: they're the
+  // full catalog/CMS data and rendering all of it into the initial HTML on
+  // every request exceeded the Worker's CPU/memory limits (Cloudflare
+  // error 1102) - they stay client-fetched via the effect below, same as
+  // before.
   initialSettings: StoreSettings;
-  initialContent: SiteContent;
-  initialCategories: string[];
 };
 
-export default function HomeClient({
-  initialProducts,
-  initialSettings,
-  initialContent,
-  initialCategories,
-}: HomeClientProps) {
+export default function HomeClient({ initialSettings }: HomeClientProps) {
   const [category, setCategory] = useState("Tümü");
   const [catalogQuery, setCatalogQuery] = useState("");
   const [catalogMinPrice, setCatalogMinPrice] = useState("");
@@ -559,13 +561,12 @@ export default function HomeClient({
   const [catalogInStockOnly, setCatalogInStockOnly] = useState(false);
   const [catalogDiscountOnly, setCatalogDiscountOnly] = useState(false);
   const [catalogPage, setCatalogPage] = useState(1);
-  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [products, setProducts] = useState<Product[]>([]);
   const [settings, setSettings] =
     useState<StoreSettings>(initialSettings);
   const [content, setContent] =
-    useState<SiteContent>(initialContent);
-  const [managedCategories, setManagedCategories] =
-    useState<string[]>(initialCategories);
+    useState<SiteContent>(defaultSiteContent);
+  const [managedCategories, setManagedCategories] = useState<string[]>([]);
   const cart = useCart();
   const [purchaseQuantities, setPurchaseQuantities] = useState<
     Record<number, number>
