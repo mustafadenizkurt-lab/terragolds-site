@@ -13,7 +13,6 @@ import {
   defaultSiteContent,
   type SiteContent,
 } from "../lib/site-content-types";
-import { categoryToSlug } from "../lib/category-slugs";
 import { activeCategoryGroups, type CategoryGroup } from "../lib/category-groups";
 import {
   subgroupsForGroup,
@@ -703,9 +702,6 @@ export default function Home() {
     ],
     [managedCategories, products],
   );
-
-  const categoryUrl = (categoryName: string) =>
-    `/kategori/${categoryToSlug(categoryName)}`;
 
   const activeGroups = useMemo(
     () => activeCategoryGroups(products.map((item) => item.category)),
@@ -1694,7 +1690,6 @@ export default function Home() {
         <nav className="collection-nav collection-nav-top" aria-label="Koleksiyon bölümleri">
           <a href="#shop">{ui.newArrivals}</a>
           <a href="/#shop">{ui.naturalStones}</a>
-          <a href={categoryUrl("Kristaller")}>{ui.crystals}</a>
           <a href="/#shop">{ui.decorativePieces}</a>
           <button
             className="sale"
