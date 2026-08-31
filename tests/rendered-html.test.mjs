@@ -7,7 +7,7 @@ const root = new URL("../", import.meta.url);
 
 test("storefront is connected to managed products and settings", async () => {
   const [page, support, data, storeDb, hosting] = await Promise.all([
-    readFile(new URL("app/page.tsx", root), "utf8"),
+    readFile(new URL("app/home-client.tsx", root), "utf8"),
     readFile(new URL("app/support/page.tsx", root), "utf8"),
     readFile(new URL("lib/store-data.ts", root), "utf8"),
     readFile(new URL("lib/store-db.ts", root), "utf8"),
@@ -132,7 +132,7 @@ test("account email verification and the system test center remain available", a
       new URL("app/api/auth/email-verification/send/route.ts", root),
       "utf8",
     ),
-    readFile(new URL("app/page.tsx", root), "utf8"),
+    readFile(new URL("app/home-client.tsx", root), "utf8"),
     readFile(new URL("app/admin/admin-client.tsx", root), "utf8"),
     readFile(new URL("app/api/admin/system-tests/route.ts", root), "utf8"),
     readFile(new URL("app/admin/system-test-center.tsx", root), "utf8"),
@@ -216,7 +216,7 @@ test("password recovery, discounts, shipping and search discovery are connected"
     readFile(new URL("app/api/cart/quote/route.ts", root), "utf8"),
     readFile(new URL("app/admin/discount-codes-panel.tsx", root), "utf8"),
     readFile(new URL("app/admin/payment-providers-panel.tsx", root), "utf8"),
-    readFile(new URL("app/page.tsx", root), "utf8"),
+    readFile(new URL("app/home-client.tsx", root), "utf8"),
     readFile(new URL("app/sitemap.xml/route.ts", root), "utf8"),
     readFile(new URL("app/robots.txt/route.ts", root), "utf8"),
   ]);
@@ -247,7 +247,7 @@ test("password recovery, discounts, shipping and search discovery are connected"
 
 test("product campaigns and quantity-based cart are wired end to end", async () => {
   const [page, admin, schema, productInput, migration] = await Promise.all([
-    readFile(new URL("app/page.tsx", root), "utf8"),
+    readFile(new URL("app/home-client.tsx", root), "utf8"),
     readFile(new URL("app/admin/admin-client.tsx", root), "utf8"),
     readFile(new URL("db/schema.ts", root), "utf8"),
     readFile(new URL("lib/product-input.ts", root), "utf8"),
@@ -315,7 +315,7 @@ test("verified reviews, product profiles and favorites are connected", async () 
         "utf8",
       ),
       readFile(new URL("app/favorites/favorites-client.tsx", root), "utf8"),
-      readFile(new URL("app/page.tsx", root), "utf8"),
+      readFile(new URL("app/home-client.tsx", root), "utf8"),
       readFile(new URL("app/globals.css", root), "utf8"),
     ]);
 
@@ -502,7 +502,7 @@ test("admin catalog pagination, categories and managed page content are connecte
     readFile(new URL("app/api/admin/categories/route.ts", root), "utf8"),
     readFile(new URL("app/api/admin/content/route.ts", root), "utf8"),
     readFile(new URL("lib/site-content.ts", root), "utf8"),
-    readFile(new URL("app/page.tsx", root), "utf8"),
+    readFile(new URL("app/home-client.tsx", root), "utf8"),
     readFile(new URL("app/support/page.tsx", root), "utf8"),
   ]);
 
