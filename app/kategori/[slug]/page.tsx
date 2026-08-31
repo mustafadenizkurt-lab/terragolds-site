@@ -6,6 +6,7 @@ import { FloatingSocialLinks } from "../../store-shared-chrome";
 import StoreTrustBar from "../../store-trust-bar";
 import { findCategoryBySlug } from "../../../lib/category-slugs";
 import { findCategoryGroupBySlug, groupForCategory } from "../../../lib/category-groups";
+import { subgroupsForGroup, tallyCategoryCounts } from "../../../lib/category-subgroups";
 import { getDiscountedPrice, type Product } from "../../../lib/store-data";
 import { readProducts, readSettings } from "../../../lib/store-db";
 import QuickAddToCart from "../../quick-add-to-cart";
@@ -22,6 +23,7 @@ const money = new Intl.NumberFormat("tr-TR", {
 
 type CategoryPageProps = {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ alt?: string }>;
 };
 
 /**
@@ -29,16 +31,35 @@ type CategoryPageProps = {
  * "kolyeler", spanning several raw categories) or a single raw category's
  * own slug — group match is checked first since it's the more specific,
  * curated nav entry point; single-category URLs keep working unchanged.
+ *
+ * For a group match, an optional `alt` subcategory slug (from the nav
+ * dropdown) narrows the results further to one subgroup's raw category
+ * values - subgroups are derived from the group's own products, the same
+ * way the nav dropdown computes them, so the slug always resolves the same
+ * set of raw categories here as it did when the link was built.
  */
-function resolveCategoryOrGroup(products: Product[], slug: string) {
+function resolveCategoryOrGroup(products: Product[], slug: string, altSlug?: string) {
   const group = findCategoryGroupBySlug(slug);
   if (group) {
-    return {
-      title: group.label,
-      products: products.filter(
-        (product) => groupForCategory(product.category)?.slug === group.slug,
-      ),
-    };
+    const groupProducts = products.filter(
+      (product) => groupForCategory(product.category)?.slug === group.slug,
+    );
+    if (altSlug) {
+      const categoryCounts = tallyCategoryCounts(
+        groupProducts.map((product) => product.category),
+      );
+      const subgroup = subgroupsForGroup(group, categoryCounts).find(
+        (sub) => sub.slug === altSlug,
+      );
+      if (subgroup) {
+        const categorySet = new Set(subgroup.categories);
+        return {
+          title: `${group.label} · ${subgroup.label}`,
+          products: groupProducts.filter((product) => categorySet.has(product.category)),
+        };
+      }
+    }
+    return { title: group.label, products: groupProducts };
   }
   const categories = [...new Set(products.map((product) => product.category))];
   const category = findCategoryBySlug(categories, slug);
@@ -51,10 +72,12 @@ function resolveCategoryOrGroup(products: Product[], slug: string) {
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: CategoryPageProps): Promise<Metadata> {
   const { slug } = await params;
+  const { alt } = await searchParams;
   const products = await readProducts();
-  const resolved = resolveCategoryOrGroup(products, slug);
+  const resolved = resolveCategoryOrGroup(products, slug, alt);
 
   if (!resolved) {
     return {
@@ -64,7 +87,9 @@ export async function generateMetadata({
   }
 
   const { title, products: categoryProducts } = resolved;
-  const url = `${SITE_URL}/kategori/${slug}`;
+  const url = alt
+    ? `${SITE_URL}/kategori/${slug}?alt=${alt}`
+    : `${SITE_URL}/kategori/${slug}`;
   const heroImage = categoryProducts[0]?.image
     ? new URL(categoryProducts[0].image, SITE_URL).toString()
     : `${SITE_URL}/og.png`;
@@ -91,13 +116,14 @@ export async function generateMetadata({
   };
 }
 
-export default async function CategoryPage({ params }: CategoryPageProps) {
+export default async function CategoryPage({ params, searchParams }: CategoryPageProps) {
   const { slug } = await params;
+  const { alt } = await searchParams;
   const [products, settings] = await Promise.all([
     readProducts(),
     readSettings(),
   ]);
-  const resolved = resolveCategoryOrGroup(products, slug);
+  const resolved = resolveCategoryOrGroup(products, slug, alt);
   const title = resolved?.title ?? null;
   const categoryProducts = resolved?.products ?? [];
 

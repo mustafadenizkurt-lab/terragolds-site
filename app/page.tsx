@@ -15,6 +15,12 @@ import {
 } from "../lib/site-content-types";
 import { categoryToSlug } from "../lib/category-slugs";
 import { activeCategoryGroups, type CategoryGroup } from "../lib/category-groups";
+import {
+  subgroupsForGroup,
+  tallyCategoryCounts,
+  type CategorySubgroup,
+} from "../lib/category-subgroups";
+import CategoryNavDropdown from "./category-nav-dropdown";
 import { pickRotatingShowcase } from "../lib/rotating-showcase";
 import { useCart } from "../lib/cart-context";
 import StoreSiteFooter from "./store-site-footer";
@@ -707,6 +713,17 @@ export default function Home() {
     [products],
   );
   const groupUrl = (group: CategoryGroup) => `/kategori/${group.slug}`;
+  const navCategoryCounts = useMemo(
+    () => tallyCategoryCounts(products.map((item) => item.category)),
+    [products],
+  );
+  const subgroupsByGroupSlug = useMemo(() => {
+    const map = new Map<string, CategorySubgroup[]>();
+    for (const group of activeGroups) {
+      map.set(group.slug, subgroupsForGroup(group, navCategoryCounts));
+    }
+    return map;
+  }, [activeGroups, navCategoryCounts]);
 
   const categoryCounts = useMemo(() => {
     const counts = new Map<string, number>();
@@ -1509,9 +1526,12 @@ export default function Home() {
 
       <nav className="market-category-nav" id="top" aria-label="Ana kategoriler">
         {activeGroups.map((group) => (
-          <a key={group.slug} href={groupUrl(group)}>
-            {group.label}
-          </a>
+          <CategoryNavDropdown
+            key={group.slug}
+            label={group.label}
+            href={groupUrl(group)}
+            subgroups={subgroupsByGroupSlug.get(group.slug) ?? []}
+          />
         ))}
         <button
           type="button"
