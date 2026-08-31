@@ -1778,6 +1778,20 @@ export default function AdminClient({
                           placeholder="https://pinterest.com/..."
                         />
                       </label>
+                      <label className="admin-field">
+                        <span>TikTok</span>
+                        <input
+                          type="url"
+                          value={settings.tiktok}
+                          onChange={(event) =>
+                            setSettings({
+                              ...settings,
+                              tiktok: event.target.value,
+                            })
+                          }
+                          placeholder="https://tiktok.com/@..."
+                        />
+                      </label>
                     </div>
                   </section>
 

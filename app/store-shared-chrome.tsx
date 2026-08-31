@@ -56,6 +56,22 @@ export async function FloatingSocialLinks() {
           />
         </a>
       )}
+      {settings.tiktok && (
+        <a
+          className="floating-social-link tiktok"
+          href={settings.tiktok}
+          target="_blank"
+          rel="noreferrer"
+          aria-label="TikTok"
+        >
+          <img
+            src="https://cdn.jsdelivr.net/npm/simple-icons@v16/icons/tiktok.svg"
+            alt=""
+            width={18}
+            height={18}
+          />
+        </a>
+      )}
     </FloatingSocialVisibility>
   );
 }

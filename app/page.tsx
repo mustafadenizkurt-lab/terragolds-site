@@ -1032,6 +1032,7 @@ export default function Home() {
               settings.facebook,
               settings.instagram,
               settings.pinterest,
+              settings.tiktok,
             ].filter(Boolean),
           }).replaceAll("<", "\\u003c"),
         }}
@@ -1093,6 +1094,22 @@ export default function Home() {
             >
               <img
                 src="https://cdn.jsdelivr.net/npm/simple-icons@v16/icons/facebook.svg"
+                alt=""
+                aria-hidden="true"
+              />
+            </a>
+          )}
+          {settings.tiktok && (
+            <a
+              className="announcement-social-link tiktok"
+              href={settings.tiktok}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="TikTok"
+              title="TikTok"
+            >
+              <img
+                src="https://cdn.jsdelivr.net/npm/simple-icons@v16/icons/tiktok.svg"
                 alt=""
                 aria-hidden="true"
               />
