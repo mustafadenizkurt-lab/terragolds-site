@@ -29,6 +29,7 @@ import type {
   DashboardPeriod,
 } from "../../lib/admin-dashboard-types";
 import type { ProductCategory } from "../../lib/category-types";
+import { buildPageWindow } from "../../lib/pagination";
 
 type AdminView =
   | "overview"
@@ -55,28 +56,6 @@ type AdminView =
 type ProductDraft = Omit<Product, "id"> & { id?: number };
 
 const PRODUCTS_PER_PAGE = 10;
-
-// Bulk XML imports can push the catalog into the thousands, which means
-// hundreds of pages - rendering one button per page (as before) overflowed
-// the pagination bar's container. This caps the buttons shown at a handful
-// around the current page plus the first/last, with an ellipsis for gaps.
-type ProductPageItem = number | "start-ellipsis" | "end-ellipsis";
-function buildProductPageWindow(
-  current: number,
-  total: number,
-): ProductPageItem[] {
-  if (total <= 7) {
-    return Array.from({ length: total }, (_, index) => index + 1);
-  }
-  const left = Math.max(2, current - 1);
-  const right = Math.min(total - 1, current + 1);
-  const pages: ProductPageItem[] = [1];
-  if (left > 2) pages.push("start-ellipsis");
-  for (let page = left; page <= right; page++) pages.push(page);
-  if (right < total - 1) pages.push("end-ellipsis");
-  pages.push(total);
-  return pages;
-}
 
 const emptyProduct: ProductDraft = {
   name: "",
@@ -446,7 +425,7 @@ export default function AdminClient({
     Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE),
   );
   const safeProductPage = Math.min(productPage, productPageCount);
-  const productPageWindow = buildProductPageWindow(
+  const productPageWindow = buildPageWindow(
     safeProductPage,
     productPageCount,
   );

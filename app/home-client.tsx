@@ -19,6 +19,7 @@ import {
   type CategorySubgroup,
 } from "../lib/category-subgroups";
 import CategoryNavDropdown from "./category-nav-dropdown";
+import { buildPageWindow } from "../lib/pagination";
 import { pickRotatingShowcase } from "../lib/rotating-showcase";
 import { useCart } from "../lib/cart-context";
 import StoreSiteFooter from "./store-site-footer";
@@ -899,6 +900,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
     Math.ceil(catalogProducts.length / CATALOG_PRODUCTS_PER_PAGE),
   );
   const safeCatalogPage = Math.min(catalogPage, catalogPageCount);
+  const catalogPageWindow = buildPageWindow(safeCatalogPage, catalogPageCount);
   const catalogPageStart =
     (safeCatalogPage - 1) * CATALOG_PRODUCTS_PER_PAGE;
   const visibleCatalogProducts = catalogProducts.slice(
@@ -1883,9 +1885,8 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
                   {ui.previousPage}
                 </button>
                 <div>
-                  {Array.from({ length: catalogPageCount }, (_, index) => {
-                    const page = index + 1;
-                    return (
+                  {catalogPageWindow.map((page) =>
+                    typeof page === "number" ? (
                       <button
                         type="button"
                         className={page === safeCatalogPage ? "active" : ""}
@@ -1895,8 +1896,16 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
                       >
                         {page}
                       </button>
-                    );
-                  })}
+                    ) : (
+                      <span
+                        className="catalog-pagination-ellipsis"
+                        key={page}
+                        aria-hidden="true"
+                      >
+                        …
+                      </span>
+                    ),
+                  )}
                 </div>
                 <button
                   type="button"
