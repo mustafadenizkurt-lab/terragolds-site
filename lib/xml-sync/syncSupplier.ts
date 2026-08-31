@@ -79,10 +79,30 @@ export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<
       const existing = await db.prepare(
         "SELECT id FROM products WHERE xml_supplier_id = ? AND xml_external_id = ? LIMIT 1",
       ).bind(supplier.id, product.externalId).first<{ id: number }>();
-      if (existing) {
+      // Products from the admin's ad-hoc bulk "Tedarikçi İçe Aktar" import
+      // never got an xml_supplier_id/xml_external_id link (that flow doesn't
+      // go through this feed at all), so the lookup above always misses for
+      // them. Without this fallback, every one of those products would be
+      // re-inserted here as a brand-new duplicate the first time this feed
+      // syncs successfully. Match by exact name instead, but only when
+      // unambiguous (still unlinked, exactly one match), so two distinct
+      // feed rows never get silently merged into one pre-existing product.
+      let matchedId = existing?.id;
+      if (!matchedId) {
+        const nameMatches = await db.prepare(
+          "SELECT id FROM products WHERE xml_supplier_id IS NULL AND name = ? LIMIT 2",
+        ).bind(product.name).all<{ id: number }>();
+        if (nameMatches.results.length === 1) {
+          matchedId = nameMatches.results[0].id;
+          await db.prepare(
+            "UPDATE products SET xml_supplier_id = ?, xml_external_id = ? WHERE id = ?",
+          ).bind(supplier.id, product.externalId, matchedId).run();
+        }
+      }
+      if (matchedId) {
         await db.prepare(
           `UPDATE products SET name = ?, stone = ?, category = ?, price = ?, cost = ?, stock = ?, image = ?, description = ?, xml_sync_status = 'synced', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-        ).bind(product.name, product.stone, product.category, product.price, product.cost, product.stock, product.image, product.description, existing.id).run();
+        ).bind(product.name, product.stone, product.category, product.price, product.cost, product.stock, product.image, product.description, matchedId).run();
         updated += 1;
       } else {
         const description = await uniqueDescriptionForNewProduct(product);
