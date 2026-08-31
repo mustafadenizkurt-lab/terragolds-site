@@ -538,7 +538,6 @@ function ProductCard({
           <small>{product.stone}</small>
           <strong>{product.name}</strong>
         </span>
-        <ProductPrice product={product} />
       </a>
       <QuickAddToCart product={product} />
     </article>
