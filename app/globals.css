@@ -7246,6 +7246,7 @@ footer {
   padding: 30px 22px 24px;
   background: var(--admin-deep);
   color: #f8f3e9;
+  overflow: hidden;
 }
 .admin-brand {
   display: flex;
@@ -7286,8 +7287,24 @@ footer {
 }
 .admin-nav {
   display: grid;
+  align-content: start;
   gap: 6px;
   margin-top: 32px;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+.admin-nav::-webkit-scrollbar {
+  width: 6px;
+}
+.admin-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+.admin-nav::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 3px;
 }
 .admin-nav button span {
   width: 18px;
