@@ -81,7 +81,7 @@ function buildProductPageWindow(
 const emptyProduct: ProductDraft = {
   name: "",
   stone: "",
-  category: "Kristaller",
+  category: "",
   price: 0,
   cost: 0,
   stock: 1,
