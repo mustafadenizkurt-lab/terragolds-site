@@ -2911,8 +2911,9 @@ img {
 }
 .quick-add-price {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: 8px;
+  gap: 6px 8px;
 }
 .quick-add-price strong {
   font-family: var(--sans);
@@ -2925,6 +2926,12 @@ img {
   font-weight: 500;
   color: #9a9a9a;
   text-decoration: line-through;
+}
+.quick-add-price small {
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 500;
+  color: #9a9a9a;
 }
 .quick-add-row {
   display: flex;

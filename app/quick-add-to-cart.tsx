@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ShoppingBag } from "lucide-react";
 import { getDiscountedPrice, type Product } from "../lib/store-data";
 import { useCart } from "../lib/cart-context";
+import { VAT_RATE } from "../lib/xml-sync/calculatePrice";
 
 // "134,90 ₺" - number first, currency symbol after, matching the reference
 // site's format (Intl's default tr-TR/TRY currency style puts the symbol
@@ -28,6 +29,9 @@ export default function QuickAddToCart({ product }: { product: Product }) {
   const soldOut = product.stock <= 0;
   const maxQuantity = Math.max(1, Math.min(product.stock, 20));
   const discountedPrice = getDiscountedPrice(product);
+  // price is VAT-inclusive (see calculatePrice.ts), so the VAT portion is
+  // back-calculated from the displayed price rather than added on top of it.
+  const vatAmount = discountedPrice - discountedPrice / (1 + VAT_RATE);
 
   const setClampedQuantity = (next: number) => {
     setQuantity(Math.min(maxQuantity, Math.max(1, Math.round(next) || 1)));
@@ -38,6 +42,7 @@ export default function QuickAddToCart({ product }: { product: Product }) {
       <div className={`quick-add-price${product.discountPercent > 0 ? " discounted" : ""}`}>
         {product.discountPercent > 0 && <del>{formatPrice(product.price)}</del>}
         <strong>{formatPrice(discountedPrice)}</strong>
+        <small>({formatPrice(vatAmount)} KDV dahil)</small>
       </div>
       <div className="quick-add-row">
         <div className="quick-add-qty">
