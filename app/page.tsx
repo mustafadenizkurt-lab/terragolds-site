@@ -438,21 +438,11 @@ function ProductCard({
   ui,
   isLiked,
   onToggleLike,
-  quantity,
-  maxQuantity,
-  onQuantityChange,
-  addCooldownSeconds,
-  onAddToCart,
 }: {
   product: Product;
   ui: (typeof uiText)[Language];
   isLiked: boolean;
   onToggleLike: () => void;
-  quantity: number;
-  maxQuantity: number;
-  onQuantityChange: (next: number) => void;
-  addCooldownSeconds: number;
-  onAddToCart: () => void;
 }) {
   return (
     <article className="product-card">
@@ -533,47 +523,6 @@ function ProductCard({
             {product.reviewCount ? `(${product.reviewCount})` : ui.newProduct}
           </em>
         </span>
-        <div className="quick-purchase">
-          <div className="quantity-picker compact">
-            <button
-              type="button"
-              onClick={() => onQuantityChange(quantity - 1)}
-              disabled={product.stock <= 0 || quantity <= 1}
-              aria-label={`${product.name} adedini azalt`}
-            >
-              {"−"}
-            </button>
-            <input
-              type="number"
-              min="1"
-              max={maxQuantity}
-              value={quantity}
-              onFocus={(event) => event.currentTarget.select()}
-              onChange={(event) => onQuantityChange(Number(event.target.value))}
-              aria-label={`${product.name} adedi`}
-            />
-            <button
-              type="button"
-              onClick={() => onQuantityChange(quantity + 1)}
-              disabled={product.stock <= 0 || quantity >= maxQuantity}
-              aria-label={`${product.name} adedini artır`}
-            >
-              +
-            </button>
-          </div>
-          <button
-            type="button"
-            className="quick-add"
-            onClick={onAddToCart}
-            disabled={product.stock <= 0 || addCooldownSeconds > 0}
-          >
-            {product.stock <= 0
-              ? ui.soldOut
-              : addCooldownSeconds > 0
-                ? ui.waitSeconds(addCooldownSeconds)
-                : ui.addToCart}
-          </button>
-        </div>
       </div>
       <p className="product-collection-highlight">
         {productCollectionMessage(product, ui)}
@@ -1608,11 +1557,6 @@ export default function Home() {
                 ui={ui}
                 isLiked={liked.includes(product.id)}
                 onToggleLike={() => toggleLike(product.id)}
-                quantity={getPurchaseQuantity(product)}
-                maxQuantity={Math.min(product.stock, 20)}
-                onQuantityChange={(next) => setPurchaseQuantity(product, next)}
-                addCooldownSeconds={cart.addCooldownSeconds}
-                onAddToCart={() => cart.addToCart(product, getPurchaseQuantity(product))}
               />
             ))}
           </div>
@@ -1683,11 +1627,6 @@ export default function Home() {
                 ui={ui}
                 isLiked={liked.includes(product.id)}
                 onToggleLike={() => toggleLike(product.id)}
-                quantity={getPurchaseQuantity(product)}
-                maxQuantity={Math.min(product.stock, 20)}
-                onQuantityChange={(next) => setPurchaseQuantity(product, next)}
-                addCooldownSeconds={cart.addCooldownSeconds}
-                onAddToCart={() => cart.addToCart(product, getPurchaseQuantity(product))}
               />
             ))}
           </div>
@@ -1714,11 +1653,6 @@ export default function Home() {
                 ui={ui}
                 isLiked={liked.includes(product.id)}
                 onToggleLike={() => toggleLike(product.id)}
-                quantity={getPurchaseQuantity(product)}
-                maxQuantity={Math.min(product.stock, 20)}
-                onQuantityChange={(next) => setPurchaseQuantity(product, next)}
-                addCooldownSeconds={cart.addCooldownSeconds}
-                onAddToCart={() => cart.addToCart(product, getPurchaseQuantity(product))}
               />
             ))}
           </div>
@@ -1895,11 +1829,6 @@ export default function Home() {
               ui={ui}
               isLiked={liked.includes(product.id)}
               onToggleLike={() => toggleLike(product.id)}
-              quantity={getPurchaseQuantity(product)}
-              maxQuantity={Math.min(product.stock, 20)}
-              onQuantityChange={(next) => setPurchaseQuantity(product, next)}
-              addCooldownSeconds={cart.addCooldownSeconds}
-              onAddToCart={() => cart.addToCart(product, getPurchaseQuantity(product))}
             />
           ))}
             </div>
