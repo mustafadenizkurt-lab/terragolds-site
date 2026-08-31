@@ -8,6 +8,7 @@ import { findCategoryBySlug } from "../../../lib/category-slugs";
 import { findCategoryGroupBySlug, groupForCategory } from "../../../lib/category-groups";
 import { getDiscountedPrice, type Product } from "../../../lib/store-data";
 import { readProducts, readSettings } from "../../../lib/store-db";
+import QuickAddToCart from "../../quick-add-to-cart";
 
 export const dynamic = "force-dynamic";
 
@@ -178,6 +179,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
                       )}
                       <strong>{money.format(currentPrice)}</strong>
                     </div>
+                    <QuickAddToCart product={product} />
                   </div>
                 </article>
               );

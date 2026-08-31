@@ -19,6 +19,7 @@ import { pickRotatingShowcase } from "../lib/rotating-showcase";
 import { useCart } from "../lib/cart-context";
 import StoreSiteFooter from "./store-site-footer";
 import FloatingSocialVisibility from "./floating-social-visibility";
+import QuickAddToCart from "./quick-add-to-cart";
 
 const heroStoneSlides = [
   {
@@ -584,6 +585,7 @@ function ProductCard({
         </span>
         <ProductPrice product={product} />
       </a>
+      <QuickAddToCart product={product} />
     </article>
   );
 }
