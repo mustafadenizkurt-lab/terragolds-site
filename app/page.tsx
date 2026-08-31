@@ -2,6 +2,8 @@ import { defaultSettings } from "../lib/store-data";
 import { readSettings } from "../lib/store-db";
 import HomeClient from "./home-client";
 
+export const dynamic = "force-dynamic";
+
 // Deliberately does NOT use readStorefrontData() here: that also reads the
 // full product catalog (thousands of rows) and CMS content, and rendering
 // all of that into the initial HTML on every request blew past the
