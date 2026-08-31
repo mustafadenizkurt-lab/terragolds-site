@@ -42,6 +42,7 @@ export type StoreSettings = {
   facebook: string;
   instagram: string;
   pinterest: string;
+  tiktok: string;
   businessHours: string;
   footerNote: string;
   shippingFee: string;
@@ -622,6 +623,7 @@ export const defaultSettings: StoreSettings = {
   facebook: "https://www.facebook.com/profile.php?id=61592677166035",
   instagram: "https://www.instagram.com/terragolds/",
   pinterest: "",
+  tiktok: "",
   businessHours: "Pazartesi-Cumartesi · 10.00-18.00",
   footerNote: "Doğadan seçildi, özenle sunuldu.",
   shippingFee: "79.90",
