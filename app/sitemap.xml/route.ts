@@ -26,7 +26,7 @@ type SitemapUrl = {
   priority: string;
   frequency: string;
   lastmod?: string;
-  image?: string;
+  images?: string[];
 };
 
 export async function GET() {
@@ -95,9 +95,9 @@ export async function GET() {
       priority: "0.8",
       frequency: "weekly",
       lastmod: toLastmod(product.updatedAt),
-      image: product.image
-        ? new URL(product.image, siteUrl).toString()
-        : undefined,
+      images: [product.image, product.hoverImage]
+        .filter((image): image is string => Boolean(image))
+        .map((image) => new URL(image, siteUrl).toString()),
     })),
   ];
 
@@ -110,11 +110,12 @@ ${urls
     <changefreq>${url.frequency}</changefreq>
     <priority>${url.priority}</priority>${
       url.lastmod ? `\n    <lastmod>${url.lastmod}</lastmod>` : ""
-    }${
-      url.image
-        ? `\n    <image:image>\n      <image:loc>${escapeXml(url.image)}</image:loc>\n    </image:image>`
-        : ""
-    }
+    }${(url.images ?? [])
+      .map(
+        (image) =>
+          `\n    <image:image>\n      <image:loc>${escapeXml(image)}</image:loc>\n    </image:image>`,
+      )
+      .join("")}
   </url>`,
   )
   .join("\n")}
