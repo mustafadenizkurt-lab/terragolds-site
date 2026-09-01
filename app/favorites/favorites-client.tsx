@@ -100,11 +100,15 @@ export default function FavoritesClient({
           </div>
         ) : (
           <div className="favorites-grid">
-            {favorites.map((product) => (
+            {favorites.map((product, index) => (
               <article className="favorite-card" key={product.id}>
                 <div className="favorite-card-image">
                   <Link href={`/products/${product.slug || product.id}`}>
-                    <img src={product.image} alt={product.name} />
+                    <img
+                      src={product.image}
+                      alt={product.name}
+                      loading={index < 6 ? "eager" : "lazy"}
+                    />
                   </Link>
                   <button
                     type="button"
