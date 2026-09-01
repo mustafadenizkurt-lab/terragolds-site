@@ -237,6 +237,8 @@ const uiText = {
     join: "Katıl",
     newsletterSuccessTitle: "Kaydınız alındı",
     newsletterSuccessDetail: "Yeni ürün haberleri e-posta adresinize gönderilecek.",
+    newsletterErrorTitle: "Kaydınız alınamadı",
+    newsletterErrorDetail: "Lütfen daha sonra tekrar deneyin.",
     cart: "Sepetim",
     shoppingCart: "Alışveriş sepetiniz",
     close: "Kapat",
@@ -358,6 +360,8 @@ const uiText = {
     join: "Join",
     newsletterSuccessTitle: "You're subscribed",
     newsletterSuccessDetail: "New product updates will be sent to your email.",
+    newsletterErrorTitle: "Subscription failed",
+    newsletterErrorDetail: "Please try again later.",
     cart: "Cart",
     shoppingCart: "Your shopping cart",
     close: "Close",
@@ -2042,14 +2046,30 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
           <h2>{ui.newsletterTitle}</h2>
         </div>
         <form
-          onSubmit={(event) => {
+          onSubmit={async (event) => {
             event.preventDefault();
-            showNotice({
-              kind: "success",
-              title: ui.newsletterSuccessTitle,
-              detail: ui.newsletterSuccessDetail,
-            });
-            event.currentTarget.reset();
+            const form = event.currentTarget;
+            const email = new FormData(form).get("email");
+            try {
+              const response = await fetch("/api/newsletter/subscribe", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email }),
+              });
+              if (!response.ok) throw new Error();
+              showNotice({
+                kind: "success",
+                title: ui.newsletterSuccessTitle,
+                detail: ui.newsletterSuccessDetail,
+              });
+              form.reset();
+            } catch {
+              showNotice({
+                kind: "error",
+                title: ui.newsletterErrorTitle,
+                detail: ui.newsletterErrorDetail,
+              });
+            }
           }}
         >
           <label className="sr-only" htmlFor="newsletter-email">
@@ -2057,6 +2077,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
           </label>
           <input
             id="newsletter-email"
+            name="email"
             type="email"
             placeholder={ui.emailAddress}
             required

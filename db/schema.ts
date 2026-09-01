@@ -540,3 +540,15 @@ export const savedPaymentMethods = sqliteTable(
     ),
   ],
 );
+
+export const newsletterSubscribers = sqliteTable(
+  "newsletter_subscribers",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    email: text("email").notNull(),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    uniqueIndex("newsletter_subscribers_email_unique").on(table.email),
+  ],
+);
