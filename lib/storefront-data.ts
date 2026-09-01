@@ -6,13 +6,33 @@ import { readProductCategories } from "./product-categories";
 import { readPublishedSiteContent } from "./site-content";
 import { readProducts, readSettings } from "./store-db";
 
+export type CategorySummaryEntry = {
+  name: string;
+  count: number;
+};
+
 export type StorefrontData = {
   products: Product[];
   settings: StoreSettings;
   content: SiteContent;
   categories: string[];
+  /**
+   * {name, count} per category - for consumers that only need category
+   * names and product counts (nav dropdowns, filter chips), not the full
+   * product list. Added so those consumers can stop fetching `products`
+   * just to read its `.category` field off every row.
+   */
+  categorySummary: CategorySummaryEntry[];
   warning?: string;
 };
+
+function tallyCategorySummary(products: Product[]): CategorySummaryEntry[] {
+  const counts = new Map<string, number>();
+  for (const product of products) {
+    counts.set(product.category, (counts.get(product.category) ?? 0) + 1);
+  }
+  return [...counts.entries()].map(([name, count]) => ({ name, count }));
+}
 
 /**
  * Shared by the public homepage (server-rendered, so first paint already
@@ -33,7 +53,13 @@ export async function readStorefrontData(): Promise<StorefrontData> {
     const categories = categoryRows.length
       ? categoryRows.map((category) => category.name)
       : [...new Set(products.map((product) => product.category))];
-    return { products, settings, content, categories };
+    const categorySummary = categoryRows.length
+      ? categoryRows.map((category) => ({
+          name: category.name,
+          count: category.productCount,
+        }))
+      : tallyCategorySummary(products);
+    return { products, settings, content, categories, categorySummary };
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Mağaza verileri alınamadı.";
@@ -44,6 +70,7 @@ export async function readStorefrontData(): Promise<StorefrontData> {
       categories: [
         ...new Set(defaultProducts.map((product) => product.category)),
       ],
+      categorySummary: tallyCategorySummary(defaultProducts),
       warning: message,
     };
   }
