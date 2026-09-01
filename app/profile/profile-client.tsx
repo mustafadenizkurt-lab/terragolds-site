@@ -1090,9 +1090,13 @@ function ProductRail({
   }
   return (
     <div className="profile-product-rail">
-      {products.map((product) => (
+      {products.map((product, index) => (
         <Link href={`/products/${product.slug || product.id}`} key={product.id}>
-          <img src={product.image} alt={product.name} />
+          <img
+            src={product.image}
+            alt={product.name}
+            loading={index < 6 ? "eager" : "lazy"}
+          />
           <span>{product.stone}</span>
           <strong>{product.name}</strong>
           <b>{money.format(getDiscountedPrice(product))}</b>

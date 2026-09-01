@@ -146,7 +146,8 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
       {title ? (
         <section className="category-products section-shell">
           <div className="category-grid">
-            {categoryProducts.map((product) => {
+            {categoryProducts.map((product, index) => {
+              const imageLoading = index < 6 ? "eager" : "lazy";
               return (
                 <article className="category-product-card" key={product.id}>
                   <Link
@@ -173,12 +174,14 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
                       className="product-hover-image primary"
                       src={product.image}
                       alt={product.name}
+                      loading={imageLoading}
                     />
                     {product.hoverImage && (
                       <img
                         className="product-hover-image secondary"
                         src={product.hoverImage}
                         alt=""
+                        loading={imageLoading}
                       />
                     )}
                     {product.hoverImage && (

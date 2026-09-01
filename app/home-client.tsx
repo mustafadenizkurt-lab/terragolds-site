@@ -443,11 +443,13 @@ function ProductCard({
   ui,
   isLiked,
   onToggleLike,
+  loading = "lazy",
 }: {
   product: Product;
   ui: (typeof uiText)[Language];
   isLiked: boolean;
   onToggleLike: () => void;
+  loading?: "eager" | "lazy";
 }) {
   return (
     <article className="product-card">
@@ -500,12 +502,14 @@ function ProductCard({
             className="product-hover-image primary"
             src={product.image}
             alt={product.name}
+            loading={loading}
           />
           {product.hoverImage && (
             <img
               className="product-hover-image secondary"
               src={product.hoverImage}
               alt=""
+              loading={loading}
             />
           )}
           {product.hoverImage && (
@@ -1271,7 +1275,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
                       key={product.id}
                       onClick={() => selectSearchProduct(product)}
                     >
-                      <img src={product.image} alt="" />
+                      <img src={product.image} alt="" loading="lazy" />
                       <span>
                         <small>
                           {product.stone} · {product.category}
@@ -1594,13 +1598,14 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
             </div>
           </div>
           <div className="featured-row">
-            {featuredProducts.map((product) => (
+            {featuredProducts.map((product, index) => (
               <ProductCard
                 key={product.id}
                 product={product}
                 ui={ui}
                 isLiked={liked.includes(product.id)}
                 onToggleLike={() => toggleLike(product.id)}
+                loading={index < 6 ? "eager" : "lazy"}
               />
             ))}
           </div>
