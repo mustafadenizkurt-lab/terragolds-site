@@ -156,6 +156,41 @@ export default function CustomersPanel({
     }
   };
 
+  const deleteCustomer = async (customer: CustomerRow) => {
+    if (
+      !window.confirm(
+        `${customer.first_name} ${customer.last_name} (${customer.email}) müşterisini silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`,
+      )
+    ) {
+      return;
+    }
+    setSavingId(customer.id);
+    setError("");
+    try {
+      await readJson(
+        await fetch(`/api/admin/customers/${customer.id}`, {
+          method: "DELETE",
+        }),
+      );
+      setCustomers((current) =>
+        current.filter((item) => item.id !== customer.id),
+      );
+      if (editingCustomer?.id === customer.id) {
+        setEditingCustomer(null);
+        setDraft(null);
+      }
+      onNotice("Müşteri silindi.");
+    } catch (deleteError) {
+      setError(
+        deleteError instanceof Error
+          ? deleteError.message
+          : "Müşteri silinemedi.",
+      );
+    } finally {
+      setSavingId(null);
+    }
+  };
+
   const saveCustomer = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!draft) return;
@@ -392,6 +427,14 @@ export default function CustomersPanel({
                     onClick={() => beginEdit(customer)}
                   >
                     Düzenle
+                  </button>
+                  <button
+                    className="admin-row-action danger"
+                    type="button"
+                    disabled={savingId === customer.id}
+                    onClick={() => void deleteCustomer(customer)}
+                  >
+                    Sil
                   </button>
                 </span>
               </div>

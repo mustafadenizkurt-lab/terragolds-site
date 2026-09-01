@@ -303,7 +303,7 @@
 .admin-data-table.customers .admin-data-head, .admin-data-table.customers .admin-data-row {
   grid-template-columns: minmax(210px, 1.35fr) minmax(110px, 0.6fr) minmax(70px, 0.35fr)
     minmax(105px, 0.55fr) minmax(118px, 0.55fr) minmax(125px, 0.55fr)
-    minmax(92px, 0.4fr);
+    minmax(160px, 0.6fr);
 }
 .admin-data-table.saved-cards .admin-data-head, .admin-data-table.saved-cards .admin-data-row {
   grid-template-columns: minmax(200px, 1.2fr) minmax(145px, 0.8fr) minmax(120px, 0.55fr)
@@ -351,6 +351,25 @@
   border-color: #b9872f;
   background: #f3dfae;
   color: #3f2910;
+}
+.admin-row-action.danger {
+  border-color: #d9a394;
+  background: #fdf2ef;
+  color: #934334;
+}
+.admin-row-action.danger:hover {
+  border-color: #b4432c;
+  background: #f8dcd4;
+  color: #6e2415;
+}
+.admin-row-action:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.admin-data-table.customers .admin-data-row > span:last-child {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 .admin-customer-editor {
   margin: 18px 0 22px;
@@ -691,7 +710,7 @@
   }
   .admin-data-table.customers .admin-data-head, .admin-data-table.customers .admin-data-row {
     grid-template-columns: minmax(180px, 1.2fr) minmax(100px, 0.55fr) minmax(118px, 0.6fr)
-      minmax(90px, 0.45fr);
+      minmax(150px, 0.5fr);
   }
   .admin-data-table.customers .admin-data-head span:nth-child(3), .admin-data-table.customers .admin-data-head span:nth-child(4), .admin-data-table.customers .admin-data-head span:nth-child(5), .admin-data-table.customers .admin-data-row > span:nth-child(3), .admin-data-table.customers .admin-data-row > span:nth-child(4), .admin-data-table.customers .admin-data-row > span:nth-child(5) {
     display: none;
