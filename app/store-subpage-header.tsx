@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import { activeCategoryGroups, type CategoryGroup } from "../lib/category-groups";
 import {
   subgroupsForGroup,
-  tallyCategoryCounts,
   type CategorySubgroup,
 } from "../lib/category-subgroups";
 import { useCart } from "../lib/cart-context";
@@ -95,15 +94,19 @@ export default function StoreSubpageHeader({
         (response) =>
           response.json() as Promise<{
             settings?: ContactSettings;
-            products?: { category: string }[];
+            categorySummary?: { name: string; count: number }[];
           }>,
       )
       .then((data) => {
         setContact(data.settings ?? {});
-        const categories = (data.products ?? []).map((product) => product.category);
-        const activeGroups = activeCategoryGroups(categories);
+        const categorySummary = data.categorySummary ?? [];
+        const activeGroups = activeCategoryGroups(
+          categorySummary.map((entry) => entry.name),
+        );
         setGroups(activeGroups);
-        const categoryCounts = tallyCategoryCounts(categories);
+        const categoryCounts = Object.fromEntries(
+          categorySummary.map((entry) => [entry.name, entry.count]),
+        );
         setSubgroupsByGroupSlug(
           new Map(
             activeGroups.map((group) => [

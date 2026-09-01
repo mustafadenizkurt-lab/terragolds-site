@@ -6,6 +6,7 @@ import {
   type Product,
   type StoreSettings,
 } from "./store-data";
+import { pickRotatingShowcase } from "./rotating-showcase";
 
 type ProductRow = {
   id: number;
@@ -277,4 +278,271 @@ export async function readSettings() {
     }
   }
   return settings;
+}
+
+// --- Below: query-level building blocks for the storefront-catalog
+// performance work (see PROJECT NOTES: "en büyük performans sorunu" plan).
+// Not wired into any route or component yet - that's later, per-consumer
+// migration phases, once each one is ready to move off the full-catalog
+// /api/store payload.
+
+export type ReadProductsPageOptions = {
+  page?: number;
+  pageSize?: number;
+  /** Exact match against products.category. "Tümü" (or omitted) means no filter. */
+  category?: string;
+  /** Case-insensitive substring match against name/stone/category/description. */
+  q?: string;
+  /** Inclusive bounds, compared against the discounted price (see below). */
+  minPrice?: number;
+  maxPrice?: number;
+  inStock?: boolean;
+  discountOnly?: boolean;
+};
+
+export type ProductsPage = {
+  products: Product[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+};
+
+// Mirrors getDiscountedPrice() in lib/store-data.ts: discount clamped to
+// 0-90, then price * (100 - discount) / 100, rounded. SQLite's min()/max()
+// are scalar (not aggregate) when called with 2+ arguments, so this reads
+// the same as the JS version.
+const DISCOUNTED_PRICE_SQL =
+  "ROUND(products.price * (100 - MIN(90, MAX(0, products.discount_percent))) / 100.0)";
+
+/**
+ * Paginated + filtered product listing, computed in D1 (WHERE/LIMIT/OFFSET)
+ * instead of fetching the whole catalog and filtering it in the browser.
+ * Intended to back the public catalog grid (currently home-client.tsx's
+ * filteredProducts/catalogProducts/pagination chain).
+ */
+export async function readProductsPage(
+  options: ReadProductsPageOptions = {},
+): Promise<ProductsPage> {
+  await ensureSeedData();
+  const db = getD1();
+
+  const pageSize = Math.min(100, Math.max(1, Math.round(options.pageSize ?? 15)));
+  const requestedPage = Math.max(1, Math.round(options.page ?? 1));
+
+  const conditions: string[] = ["products.status = 'published'"];
+  const params: (string | number)[] = [];
+
+  if (options.category && options.category !== "Tümü") {
+    conditions.push("products.category = ?");
+    params.push(options.category);
+  }
+  if (options.q?.trim()) {
+    const like = `%${options.q.trim().toLocaleLowerCase("tr-TR")}%`;
+    conditions.push(
+      `(LOWER(products.name) LIKE ? OR LOWER(products.stone) LIKE ?
+        OR LOWER(products.category) LIKE ? OR LOWER(products.description) LIKE ?)`,
+    );
+    params.push(like, like, like, like);
+  }
+  if (options.inStock) {
+    conditions.push("products.stock > 0");
+  }
+  if (options.discountOnly) {
+    conditions.push("products.discount_percent > 0");
+  }
+  if (options.minPrice !== undefined) {
+    conditions.push(`${DISCOUNTED_PRICE_SQL} >= ?`);
+    params.push(options.minPrice);
+  }
+  if (options.maxPrice !== undefined) {
+    conditions.push(`${DISCOUNTED_PRICE_SQL} <= ?`);
+    params.push(options.maxPrice);
+  }
+
+  const whereClause = conditions.join(" AND ");
+
+  const countRow = await db
+    .prepare(`SELECT COUNT(*) AS total FROM products WHERE ${whereClause}`)
+    .bind(...params)
+    .first<{ total: number }>();
+  const totalCount = countRow?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const page = Math.min(requestedPage, totalPages);
+  const offset = (page - 1) * pageSize;
+
+  const rows = await db
+    .prepare(
+      `SELECT products.*,
+              COALESCE(ROUND(AVG(product_reviews.rating), 1), 0) AS review_average,
+              COUNT(product_reviews.id) AS review_count
+       FROM products
+       LEFT JOIN product_reviews ON product_reviews.product_id = products.id
+       WHERE ${whereClause}
+       GROUP BY products.id
+       ORDER BY products.sort_order, products.id
+       LIMIT ? OFFSET ?`,
+    )
+    .bind(...params, pageSize, offset)
+    .all<ProductRow>();
+
+  return {
+    products: rows.results.map(mapProduct),
+    page,
+    pageSize,
+    totalCount,
+    totalPages,
+  };
+}
+
+/**
+ * Fetches published products by id, for consumers that only need a small,
+ * specific subset (favorites, recently-viewed) instead of the whole
+ * catalog. Order is NOT guaranteed to match `ids` - callers that care about
+ * a specific order (e.g. a shuffled showcase) should re-sort by id
+ * themselves, the way readShowcaseProducts() below does.
+ */
+export async function readProductsByIds(ids: number[]): Promise<Product[]> {
+  const uniqueIds = [...new Set(ids)].filter(
+    (id) => Number.isInteger(id) && id > 0,
+  );
+  if (uniqueIds.length === 0) return [];
+
+  await ensureSeedData();
+  const db = getD1();
+  const placeholders = uniqueIds.map(() => "?").join(",");
+  const rows = await db
+    .prepare(
+      `SELECT products.*,
+              COALESCE(ROUND(AVG(product_reviews.rating), 1), 0) AS review_average,
+              COUNT(product_reviews.id) AS review_count
+       FROM products
+       LEFT JOIN product_reviews ON product_reviews.product_id = products.id
+       WHERE products.id IN (${placeholders}) AND products.status = 'published'
+       GROUP BY products.id
+       ORDER BY products.sort_order, products.id`,
+    )
+    .bind(...uniqueIds)
+    .all<ProductRow>();
+  return rows.results.map(mapProduct);
+}
+
+export type ShowcaseCounts = {
+  featuredCount?: number;
+  newestCount?: number;
+  discountCount?: number;
+  lowStockCount?: number;
+};
+
+export type ShowcaseProducts = {
+  featured: Product[];
+  newest: Product[];
+  discount: Product[];
+  lowStock: Product[];
+};
+
+/**
+ * Backs the homepage's "Öne Çıkanlar" / "Yeni Gelenler" / "İndirimde" rows
+ * and the profile page's low-stock alert rail, without fetching the full
+ * catalog to compute them in the browser.
+ *
+ * "newest" and "discount" reproduce today's client-side behavior exactly:
+ * pickRotatingShowcase() does a seeded shuffle (same seed/salt as
+ * home-client.tsx uses) over the *entire* eligible pool, re-picking every 6
+ * hours. Shuffling full Product rows in memory would defeat the point of
+ * this function, so instead we shuffle just the id list (cheap to fetch)
+ * and then look up full rows only for the ids that were actually picked -
+ * same selection, far less data moved. The id pool is fetched in the same
+ * sort_order/id ordering readProducts() used to return it in, so the
+ * shuffle lands on the identical picks for a given seed.
+ */
+export async function readShowcaseProducts(
+  counts: ShowcaseCounts = {},
+): Promise<ShowcaseProducts> {
+  await ensureSeedData();
+  const db = getD1();
+
+  const featuredCount = counts.featuredCount ?? 8;
+  const newestCount = counts.newestCount ?? 8;
+  const discountCount = counts.discountCount ?? 8;
+  const lowStockCount = counts.lowStockCount ?? 4;
+
+  const [featuredRows, newestPoolIds, discountPoolIds, lowStockRows] =
+    await Promise.all([
+      db
+        .prepare(
+          `SELECT products.*,
+                  COALESCE(ROUND(AVG(product_reviews.rating), 1), 0) AS review_average,
+                  COUNT(product_reviews.id) AS review_count
+           FROM products
+           LEFT JOIN product_reviews ON product_reviews.product_id = products.id
+           WHERE products.status = 'published' AND products.featured = 1
+           GROUP BY products.id
+           ORDER BY products.sort_order, products.id
+           LIMIT ?`,
+        )
+        .bind(featuredCount)
+        .all<ProductRow>(),
+      db
+        .prepare(
+          `SELECT id FROM products
+           WHERE status = 'published' AND stock > 0
+           ORDER BY sort_order, id`,
+        )
+        .all<{ id: number }>(),
+      db
+        .prepare(
+          `SELECT id FROM products
+           WHERE status = 'published' AND stock > 0 AND discount_percent > 0
+           ORDER BY sort_order, id`,
+        )
+        .all<{ id: number }>(),
+      db
+        .prepare(
+          `SELECT products.*,
+                  COALESCE(ROUND(AVG(product_reviews.rating), 1), 0) AS review_average,
+                  COUNT(product_reviews.id) AS review_count
+           FROM products
+           LEFT JOIN product_reviews ON product_reviews.product_id = products.id
+           WHERE products.status = 'published' AND products.stock > 0 AND products.stock <= 3
+           GROUP BY products.id
+           ORDER BY products.sort_order, products.id
+           LIMIT ?`,
+        )
+        .bind(lowStockCount)
+        .all<ProductRow>(),
+    ]);
+
+  // Same seed/salt as home-client.tsx's newestProducts/discountShowcase.
+  const newestIds = pickRotatingShowcase(
+    newestPoolIds.results.map((row) => row.id),
+    newestCount,
+    1,
+  );
+  const discountIds = pickRotatingShowcase(
+    discountPoolIds.results.map((row) => row.id),
+    discountCount,
+    2,
+  );
+
+  const [newestFetched, discountFetched] = await Promise.all([
+    readProductsByIds(newestIds),
+    readProductsByIds(discountIds),
+  ]);
+
+  // readProductsByIds() orders by sort_order/id, not shuffle order - put
+  // the picked items back in the order pickRotatingShowcase() chose them.
+  const inShuffleOrder = (ids: number[], products: Product[]) => {
+    const byId = new Map(products.map((product) => [product.id, product]));
+    return ids
+      .map((id) => byId.get(id))
+      .filter((product): product is Product => Boolean(product));
+  };
+
+  return {
+    featured: featuredRows.results.map(mapProduct),
+    newest: inShuffleOrder(newestIds, newestFetched),
+    discount: inShuffleOrder(discountIds, discountFetched),
+    lowStock: lowStockRows.results.map(mapProduct),
+  };
 }
