@@ -2,6 +2,7 @@ import { env } from "cloudflare:workers";
 import {
   defaultProducts,
   defaultSettings,
+  getDiscountedPrice,
   settingsKeys,
   type Product,
   type StoreSettings,
@@ -315,6 +316,16 @@ export type ProductsPage = {
 const DISCOUNTED_PRICE_SQL =
   "ROUND(products.price * (100 - MIN(90, MAX(0, products.discount_percent))) / 100.0)";
 
+// SQLite's LOWER() only case-folds ASCII A-Z, so it leaves Turkish letters
+// (İ, I, Ç, Ğ, Ö, Ş, Ü) untouched - "İnci" would stay "İnci" instead of
+// becoming "inci", breaking LIKE matches against a query already lowered
+// with JS's tr-TR locale (which folds I -> ı and İ -> i, not the ASCII
+// I -> i mapping). Replacing the Turkish letters explicitly before LOWER()
+// reproduces the same casefolding SQL-side.
+function trLowerSql(column: string): string {
+  return `LOWER(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(${column},'İ','i'),'I','ı'),'Ç','ç'),'Ğ','ğ'),'Ö','ö'),'Ş','ş'),'Ü','ü'))`;
+}
+
 /**
  * Paginated + filtered product listing, computed in D1 (WHERE/LIMIT/OFFSET)
  * instead of fetching the whole catalog and filtering it in the browser.
@@ -340,8 +351,8 @@ export async function readProductsPage(
   if (options.q?.trim()) {
     const like = `%${options.q.trim().toLocaleLowerCase("tr-TR")}%`;
     conditions.push(
-      `(LOWER(products.name) LIKE ? OR LOWER(products.stone) LIKE ?
-        OR LOWER(products.category) LIKE ? OR LOWER(products.description) LIKE ?)`,
+      `(${trLowerSql("products.name")} LIKE ? OR ${trLowerSql("products.stone")} LIKE ?
+        OR ${trLowerSql("products.category")} LIKE ? OR ${trLowerSql("products.description")} LIKE ?)`,
     );
     params.push(like, like, like, like);
   }
@@ -545,4 +556,88 @@ export async function readShowcaseProducts(
     discount: inShuffleOrder(discountIds, discountFetched),
     lowStock: lowStockRows.results.map(mapProduct),
   };
+}
+
+/**
+ * Backs the header search box in home-client.tsx. Reproduces its exact
+ * weighted-scoring behavior (name match > stone > category > description,
+ * with a small featured bump), but candidates are pre-filtered in D1 via
+ * LIKE instead of scoring the entire catalog in the browser - only the
+ * matched rows (usually a small fraction of the catalog) are fetched, and
+ * only the top `limit` of those are returned.
+ */
+export async function searchProducts(
+  query: string,
+  limit = 8,
+): Promise<Product[]> {
+  await ensureSeedData();
+  const db = getD1();
+  const trimmed = query.trim();
+
+  if (!trimmed) {
+    const rows = await db
+      .prepare(
+        `SELECT products.*,
+                COALESCE(ROUND(AVG(product_reviews.rating), 1), 0) AS review_average,
+                COUNT(product_reviews.id) AS review_count
+         FROM products
+         LEFT JOIN product_reviews ON product_reviews.product_id = products.id
+         WHERE products.status = 'published' AND products.stock > 0
+         GROUP BY products.id
+         ORDER BY products.sort_order, products.id
+         LIMIT 5`,
+      )
+      .all<ProductRow>();
+    return rows.results.map(mapProduct);
+  }
+
+  const needle = `%${trimmed.toLocaleLowerCase("tr-TR")}%`;
+  // `featured = 1` has to be part of the candidate WHERE, not just the score
+  // below: featured products get a flat +2 in the scoring formula, which
+  // alone clears the score > 0 cutoff even with zero text match - so any
+  // featured product is a valid "match" for every query.
+  const rows = await db
+    .prepare(
+      `SELECT products.*,
+              COALESCE(ROUND(AVG(product_reviews.rating), 1), 0) AS review_average,
+              COUNT(product_reviews.id) AS review_count
+       FROM products
+       LEFT JOIN product_reviews ON product_reviews.product_id = products.id
+       WHERE products.status = 'published' AND (
+         ${trLowerSql("products.name")} LIKE ? OR
+         ${trLowerSql("products.stone")} LIKE ? OR
+         ${trLowerSql("products.category")} LIKE ? OR
+         ${trLowerSql("products.description")} LIKE ? OR
+         products.featured = 1
+       )
+       GROUP BY products.id`,
+    )
+    .bind(needle, needle, needle, needle)
+    .all<ProductRow>();
+
+  const q = trimmed.toLocaleLowerCase("tr-TR");
+  return rows.results
+    .map(mapProduct)
+    .map((product) => {
+      const name = product.name.toLocaleLowerCase("tr-TR");
+      const stone = product.stone.toLocaleLowerCase("tr-TR");
+      const categoryName = product.category.toLocaleLowerCase("tr-TR");
+      const description = product.description.toLocaleLowerCase("tr-TR");
+      const score =
+        (name.startsWith(q) ? 40 : 0) +
+        (name.includes(q) ? 24 : 0) +
+        (stone.includes(q) ? 18 : 0) +
+        (categoryName.includes(q) ? 14 : 0) +
+        (description.includes(q) ? 4 : 0) +
+        (product.featured ? 2 : 0);
+      return { product, score };
+    })
+    .filter((entry) => entry.score > 0)
+    .sort(
+      (first, second) =>
+        second.score - first.score ||
+        getDiscountedPrice(first.product) - getDiscountedPrice(second.product),
+    )
+    .map((entry) => entry.product)
+    .slice(0, limit);
 }
