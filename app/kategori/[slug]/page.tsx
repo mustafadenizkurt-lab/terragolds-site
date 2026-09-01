@@ -88,7 +88,13 @@ export async function generateMetadata({
     ? new URL(categoryProducts[0].image, SITE_URL).toString()
     : `${SITE_URL}/og.png`;
   const isStoneCategory = title === "Kristaller";
-  const description = `${title} kategorisinde ${categoryProducts.length} seçilmiş ${isStoneCategory ? "doğal taş ürünü" : "ürün"}. Terragolds koleksiyonunu inceleyin.`;
+  const stoneNames = [
+    ...new Set(categoryProducts.map((product) => product.stone).filter(Boolean)),
+  ].slice(0, 3);
+  const stoneText = stoneNames.length
+    ? ` ${stoneNames.join(", ")} gibi doğal taşlardan üretilmiş`
+    : "";
+  const description = `${title} kategorisinde${stoneText} ${categoryProducts.length} seçilmiş ${isStoneCategory ? "doğal taş ürünü" : "ürün"}. Terragolds koleksiyonunu inceleyin.`;
 
   return {
     title: `${title} | Terragolds`,

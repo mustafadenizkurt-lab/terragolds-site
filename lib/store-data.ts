@@ -27,6 +27,7 @@ export type Product = {
   featured: boolean;
   sortOrder: number;
   createdAt?: string;
+  updatedAt?: string;
 };
 
 export type StoreSettings = {

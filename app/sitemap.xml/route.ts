@@ -14,10 +14,32 @@ function escapeXml(value: string) {
     .replaceAll("'", "&apos;");
 }
 
+/** SQL `updated_at` timestamps ("YYYY-MM-DD HH:MM:SS") as a sitemap `<lastmod>` date. */
+function toLastmod(updatedAt: string | undefined) {
+  if (!updatedAt) return undefined;
+  const date = updatedAt.slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : undefined;
+}
+
+type SitemapUrl = {
+  loc: string;
+  priority: string;
+  frequency: string;
+  lastmod?: string;
+  image?: string;
+};
+
 export async function GET() {
   const products = await readProducts();
   const categories = [...new Set(products.map((product) => product.category))];
-  const urls = [
+  const categoryLastmod = new Map<string, string>();
+  for (const product of products) {
+    const lastmod = toLastmod(product.updatedAt);
+    if (!lastmod) continue;
+    const current = categoryLastmod.get(product.category);
+    if (!current || lastmod > current) categoryLastmod.set(product.category, lastmod);
+  }
+  const urls: SitemapUrl[] = [
     { loc: `${siteUrl}/`, priority: "1.0", frequency: "weekly" },
     { loc: `${siteUrl}/support`, priority: "0.5", frequency: "monthly" },
     { loc: `${siteUrl}/hakkimizda`, priority: "0.6", frequency: "monthly" },
@@ -66,22 +88,33 @@ export async function GET() {
       loc: `${siteUrl}/kategori/${categoryToSlug(category)}`,
       priority: "0.7",
       frequency: "weekly",
+      lastmod: categoryLastmod.get(category),
     })),
     ...products.map((product) => ({
       loc: `${siteUrl}/products/${product.slug || product.id}`,
       priority: "0.8",
       frequency: "weekly",
+      lastmod: toLastmod(product.updatedAt),
+      image: product.image
+        ? new URL(product.image, siteUrl).toString()
+        : undefined,
     })),
   ];
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
 ${urls
   .map(
     (url) => `  <url>
     <loc>${escapeXml(url.loc)}</loc>
     <changefreq>${url.frequency}</changefreq>
-    <priority>${url.priority}</priority>
+    <priority>${url.priority}</priority>${
+      url.lastmod ? `\n    <lastmod>${url.lastmod}</lastmod>` : ""
+    }${
+      url.image
+        ? `\n    <image:image>\n      <image:loc>${escapeXml(url.image)}</image:loc>\n    </image:image>`
+        : ""
+    }
   </url>`,
   )
   .join("\n")}
