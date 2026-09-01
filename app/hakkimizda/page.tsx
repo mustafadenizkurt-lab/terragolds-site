@@ -25,7 +25,7 @@ export default async function AboutPage() {
           </span>
           <Link href="/#shop">Koleksiyonu incele</Link>
         </div>
-        <img src="/terragolds-gold-showcase.png" alt="Terragolds doğal taş koleksiyonu" />
+        <img src="/terragolds-gold-showcase.webp" alt="Terragolds doğal taş koleksiyonu" />
       </section>
       <section className="about-values">
         <article><span>01</span><h2>Özenli seçim</h2><p>Her parçayı form, yüzey, renk dengesi ve sergileme karakteri açısından inceliyoruz.</p></article>
