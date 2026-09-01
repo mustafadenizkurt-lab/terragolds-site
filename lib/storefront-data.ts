@@ -12,15 +12,13 @@ export type CategorySummaryEntry = {
 };
 
 export type StorefrontData = {
-  products: Product[];
   settings: StoreSettings;
   content: SiteContent;
   categories: string[];
   /**
    * {name, count} per category - for consumers that only need category
    * names and product counts (nav dropdowns, filter chips), not the full
-   * product list. Added so those consumers can stop fetching `products`
-   * just to read its `.category` field off every row.
+   * product list.
    */
   categorySummary: CategorySummaryEntry[];
   warning?: string;
@@ -35,36 +33,41 @@ function tallyCategorySummary(products: Product[]): CategorySummaryEntry[] {
 }
 
 /**
- * Shared by the public homepage (server-rendered, so first paint already
- * has real data instead of the curated defaults) and /api/store (used for
- * client-side refreshes after mount). Keeping this in one place avoids the
- * two call sites drifting apart.
+ * Backs /api/store. Every client component that used to read `products`
+ * off this (search, catalog grid, showcases, favorites, recently-viewed)
+ * has been migrated to its own dedicated, D1-backed endpoint
+ * (/api/products, /api/search, /api/showcase, /api/products-by-ids) - so
+ * this no longer fetches the full catalog (readProducts(), thousands of
+ * rows) on the common path, only settings/content/category summary.
  */
 export async function readStorefrontData(): Promise<StorefrontData> {
   try {
-    const [products, settings] = await Promise.all([
-      readProducts(false),
+    const [settings, content, categoryRows] = await Promise.all([
       readSettings(),
-    ]);
-    const [content, categoryRows] = await Promise.all([
       readPublishedSiteContent(),
       readProductCategories(false),
     ]);
-    const categories = categoryRows.length
-      ? categoryRows.map((category) => category.name)
-      : [...new Set(products.map((product) => product.category))];
-    const categorySummary = categoryRows.length
-      ? categoryRows.map((category) => ({
-          name: category.name,
-          count: category.productCount,
-        }))
-      : tallyCategorySummary(products);
-    return { products, settings, content, categories, categorySummary };
+    let categories: string[];
+    let categorySummary: CategorySummaryEntry[];
+    if (categoryRows.length) {
+      categories = categoryRows.map((category) => category.name);
+      categorySummary = categoryRows.map((category) => ({
+        name: category.name,
+        count: category.productCount,
+      }));
+    } else {
+      // Rare fallback (product_categories should already be seeded by
+      // ensureSeedData() at this point) - derive from the full catalog
+      // rather than returning an empty nav.
+      const products = await readProducts(false);
+      categories = [...new Set(products.map((product) => product.category))];
+      categorySummary = tallyCategorySummary(products);
+    }
+    return { settings, content, categories, categorySummary };
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Mağaza verileri alınamadı.";
     return {
-      products: defaultProducts,
       settings: defaultSettings,
       content: defaultSiteContent,
       categories: [
