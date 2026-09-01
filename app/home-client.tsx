@@ -15,7 +15,6 @@ import {
 import { activeCategoryGroups, type CategoryGroup } from "../lib/category-groups";
 import {
   subgroupsForGroup,
-  tallyCategoryCounts,
   type CategorySubgroup,
 } from "../lib/category-subgroups";
 import CategoryNavDropdown from "./category-nav-dropdown";
@@ -571,7 +570,9 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
     useState<StoreSettings>(initialSettings);
   const [content, setContent] =
     useState<SiteContent>(defaultSiteContent);
-  const [managedCategories, setManagedCategories] = useState<string[]>([]);
+  const [categorySummary, setCategorySummary] = useState<
+    { name: string; count: number }[]
+  >([]);
   const cart = useCart();
   const [purchaseQuantities, setPurchaseQuantities] = useState<
     Record<number, number>
@@ -616,7 +617,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
           products?: Product[];
           settings?: StoreSettings;
           content?: SiteContent;
-          categories?: string[];
+          categorySummary?: { name: string; count: number }[];
           warning?: string;
           }>,
       )
@@ -626,7 +627,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
           }
           if (data.settings) setSettings(data.settings);
           if (data.content) setContent(data.content);
-          if (data.categories) setManagedCategories(data.categories);
+          if (data.categorySummary) setCategorySummary(data.categorySummary);
         })
       .catch(() => {
         // The curated defaults keep the storefront usable during local preview.
@@ -708,24 +709,25 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
     return () => window.removeEventListener("scroll", updateHeaderMode);
   }, []);
 
+  // Category names/counts come from /api/store's categorySummary (a small,
+  // pre-tallied {name, count} list computed server-side) instead of being
+  // derived by mapping over the full product list here.
   const categories = useMemo(
-    () => [
-      "Tümü",
-      ...(managedCategories.length
-        ? managedCategories
-        : Array.from(new Set(products.map((item) => item.category)))),
-    ],
-    [managedCategories, products],
+    () => ["Tümü", ...categorySummary.map((entry) => entry.name)],
+    [categorySummary],
   );
 
   const activeGroups = useMemo(
-    () => activeCategoryGroups(products.map((item) => item.category)),
-    [products],
+    () => activeCategoryGroups(categorySummary.map((entry) => entry.name)),
+    [categorySummary],
   );
   const groupUrl = (group: CategoryGroup) => `/kategori/${group.slug}`;
   const navCategoryCounts = useMemo(
-    () => tallyCategoryCounts(products.map((item) => item.category)),
-    [products],
+    () =>
+      Object.fromEntries(
+        categorySummary.map((entry) => [entry.name, entry.count]),
+      ),
+    [categorySummary],
   );
   const subgroupsByGroupSlug = useMemo(() => {
     const map = new Map<string, CategorySubgroup[]>();
@@ -735,22 +737,18 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
     return map;
   }, [activeGroups, navCategoryCounts]);
 
+  const totalProductCount = useMemo(
+    () => categorySummary.reduce((sum, entry) => sum + entry.count, 0),
+    [categorySummary],
+  );
   const categoryCounts = useMemo(() => {
     const counts = new Map<string, number>();
-    counts.set(categories[0], products.length);
-    for (const product of products) {
-      counts.set(product.category, (counts.get(product.category) ?? 0) + 1);
+    counts.set(categories[0], totalProductCount);
+    for (const entry of categorySummary) {
+      counts.set(entry.name, entry.count);
     }
     return counts;
-  }, [categories, products]);
-
-  const filteredProducts = useMemo(
-    () =>
-      category === "Tümü"
-        ? products
-        : products.filter((product) => product.category === category),
-    [category, products],
-  );
+  }, [categories, categorySummary, totalProductCount]);
 
   const featuredProducts = useMemo(
     () =>
@@ -864,53 +862,89 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
     };
   }, [menuOpen]);
 
-  const catalogProducts = useMemo(() => {
-    const query = catalogQuery.trim().toLocaleLowerCase("tr-TR");
-    const minPrice = catalogMinPrice ? Number(catalogMinPrice) : null;
-    const maxPrice = catalogMaxPrice ? Number(catalogMaxPrice) : null;
+  // The catalog grid (category/text/price/stock/discount filters +
+  // pagination) is computed in D1 via /api/products instead of filtering
+  // the full product list in the browser - see lib/store-db.ts's
+  // readProductsPage(). catalogData holds the current page's results plus
+  // the server's page/count bookkeeping.
+  const [catalogData, setCatalogData] = useState<{
+    products: Product[];
+    page: number;
+    pageSize: number;
+    totalCount: number;
+    totalPages: number;
+  }>({
+    products: [],
+    page: 1,
+    pageSize: CATALOG_PRODUCTS_PER_PAGE,
+    totalCount: 0,
+    totalPages: 1,
+  });
 
-    return filteredProducts.filter((product) => {
-      const price = getDiscountedPrice(product);
-      const matchesQuery =
-        !query ||
-        [product.name, product.stone, product.category, product.description]
-          .join(" ")
-          .toLocaleLowerCase("tr-TR")
-          .includes(query);
-      const matchesMin = minPrice === null || price >= minPrice;
-      const matchesMax = maxPrice === null || price <= maxPrice;
-      const matchesStock = !catalogInStockOnly || product.stock > 0;
-      const matchesDiscount =
-        !catalogDiscountOnly || product.discountPercent > 0;
-      return (
-        matchesQuery &&
-        matchesMin &&
-        matchesMax &&
-        matchesStock &&
-        matchesDiscount
-      );
-    });
+  useEffect(() => {
+    const controller = new AbortController();
+    // Debounced: typing in the search/price fields would otherwise fire a
+    // request per keystroke. Toggling a checkbox or changing category still
+    // feels instant since 300ms is well under perceptible UI lag.
+    const timer = window.setTimeout(() => {
+      const params = new URLSearchParams();
+      params.set("page", String(catalogPage));
+      params.set("pageSize", String(CATALOG_PRODUCTS_PER_PAGE));
+      if (category !== "Tümü") params.set("category", category);
+      if (catalogQuery.trim()) params.set("q", catalogQuery.trim());
+      if (catalogMinPrice) params.set("minPrice", catalogMinPrice);
+      if (catalogMaxPrice) params.set("maxPrice", catalogMaxPrice);
+      if (catalogInStockOnly) params.set("inStock", "true");
+      if (catalogDiscountOnly) params.set("discountOnly", "true");
+
+      fetch(`/api/products?${params.toString()}`, {
+        cache: "no-store",
+        signal: controller.signal,
+      })
+        .then(
+          (response) =>
+            response.json() as Promise<{
+              products?: Product[];
+              page?: number;
+              pageSize?: number;
+              totalCount?: number;
+              totalPages?: number;
+            }>,
+        )
+        .then((data) => {
+          setCatalogData({
+            products: data.products ?? [],
+            page: data.page ?? 1,
+            pageSize: data.pageSize ?? CATALOG_PRODUCTS_PER_PAGE,
+            totalCount: data.totalCount ?? 0,
+            totalPages: data.totalPages ?? 1,
+          });
+          // The server clamps an out-of-range page (e.g. a filter change
+          // shrank the result set) - mirror that back so the "page N"
+          // control and the Önceki/Sonraki buttons agree with what's shown.
+          if (data.page && data.page !== catalogPage) {
+            setCatalogPage(data.page);
+          }
+        })
+        .catch((error) => {
+          if (error instanceof Error && error.name === "AbortError") return;
+          setCatalogData((current) => ({ ...current, products: [] }));
+        });
+    }, 300);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
   }, [
-    catalogDiscountOnly,
-    catalogInStockOnly,
-    catalogMaxPrice,
-    catalogMinPrice,
+    category,
     catalogQuery,
-    filteredProducts,
+    catalogMinPrice,
+    catalogMaxPrice,
+    catalogInStockOnly,
+    catalogDiscountOnly,
+    catalogPage,
   ]);
-
-  const catalogPageCount = Math.max(
-    1,
-    Math.ceil(catalogProducts.length / CATALOG_PRODUCTS_PER_PAGE),
-  );
-  const safeCatalogPage = Math.min(catalogPage, catalogPageCount);
-  const catalogPageWindow = buildPageWindow(safeCatalogPage, catalogPageCount);
-  const catalogPageStart =
-    (safeCatalogPage - 1) * CATALOG_PRODUCTS_PER_PAGE;
-  const visibleCatalogProducts = catalogProducts.slice(
-    catalogPageStart,
-    catalogPageStart + CATALOG_PRODUCTS_PER_PAGE,
-  );
 
   useEffect(() => {
     // Reset pagination when filters change so users see the first matching item.
@@ -925,15 +959,13 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
     category,
   ]);
 
-  useEffect(() => {
-    if (catalogPage > catalogPageCount) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setCatalogPage(catalogPageCount);
-    }
-  }, [catalogPage, catalogPageCount]);
+  const catalogPageWindow = buildPageWindow(
+    catalogData.page,
+    catalogData.totalPages,
+  );
 
   const goToCatalogPage = (page: number) => {
-    const nextPage = Math.min(Math.max(1, page), catalogPageCount);
+    const nextPage = Math.min(Math.max(1, page), catalogData.totalPages);
     setCatalogPage(nextPage);
     window.setTimeout(() => {
       catalogResultsRef.current?.scrollIntoView({
@@ -1864,13 +1896,15 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
 
           <div className="catalog-results" ref={catalogResultsRef}>
             <div className="catalog-results-head">
-              <span>{ui.showingProducts(catalogProducts.length, products.length)}</span>
-              {catalogPageCount > 1 && (
-                <span>{ui.pageStatus(safeCatalogPage, catalogPageCount)}</span>
+              <span>
+                {ui.showingProducts(catalogData.totalCount, totalProductCount)}
+              </span>
+              {catalogData.totalPages > 1 && (
+                <span>{ui.pageStatus(catalogData.page, catalogData.totalPages)}</span>
               )}
             </div>
             <div className="product-grid">
-          {visibleCatalogProducts.map((product) => (
+          {catalogData.products.map((product) => (
             <ProductCard
               key={product.id}
               product={product}
@@ -1880,12 +1914,12 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
             />
           ))}
             </div>
-            {catalogPageCount > 1 && (
+            {catalogData.totalPages > 1 && (
               <div className="catalog-pagination" aria-label="Ürün sayfaları">
                 <button
                   type="button"
-                  onClick={() => goToCatalogPage(safeCatalogPage - 1)}
-                  disabled={safeCatalogPage === 1}
+                  onClick={() => goToCatalogPage(catalogData.page - 1)}
+                  disabled={catalogData.page === 1}
                 >
                   {ui.previousPage}
                 </button>
@@ -1894,10 +1928,10 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
                     typeof page === "number" ? (
                       <button
                         type="button"
-                        className={page === safeCatalogPage ? "active" : ""}
+                        className={page === catalogData.page ? "active" : ""}
                         key={page}
                         onClick={() => goToCatalogPage(page)}
-                        aria-current={page === safeCatalogPage ? "page" : undefined}
+                        aria-current={page === catalogData.page ? "page" : undefined}
                       >
                         {page}
                       </button>
@@ -1914,8 +1948,8 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
                 </div>
                 <button
                   type="button"
-                  onClick={() => goToCatalogPage(safeCatalogPage + 1)}
-                  disabled={safeCatalogPage === catalogPageCount}
+                  onClick={() => goToCatalogPage(catalogData.page + 1)}
+                  disabled={catalogData.page === catalogData.totalPages}
                 >
                   {ui.nextPage}
                 </button>
