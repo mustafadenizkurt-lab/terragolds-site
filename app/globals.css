@@ -779,7 +779,7 @@ body {
   border: 1px solid rgba(180, 126, 37, 0.26);
   border-radius: 8px;
   background: linear-gradient(90deg, rgba(255, 247, 226, 0.2), rgba(255, 255, 255, 0.02), rgba(78, 50, 15, 0.16)),
-    url("/terragolds-gold-showcase.png") center / cover no-repeat;
+    url("/terragolds-gold-showcase.webp") center / cover no-repeat;
   box-shadow: 0 26px 64px rgba(150, 104, 35, 0.18),
     inset 0 0 0 1px rgba(255, 255, 255, 0.1);
   position: relative;

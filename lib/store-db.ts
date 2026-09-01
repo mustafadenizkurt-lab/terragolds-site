@@ -149,16 +149,28 @@ export async function ensureSeedData() {
       .run();
   }
 
-  await db
-    .prepare(
-      `INSERT OR IGNORE INTO product_categories
-        (name, description, active, sort_order)
-       SELECT category, '', 1, MIN(sort_order)
-       FROM products
-       WHERE TRIM(category) <> ''
-       GROUP BY category`,
-    )
-    .run();
+  // The category-from-products backfill below scans every row (GROUP BY
+  // category) to catch any category name that doesn't have a
+  // product_categories row yet. That's real one-time setup work, not
+  // something every page load needs to redo - once at least one category
+  // row exists, this cheap existence check short-circuits it. It re-runs
+  // automatically if product_categories is ever emptied out, or (via the
+  // !count?.total check) while the products table itself is still empty.
+  const hasCategoryRow = await db
+    .prepare("SELECT 1 FROM product_categories LIMIT 1")
+    .first<{ 1: number }>();
+  if (!count?.total || !hasCategoryRow) {
+    await db
+      .prepare(
+        `INSERT OR IGNORE INTO product_categories
+          (name, description, active, sort_order)
+         SELECT category, '', 1, MIN(sort_order)
+         FROM products
+         WHERE TRIM(category) <> ''
+         GROUP BY category`,
+      )
+      .run();
+  }
 
   await db.batch(
     settingsKeys.map((key) =>
