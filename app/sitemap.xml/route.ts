@@ -75,11 +75,6 @@ export async function GET() {
       frequency: "yearly",
     },
     {
-      loc: `${siteUrl}/iptal-ve-iade-kosullari`,
-      priority: "0.4",
-      frequency: "yearly",
-    },
-    {
       loc: `${siteUrl}/kullanim-kosullari`,
       priority: "0.4",
       frequency: "yearly",

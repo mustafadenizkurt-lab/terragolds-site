@@ -1,14 +1,11 @@
-import type { Metadata } from "next";
-import LegalDocumentPage from "../legal/legal-document-page";
+import { permanentRedirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: "İptal ve İade Koşulları | Terragolds",
-  description: "Terragolds sipariş iptali, cayma hakkı ve iade koşulları.",
-  alternates: {
-    canonical: "https://www.terragolds.com/iptal-ve-iade-kosullari",
-  },
-};
-
-export default function CancellationAndReturnsPage() {
-  return <LegalDocumentPage document="deliveryReturns" />;
+// /iptal-ve-iade-kosullari rendered LegalDocumentPage document="deliveryReturns" -
+// the exact same body content (including the return request form) as
+// /teslimat-ve-iade, just under a different title. No internal link
+// anywhere in the site points here (footer/nav/product page/legal aside
+// all use /teslimat-ve-iade), so that's the de facto canonical URL -
+// redirect here instead of serving a duplicate.
+export default function CancellationAndReturnsRedirect(): never {
+  permanentRedirect("/teslimat-ve-iade");
 }
