@@ -128,7 +128,7 @@ export const legalDocuments: LegalDocumentMeta[] = [
   { key: "cookies", label: "Çerez Politikası", previewUrl: "/cerez-politikasi", fieldPrefix: "legalCookies" },
   { key: "distanceSales", label: "Mesafeli Satış Sözleşmesi", previewUrl: "/mesafeli-satis-sozlesmesi", fieldPrefix: "legalDistanceSales" },
   { key: "preInformation", label: "Ön Bilgilendirme Formu", previewUrl: "/on-bilgilendirme-formu", fieldPrefix: "legalPreInformation" },
-  { key: "deliveryReturns", label: "Teslimat, İptal ve İade Koşulları", previewUrl: "/iptal-ve-iade-kosullari", fieldPrefix: "legalDeliveryReturns" },
+  { key: "deliveryReturns", label: "Teslimat, İptal ve İade Koşulları", previewUrl: "/teslimat-ve-iade", fieldPrefix: "legalDeliveryReturns" },
   { key: "terms", label: "Kullanım Koşulları", previewUrl: "/kullanim-kosullari", fieldPrefix: "legalTerms" },
   { key: "secureShopping", label: "Güvenli Alışveriş", previewUrl: "/guvenli-alisveris", fieldPrefix: "legalSecureShopping" },
 ];
