@@ -121,8 +121,28 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
   const title = resolved?.title ?? null;
   const categoryProducts = resolved?.products ?? [];
 
+  const breadcrumbUrl = alt
+    ? `${SITE_URL}/kategori/${slug}?alt=${alt}`
+    : `${SITE_URL}/kategori/${slug}`;
+
   return (
     <main className="category-page">
+      {title && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "BreadcrumbList",
+              itemListElement: [
+                { "@type": "ListItem", position: 1, name: "Ana Sayfa", item: `${SITE_URL}/` },
+                { "@type": "ListItem", position: 2, name: "Ürünler", item: `${SITE_URL}/#shop` },
+                { "@type": "ListItem", position: 3, name: title, item: breadcrumbUrl },
+              ],
+            }).replaceAll("<", "\\u003c"),
+          }}
+        />
+      )}
       <StoreSubpageHeader activeGroupSlug={slug} />
       <StoreTrustBar />
 

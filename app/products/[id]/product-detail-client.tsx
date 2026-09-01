@@ -262,7 +262,7 @@ export default function ProductDetailClient({
                   aria-label={`${product.name}, ${index + 1}. fotoğrafı göster`}
                   aria-pressed={index === selectedImageIndex}
                 >
-                  <img src={image} alt="" />
+                  <img src={image} alt={`${product.name} - görsel ${index + 1}`} />
                   <span aria-hidden="true" />
                 </button>
               ))}

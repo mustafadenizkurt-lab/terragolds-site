@@ -20,8 +20,12 @@ export async function GET() {
   const urls = [
     { loc: `${siteUrl}/`, priority: "1.0", frequency: "weekly" },
     { loc: `${siteUrl}/support`, priority: "0.5", frequency: "monthly" },
-    { loc: `${siteUrl}/iletisim`, priority: "0.5", frequency: "monthly" },
     { loc: `${siteUrl}/hakkimizda`, priority: "0.6", frequency: "monthly" },
+    {
+      loc: `${siteUrl}/guvenli-alisveris`,
+      priority: "0.5",
+      frequency: "monthly",
+    },
     { loc: `${siteUrl}/kvkk`, priority: "0.4", frequency: "yearly" },
     {
       loc: `${siteUrl}/gizlilik-politikasi`,
@@ -46,6 +50,11 @@ export async function GET() {
     {
       loc: `${siteUrl}/teslimat-ve-iade`,
       priority: "0.5",
+      frequency: "yearly",
+    },
+    {
+      loc: `${siteUrl}/iptal-ve-iade-kosullari`,
+      priority: "0.4",
       frequency: "yearly",
     },
     {

@@ -1074,9 +1074,10 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
         dangerouslySetInnerHTML={{
           __html: JSON.stringify({
             "@context": "https://schema.org",
-            "@type": "OnlineStore",
+            "@type": "Organization",
             name: "Terragolds",
             url: "https://www.terragolds.com",
+            logo: "https://www.terragolds.com/og.png",
             description:
               "Özenle seçilmiş doğal taşlar, kristaller ve koleksiyon parçaları.",
             email: settings.email || undefined,
@@ -1086,6 +1087,18 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
               settings.pinterest,
               settings.tiktok,
             ].filter(Boolean),
+          }).replaceAll("<", "\\u003c"),
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            name: "Terragolds",
+            url: "https://www.terragolds.com",
+            inLanguage: "tr-TR",
           }).replaceAll("<", "\\u003c"),
         }}
       />
@@ -1311,7 +1324,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
                       key={product.id}
                       onClick={() => selectSearchProduct(product)}
                     >
-                      <img src={product.image} alt="" loading="lazy" />
+                      <img src={product.image} alt={product.name} loading="lazy" />
                       <span>
                         <small>
                           {product.stone} · {product.category}
