@@ -35,6 +35,7 @@ type ProductRow = {
   featured: number;
   sort_order: number;
   created_at: string;
+  updated_at: string;
 };
 
 function bindings() {
@@ -217,6 +218,7 @@ function mapProduct(row: ProductRow): Product {
     featured: Boolean(row.featured),
     sortOrder: row.sort_order,
     createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
 }
 
