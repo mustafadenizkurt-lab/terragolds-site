@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import StoreSubpageHeader from "../store-subpage-header";
 import StoreSiteFooter from "../store-site-footer";
 import {
@@ -149,7 +149,9 @@ export default function ProfileClient({
 } = {}) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
+  const [favorites, setFavorites] = useState<Product[]>([]);
+  const [recentProducts, setRecentProducts] = useState<Product[]>([]);
+  const [stockAlertProducts, setStockAlertProducts] = useState<Product[]>([]);
   const [liked, setLiked] = useState<number[]>([]);
   const [recentIds, setRecentIds] = useState<number[]>([]);
   const [addresses, setAddresses] = useState<Address[]>([]);
@@ -254,26 +256,48 @@ export default function ProfileClient({
       .then(setPaymentMethods)
       .catch(() => setPaymentMethods([]));
 
-    fetch("/api/store", { cache: "no-store" })
-      .then((response) => response.json() as Promise<{ products?: Product[] }>)
-      .then((payload) => setProducts(payload.products ?? []))
-      .catch(() => setProducts([]));
+    // Low-stock alert rail: backed by the same D1 query the homepage
+    // showcase uses (readShowcaseProducts' lowStock field, default count 4).
+    fetch("/api/showcase", { cache: "no-store" })
+      .then((response) => response.json() as Promise<{ lowStock?: Product[] }>)
+      .then((payload) => setStockAlertProducts(payload.lowStock ?? []))
+      .catch(() => setStockAlertProducts([]));
   }, []);
 
-  const favorites = useMemo(
-    () => products.filter((product) => liked.includes(product.id)),
-    [liked, products],
-  );
+  // Favorites and recently-viewed are fetched by id (readProductsByIds),
+  // not filtered client-side out of the full /api/store catalog.
+  useEffect(() => {
+    if (liked.length === 0) {
+      Promise.resolve().then(() => setFavorites([]));
+      return;
+    }
+    fetch(`/api/products-by-ids?ids=${liked.join(",")}`, { cache: "no-store" })
+      .then((response) => response.json() as Promise<{ products?: Product[] }>)
+      .then((payload) => setFavorites(payload.products ?? []))
+      .catch(() => setFavorites([]));
+  }, [liked]);
 
-  const recentProducts = useMemo(() => {
-    const recent = products.filter((product) => recentIds.includes(product.id));
-    return recent.length ? recent.slice(0, 4) : products.slice(0, 4);
-  }, [products, recentIds]);
-
-  const stockAlertProducts = useMemo(
-    () => products.filter((product) => product.stock <= 3).slice(0, 4),
-    [products],
-  );
+  useEffect(() => {
+    if (recentIds.length === 0) {
+      // No recently-viewed products yet: same fallback as before - show the
+      // first 4 published products (readProductsPage's default sort order).
+      fetch("/api/products?pageSize=4", { cache: "no-store" })
+        .then((response) => response.json() as Promise<{ products?: Product[] }>)
+        .then((payload) => setRecentProducts(payload.products ?? []))
+        .catch(() => setRecentProducts([]));
+      return;
+    }
+    // Fetch every recently-viewed id (not just the first 4) so the display
+    // slice below matches the original behavior: products the browser
+    // tracked as recent that turned out unpublished/deleted don't crowd out
+    // ones further down the list.
+    fetch(`/api/products-by-ids?ids=${recentIds.join(",")}`, {
+      cache: "no-store",
+    })
+      .then((response) => response.json() as Promise<{ products?: Product[] }>)
+      .then((payload) => setRecentProducts((payload.products ?? []).slice(0, 4)))
+      .catch(() => setRecentProducts([]));
+  }, [recentIds]);
 
   const save = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();

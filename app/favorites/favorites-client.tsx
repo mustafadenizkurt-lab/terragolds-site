@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import StoreSubpageHeader from "../store-subpage-header";
 import StoreSiteFooter from "../store-site-footer";
 import StoreTrustBar from "../store-trust-bar";
@@ -36,7 +36,7 @@ export default function FavoritesClient({
   businessName?: string;
   businessAddress?: string;
 } = {}) {
-  const [products, setProducts] = useState<Product[]>([]);
+  const [favorites, setFavorites] = useState<Product[]>([]);
   const [liked, setLiked] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -55,22 +55,35 @@ export default function FavoritesClient({
 
     Promise.resolve().then(() => setLiked(storedLikes));
     syncFavorites(storedLikes);
-    fetch("/api/store", { cache: "no-store" })
+  }, []);
+
+  // Only the liked products themselves are fetched (by id), not the whole
+  // catalog to filter locally - refetches whenever the liked id set changes
+  // (e.g. after removeFavorite below, though that already updates favorites
+  // optimistically so this refetch never shows a loading flash).
+  useEffect(() => {
+    if (liked.length === 0) {
+      Promise.resolve().then(() => {
+        setFavorites([]);
+        setLoading(false);
+      });
+      return;
+    }
+    fetch(`/api/products-by-ids?ids=${liked.join(",")}`, { cache: "no-store" })
       .then(
         (response) => response.json() as Promise<{ products?: Product[] }>,
       )
-      .then((payload) => setProducts(payload.products ?? []))
+      .then((payload) => setFavorites(payload.products ?? []))
+      .catch(() => setFavorites([]))
       .finally(() => setLoading(false));
-  }, []);
-
-  const favorites = useMemo(
-    () => products.filter((product) => liked.includes(product.id)),
-    [liked, products],
-  );
+  }, [liked]);
 
   const removeFavorite = (productId: number) => {
     const next = liked.filter((id) => id !== productId);
     setLiked(next);
+    setFavorites((current) =>
+      current.filter((product) => product.id !== productId),
+    );
     window.localStorage.setItem("terragolds-liked", JSON.stringify(next));
     window.dispatchEvent(new Event("terragolds-storage"));
     syncFavorites(next);
