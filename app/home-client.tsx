@@ -565,7 +565,6 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
   const [catalogInStockOnly, setCatalogInStockOnly] = useState(false);
   const [catalogDiscountOnly, setCatalogDiscountOnly] = useState(false);
   const [catalogPage, setCatalogPage] = useState(1);
-  const [products, setProducts] = useState<Product[]>([]);
   const [settings, setSettings] =
     useState<StoreSettings>(initialSettings);
   const [content, setContent] =
@@ -587,6 +586,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<Product[]>([]);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [headerUser, setHeaderUser] = useState<HeaderUser | null>(null);
   const [headerCompact, setHeaderCompact] = useState(false);
@@ -619,7 +619,6 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
       .then(
         (response) =>
           response.json() as Promise<{
-          products?: Product[];
           settings?: StoreSettings;
           content?: SiteContent;
           categorySummary?: { name: string; count: number }[];
@@ -627,17 +626,11 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
           }>,
       )
       .then((data) => {
-          if (data.products) {
-            setProducts(data.products);
-          }
           if (data.settings) setSettings(data.settings);
           if (data.content) setContent(data.content);
           if (data.categorySummary) setCategorySummary(data.categorySummary);
         })
-      .catch(() => {
-        // The curated defaults keep the storefront usable during local preview.
-        setProducts(defaultProducts);
-      });
+      .catch(() => {});
 
     fetch("/api/showcase", { cache: "no-store" })
       .then(
@@ -685,6 +678,32 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
       .then((data) => setHeaderUser(data.user ?? null))
       .catch(() => setHeaderUser(null));
   }, []);
+
+  // Header search: results are scored server-side (readShowcaseProducts'
+  // sibling, searchProducts() in lib/store-db.ts) over the small set of
+  // catalog rows that actually match the query, instead of scoring the
+  // whole catalog in the browser.
+  useEffect(() => {
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      const params = new URLSearchParams();
+      if (searchQuery.trim()) params.set("q", searchQuery.trim());
+      fetch(`/api/search?${params.toString()}`, {
+        cache: "no-store",
+        signal: controller.signal,
+      })
+        .then((response) => response.json() as Promise<{ products?: Product[] }>)
+        .then((data) => setSearchResults(data.products ?? []))
+        .catch((error) => {
+          if (error instanceof Error && error.name === "AbortError") return;
+          setSearchResults([]);
+        });
+    }, 300);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [searchQuery]);
 
   useEffect(() => {
     window.localStorage.setItem("terragolds-language", language);
@@ -995,37 +1014,6 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
     setCatalogDiscountOnly(false);
     setCategory(categories[0]);
   };
-
-  const searchResults = useMemo(() => {
-    const query = searchQuery.trim().toLocaleLowerCase("tr-TR");
-    if (!query) {
-      return products.filter((product) => product.stock > 0).slice(0, 5);
-    }
-
-    return products
-      .map((product) => {
-        const name = product.name.toLocaleLowerCase("tr-TR");
-        const stone = product.stone.toLocaleLowerCase("tr-TR");
-        const categoryName = product.category.toLocaleLowerCase("tr-TR");
-        const description = product.description.toLocaleLowerCase("tr-TR");
-        const score =
-          (name.startsWith(query) ? 40 : 0) +
-          (name.includes(query) ? 24 : 0) +
-          (stone.includes(query) ? 18 : 0) +
-          (categoryName.includes(query) ? 14 : 0) +
-          (description.includes(query) ? 4 : 0) +
-          (product.featured ? 2 : 0);
-        return { product, score };
-      })
-      .filter((entry) => entry.score > 0)
-      .sort(
-        (first, second) =>
-          second.score - first.score ||
-          getDiscountedPrice(first.product) - getDiscountedPrice(second.product),
-      )
-      .map((entry) => entry.product)
-      .slice(0, 8);
-  }, [products, searchQuery]);
 
   const searchCategorySuggestions = useMemo(() => {
     const query = searchQuery.trim().toLocaleLowerCase("tr-TR");
