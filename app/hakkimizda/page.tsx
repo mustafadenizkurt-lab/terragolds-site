@@ -8,6 +8,7 @@ import StoreSubpageHeader from "../store-subpage-header";
 export const metadata: Metadata = {
   title: "Hakkımızda | Terragolds",
   description: "Terragolds doğal taş koleksiyonu, seçim ve paketleme yaklaşımı.",
+  alternates: { canonical: "https://www.terragolds.com/hakkimizda" },
 };
 
 export default async function AboutPage() {
