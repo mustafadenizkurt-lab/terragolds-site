@@ -573,6 +573,11 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
   const [categorySummary, setCategorySummary] = useState<
     { name: string; count: number }[]
   >([]);
+  const [showcase, setShowcase] = useState<{
+    featured: Product[];
+    newest: Product[];
+    discount: Product[];
+  }>({ featured: [], newest: [], discount: [] });
   const cart = useCart();
   const [purchaseQuantities, setPurchaseQuantities] = useState<
     Record<number, number>
@@ -632,6 +637,44 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
       .catch(() => {
         // The curated defaults keep the storefront usable during local preview.
         setProducts(defaultProducts);
+      });
+
+    fetch("/api/showcase", { cache: "no-store" })
+      .then(
+        (response) =>
+          response.json() as Promise<{
+            featured?: Product[];
+            newest?: Product[];
+            discount?: Product[];
+          }>,
+      )
+      .then((data) => {
+        setShowcase({
+          featured: data.featured ?? [],
+          newest: data.newest ?? [],
+          discount: data.discount ?? [],
+        });
+      })
+      .catch(() => {
+        // Same offline/dev fallback as /api/store above, computed the same
+        // way readShowcaseProducts() does server-side.
+        setShowcase({
+          featured: defaultProducts
+            .filter((product) => product.featured)
+            .slice(0, FEATURED_PRODUCTS_COUNT),
+          newest: pickRotatingShowcase(
+            defaultProducts.filter((product) => product.stock > 0),
+            NEW_ARRIVALS_COUNT,
+            1,
+          ),
+          discount: pickRotatingShowcase(
+            defaultProducts.filter(
+              (product) => product.discountPercent > 0 && product.stock > 0,
+            ),
+            DISCOUNT_SHOWCASE_COUNT,
+            2,
+          ),
+        });
       });
 
     fetch("/api/auth/me", { cache: "no-store" })
@@ -749,37 +792,6 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
     }
     return counts;
   }, [categories, categorySummary, totalProductCount]);
-
-  const featuredProducts = useMemo(
-    () =>
-      products
-        .filter((product) => product.featured)
-        .slice(0, FEATURED_PRODUCTS_COUNT),
-    [products],
-  );
-
-  // Rotates to a different random selection every 6 hours (same cadence as
-  // the XML sync cron) so the showcase stays fresh between real imports —
-  // purely cosmetic, it never touches price/discount/stock.
-  const newestProducts = useMemo(
-    () =>
-      pickRotatingShowcase(
-        products.filter((product) => product.stock > 0),
-        NEW_ARRIVALS_COUNT,
-        1,
-      ),
-    [products],
-  );
-
-  const discountShowcase = useMemo(
-    () =>
-      pickRotatingShowcase(
-        products.filter((product) => product.discountPercent > 0 && product.stock > 0),
-        DISCOUNT_SHOWCASE_COUNT,
-        2,
-      ),
-    [products],
-  );
 
   const themeCollectionTiles = useMemo(
     () =>
@@ -1617,7 +1629,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
         </div>
       </section>
 
-      {featuredProducts.length > 0 && (
+      {showcase.featured.length > 0 && (
         <section
           className="featured-section section-shell"
           aria-label="Öne çıkan ürünler"
@@ -1630,7 +1642,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
             </div>
           </div>
           <div className="featured-row">
-            {featuredProducts.map((product, index) => (
+            {showcase.featured.map((product, index) => (
               <ProductCard
                 key={product.id}
                 product={product}
@@ -1688,7 +1700,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
         )}
       </section>
 
-      {newestProducts.length > 0 && (
+      {showcase.newest.length > 0 && (
         <section
           className="featured-section section-shell"
           aria-label="Yeni gelen ürünler"
@@ -1701,7 +1713,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
             </div>
           </div>
           <div className="featured-row">
-            {newestProducts.map((product) => (
+            {showcase.newest.map((product) => (
               <ProductCard
                 key={product.id}
                 product={product}
@@ -1714,7 +1726,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
         </section>
       )}
 
-      {discountShowcase.length > 0 && (
+      {showcase.discount.length > 0 && (
         <section
           className="featured-section section-shell"
           aria-label="İndirimdeki ürünler"
@@ -1727,7 +1739,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
             </div>
           </div>
           <div className="featured-row">
-            {discountShowcase.map((product) => (
+            {showcase.discount.map((product) => (
               <ProductCard
                 key={product.id}
                 product={product}
