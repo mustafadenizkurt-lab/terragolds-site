@@ -1937,10 +1937,10 @@ img {
   height: 24px;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(255, 248, 232, 0.52);
+  border: 1px solid var(--dark-accent-pink);
   border-radius: 50%;
-  color: #f8f2e9;
-  background: rgba(255, 250, 241, 0.08);
+  color: #fff;
+  background: var(--dark-accent-pink);
   line-height: 1;
   transition: color 180ms ease,
     border-color 180ms ease,
@@ -1949,9 +1949,9 @@ img {
     transform 180ms ease;
 }
 .announcement-social-link:hover, .announcement-social-link:focus-visible {
-  border-color: rgba(219, 180, 125, 0.9);
-  color: #ead2ad;
-  background: rgba(219, 180, 125, 0.12);
+  border-color: var(--dark-accent-pink);
+  color: #fff;
+  background: color-mix(in srgb, var(--dark-accent-pink) 78%, white);
   box-shadow: 0 3px 12px rgba(0, 0, 0, 0.16);
   outline: none;
   transform: translateY(-1px);
@@ -1959,13 +1959,8 @@ img {
 .announcement-social-link img {
   width: 12px;
   height: 12px;
-  filter: invert(96%) sepia(8%) saturate(518%) hue-rotate(333deg)
-    brightness(104%) contrast(94%);
+  filter: brightness(0) invert(1);
   transition: filter 180ms ease;
-}
-.announcement-social-link:hover img, .announcement-social-link:focus-visible img {
-  filter: invert(86%) sepia(25%) saturate(712%) hue-rotate(350deg)
-    brightness(98%) contrast(89%);
 }
 .announcement-social-link.contact span {
   margin-top: -1px;
@@ -11736,6 +11731,11 @@ footer {
   --market-dark: #181818;
   --market-border: #e5e5e5;
   --market-muted: #777;
+  /* Used only on dark-background chrome (category nav, announcement bar
+     social icons) to match ebijuteri.com's pink accent on those elements -
+     kept separate from --market-accent (gold) so prices/ratings/sale
+     badges elsewhere on the site keep the Terragolds brand color. */
+  --dark-accent-pink: #e6007e;
   background: #fff;
   color: #222;
   font-family: Arial, Helvetica, sans-serif;
@@ -12013,14 +12013,14 @@ body:has(.market-theme)::before, body:has(.market-theme)::after, .market-theme .
   cursor: pointer;
 }
 .market-category-nav a:hover, .market-category-nav button:hover {
-  color: var(--market-accent);
+  color: var(--dark-accent-pink);
 }
 .market-category-nav a.active {
-  color: var(--market-accent);
-  border-bottom: 2px solid var(--market-accent);
+  color: var(--dark-accent-pink);
+  border-bottom: 2px solid var(--dark-accent-pink);
 }
 .market-category-nav button {
-  color: #e2794f;
+  color: var(--dark-accent-pink);
 }
 .category-nav-item {
   position: relative;
@@ -12044,11 +12044,11 @@ body:has(.market-theme)::before, body:has(.market-theme)::after, .market-theme .
   transition: transform 160ms ease, color 160ms ease;
 }
 .category-nav-item.open .category-nav-toggle {
-  color: var(--market-accent);
+  color: var(--dark-accent-pink);
   transform: rotate(180deg);
 }
 .category-nav-toggle:hover {
-  color: var(--market-accent);
+  color: var(--dark-accent-pink);
 }
 /* Rendered via a portal into document.body (see category-nav-dropdown.tsx)
    so it isn't clipped by .market-category-nav's overflow-x: auto scroll
@@ -15425,7 +15425,7 @@ body::after {
   background: #17140f !important;
 }
 .store-market-categories .sale {
-  color: #e2794f !important;
+  color: var(--dark-accent-pink) !important;
 }
 .subpage-trust-strip span {
   color: #555 !important;
