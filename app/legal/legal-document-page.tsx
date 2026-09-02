@@ -104,6 +104,12 @@ export default async function LegalDocumentPage({ document }: { document: LegalD
         footerNote={settings.footerNote}
         businessName={settings.businessName}
         address={address}
+        phone={settings.phone}
+        whatsapp={settings.whatsapp}
+        email={settings.email}
+        instagram={settings.instagram}
+        facebook={settings.facebook}
+        tiktok={settings.tiktok}
       />
       <FloatingSocialLinks />
     </main>
