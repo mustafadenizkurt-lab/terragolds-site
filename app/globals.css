@@ -12007,7 +12007,8 @@ body:has(.market-theme)::before, body:has(.market-theme)::after, .market-theme .
   color: #f2ede3;
   font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.015em;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
   white-space: nowrap;
   cursor: pointer;
 }
