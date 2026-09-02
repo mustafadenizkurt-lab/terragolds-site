@@ -346,7 +346,10 @@ export default function AdminClient({
     }
   };
 
-  const saveSettings = async (event: React.FormEvent<HTMLFormElement>) => {
+  const saveSettings = async (
+    event: React.FormEvent<HTMLFormElement>,
+    successMessage = "İletişim ve mağaza ayarları yayınlandı.",
+  ) => {
     event.preventDefault();
     setSaving(true);
     setError("");
@@ -358,7 +361,7 @@ export default function AdminClient({
       });
       const body = await readJson(response);
       setSettings(body.settings as StoreSettings);
-      flash("İletişim ve mağaza ayarları yayınlandı.");
+      flash(successMessage);
     } catch (settingsError) {
       setError(
         settingsError instanceof Error
@@ -1876,7 +1879,21 @@ export default function AdminClient({
             )}
 
             {view === "payments" && (
-              <PaymentProvidersPanel onNotice={flash} />
+              <PaymentProvidersPanel
+                onNotice={flash}
+                shippingFee={settings.shippingFee}
+                freeShippingThreshold={settings.freeShippingThreshold}
+                onShippingChange={(next) =>
+                  setSettings((current) => ({ ...current, ...next }))
+                }
+                onSaveShipping={(event) =>
+                  void saveSettings(
+                    event,
+                    "Kargo ücreti ve ücretsiz kargo limiti kaydedildi.",
+                  )
+                }
+                shippingSaving={saving}
+              />
             )}
             {view === "savedCards" && (
               <SavedCardsPanel onNotice={flash} />

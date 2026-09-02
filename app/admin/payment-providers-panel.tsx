@@ -28,8 +28,21 @@ async function readJson(response: Response) {
 
 export default function PaymentProvidersPanel({
   onNotice,
+  shippingFee,
+  freeShippingThreshold,
+  onShippingChange,
+  onSaveShipping,
+  shippingSaving,
 }: {
   onNotice: (message: string) => void;
+  shippingFee: string;
+  freeShippingThreshold: string;
+  onShippingChange: (next: {
+    shippingFee?: string;
+    freeShippingThreshold?: string;
+  }) => void;
+  onSaveShipping: (event: React.FormEvent<HTMLFormElement>) => void;
+  shippingSaving: boolean;
 }) {
   const [providers, setProviders] = useState<PaymentProviderSummary[]>([]);
   const [selectedId, setSelectedId] = useState<PaymentProviderId | null>(null);
@@ -43,11 +56,6 @@ export default function PaymentProvidersPanel({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
-  const [shipping, setShipping] = useState({
-    shippingFee: "79.90",
-    freeShippingThreshold: "1000",
-  });
-  const [shippingSaving, setShippingSaving] = useState(false);
 
   const selected = useMemo(
     () => providers.find((provider) => provider.id === selectedId) ?? null,
@@ -58,19 +66,12 @@ export default function PaymentProvidersPanel({
     setLoading(true);
     setError("");
     try {
-      const [response, shippingResponse] = await Promise.all([
-        fetch("/api/admin/payment-providers", { cache: "no-store" }),
-        fetch("/api/admin/shipping", { cache: "no-store" }),
-      ]);
-      const [body, shippingBody] = await Promise.all([
-        readJson(response),
-        readJson(shippingResponse),
-      ]);
+      const response = await fetch("/api/admin/payment-providers", {
+        cache: "no-store",
+      });
+      const body = await readJson(response);
       setProviders(
         (body.providers as PaymentProviderSummary[] | undefined) ?? [],
-      );
-      setShipping(
-        (shippingBody.shipping as typeof shipping | undefined) ?? shipping,
       );
     } catch (loadError) {
       setError(
@@ -167,30 +168,6 @@ export default function PaymentProvidersPanel({
     selected && typeof window !== "undefined"
       ? `${window.location.origin}${callbackPaths[selected.id]}`
       : "";
-
-  const saveShipping = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setShippingSaving(true);
-    setError("");
-    try {
-      const response = await fetch("/api/admin/shipping", {
-        method: "PUT",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(shipping),
-      });
-      const body = await readJson(response);
-      setShipping(body.shipping as typeof shipping);
-      onNotice("Kargo ücreti ve ücretsiz kargo limiti kaydedildi.");
-    } catch (saveError) {
-      setError(
-        saveError instanceof Error
-          ? saveError.message
-          : "Kargo ayarları kaydedilemedi.",
-      );
-    } finally {
-      setShippingSaving(false);
-    }
-  };
 
   return (
     <div className="admin-payments">
@@ -290,7 +267,7 @@ export default function PaymentProvidersPanel({
       )}
 
       {!loading && (
-        <form className="admin-shipping-settings" onSubmit={saveShipping}>
+        <form className="admin-shipping-settings" onSubmit={onSaveShipping}>
           <div>
             <p className="admin-kicker">Teslimat ücretleri</p>
             <h2>Kargo ayarları</h2>
@@ -306,12 +283,9 @@ export default function PaymentProvidersPanel({
                 type="number"
                 min="0"
                 step="0.01"
-                value={shipping.shippingFee}
+                value={shippingFee}
                 onChange={(event) =>
-                  setShipping((current) => ({
-                    ...current,
-                    shippingFee: event.target.value,
-                  }))
+                  onShippingChange({ shippingFee: event.target.value })
                 }
                 required
               />
@@ -322,12 +296,11 @@ export default function PaymentProvidersPanel({
                 type="number"
                 min="0"
                 step="0.01"
-                value={shipping.freeShippingThreshold}
+                value={freeShippingThreshold}
                 onChange={(event) =>
-                  setShipping((current) => ({
-                    ...current,
+                  onShippingChange({
                     freeShippingThreshold: event.target.value,
-                  }))
+                  })
                 }
                 required
               />
