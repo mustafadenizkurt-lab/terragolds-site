@@ -11988,16 +11988,15 @@ body:has(.market-theme)::before, body:has(.market-theme)::after, .market-theme .
   gap: clamp(18px, 2vw, 34px);
   min-height: 52px;
   padding: 0 24px;
-  border-top: 1px solid var(--market-border);
-  border-bottom: 1px solid var(--market-border);
-  background: #fff;
+  border: 0;
+  background: #17140f;
 }
 .market-category-nav a, .market-category-nav button {
   min-height: 50px;
   padding: 0;
   border: 0;
   background: transparent;
-  color: #282828;
+  color: #f2ede3;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.015em;
@@ -12012,7 +12011,7 @@ body:has(.market-theme)::before, body:has(.market-theme)::after, .market-theme .
   border-bottom: 2px solid var(--market-accent);
 }
 .market-category-nav button {
-  color: #c8452d;
+  color: #e2794f;
 }
 .category-nav-item {
   position: relative;
@@ -12031,7 +12030,7 @@ body:has(.market-theme)::before, body:has(.market-theme)::after, .market-theme .
   padding: 0 !important;
   border: 0;
   background: transparent;
-  color: #282828; /* matches .market-category-nav a's text color exactly */
+  color: #f2ede3; /* matches .market-category-nav a's text color exactly */
   cursor: pointer;
   transition: transform 160ms ease, color 160ms ease;
 }
@@ -15420,10 +15419,10 @@ body::after {
 }
 .store-market-categories {
   display: flex !important;
-  background: #fff !important;
+  background: #17140f !important;
 }
 .store-market-categories .sale {
-  color: #c8452d !important;
+  color: #e2794f !important;
 }
 .subpage-trust-strip span {
   color: #555 !important;
