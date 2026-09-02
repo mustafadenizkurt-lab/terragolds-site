@@ -9,7 +9,7 @@ import { findCategoryGroupBySlug, groupForCategory } from "../../../lib/category
 import { subgroupsForGroup, tallyCategoryCounts } from "../../../lib/category-subgroups";
 import type { Product } from "../../../lib/store-data";
 import { readProducts, readSettings } from "../../../lib/store-db";
-import QuickAddToCart from "../../quick-add-to-cart";
+import CategoryProductGrid from "../category-product-grid";
 
 export const dynamic = "force-dynamic";
 
@@ -171,62 +171,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
 
       {title ? (
         <section className="category-products section-shell">
-          <div className="category-grid">
-            {categoryProducts.map((product, index) => {
-              const imageLoading = index < 6 ? "eager" : "lazy";
-              return (
-                <article className="category-product-card" key={product.id}>
-                  <Link
-                    className={`category-product-image${
-                      product.hoverImage ? " has-hover-image" : ""
-                    }`}
-                    href={`/products/${product.slug || product.id}`}
-                    aria-label={`${product.name} detaylarını gör`}
-                  >
-                    {product.stock > 0 && product.stock <= 3 ? (
-                      <span>Son parçalar</span>
-                    ) : product.discountPercent > 0 ? (
-                      <span>%{product.discountPercent} indirim</span>
-                    ) : product.badge ? (
-                      <em>{product.badge}</em>
-                    ) : null}
-                    {product.hoverImage && (
-                      <>
-                        <i className="product-hover-zone left" />
-                        <i className="product-hover-zone right" />
-                      </>
-                    )}
-                    <img
-                      className="product-hover-image primary"
-                      src={product.image}
-                      alt={product.name}
-                      loading={imageLoading}
-                    />
-                    {product.hoverImage && (
-                      <img
-                        className="product-hover-image secondary"
-                        src={product.hoverImage}
-                        alt=""
-                        loading={imageLoading}
-                      />
-                    )}
-                    {product.hoverImage && (
-                      <span className="product-image-progress" aria-hidden="true">
-                        <i className="left" />
-                        <i className="right" />
-                      </span>
-                    )}
-                  </Link>
-                  <div className="category-product-copy">
-                    <small>{product.stone}</small>
-                    <Link href={`/products/${product.slug || product.id}`}>{product.name}</Link>
-                    <p>{product.description}</p>
-                    <QuickAddToCart product={product} />
-                  </div>
-                </article>
-              );
-            })}
-          </div>
+          <CategoryProductGrid products={categoryProducts} />
         </section>
       ) : (
         <section className="category-products section-shell">
