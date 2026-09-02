@@ -174,23 +174,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    fetch("/api/store", { cache: "no-store" })
-      .then(
-        (response) =>
-          response.json() as Promise<{ products?: Product[]; warning?: string }>,
-      )
-      .then((data) => {
-        if (data.products) {
-          setProducts(data.products);
-          if (!data.warning) {
-            setCart((current) =>
-              reconcileCartWithProducts(current, data.products ?? []),
-            );
-          }
-        }
-      })
-      .catch(() => {});
-
     fetch("/api/payments/methods", { cache: "no-store" })
       .then(
         (response) =>
@@ -219,6 +202,37 @@ export function CartProvider({ children }: { children: ReactNode }) {
     window.localStorage.setItem("terragolds-cart", JSON.stringify(cart));
     window.dispatchEvent(new Event("terragolds-storage"));
   }, [cart]);
+
+  // Only the products actually in the cart are fetched (by id), not the
+  // whole catalog - same /api/products-by-ids pattern favorites-client.tsx
+  // uses. /api/store stopped returning a `products` field once every other
+  // consumer moved to its own dedicated endpoint (see readStorefrontData's
+  // own doc comment) - this effect used to read that field and, since it
+  // never fetched anything in its place, `products` stayed permanently
+  // empty: cartItems/cartUnitCount derive from it, so the cart badge and
+  // drawer looked empty even though items were really being added to the
+  // underlying `cart` state and persisted to localStorage.
+  const cartProductIds = [...new Set(cart.map((entry) => entry.productId))]
+    .sort((a, b) => a - b)
+    .join(",");
+  useEffect(() => {
+    if (!cartProductIds) {
+      setProducts([]);
+      return;
+    }
+    fetch(`/api/products-by-ids?ids=${cartProductIds}`, { cache: "no-store" })
+      .then(
+        (response) => response.json() as Promise<{ products?: Product[] }>,
+      )
+      .then((data) => {
+        const fetchedProducts = data.products ?? [];
+        setProducts(fetchedProducts);
+        setCart((current) =>
+          reconcileCartWithProducts(current, fetchedProducts),
+        );
+      })
+      .catch(() => {});
+  }, [cartProductIds]);
 
   useEffect(() => {
     if (cart.length === 0) {
