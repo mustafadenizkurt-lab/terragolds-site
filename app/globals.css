@@ -12012,6 +12012,9 @@ body:has(.market-theme)::before, body:has(.market-theme)::after, .market-theme .
   text-transform: uppercase;
   white-space: nowrap;
   cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  font-family: inherit;
 }
 .market-category-nav a:hover, .market-category-nav button:hover {
   color: var(--dark-accent-pink);
@@ -12019,9 +12022,6 @@ body:has(.market-theme)::before, body:has(.market-theme)::after, .market-theme .
 .market-category-nav a.active {
   color: var(--dark-accent-pink);
   border-bottom: 2px solid var(--dark-accent-pink);
-}
-.market-category-nav button {
-  color: var(--dark-accent-pink);
 }
 .category-nav-item {
   position: relative;
@@ -15419,9 +15419,6 @@ body::after {
 .store-market-categories {
   display: flex !important;
   background: #17140f !important;
-}
-.store-market-categories .sale {
-  color: var(--dark-accent-pink) !important;
 }
 .subpage-trust-strip span {
   color: #555 !important;
