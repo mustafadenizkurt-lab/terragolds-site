@@ -29,8 +29,11 @@ export async function readPublishedSiteContent() {
   const content = { ...defaultSiteContent };
   for (const row of rows.results) {
     if (siteContentKeys.includes(row.key as SiteContentKey)) {
-      content[row.key as SiteContentKey] =
-        row.published_value || defaultSiteContent[row.key as SiteContentKey];
+      // Not `row.published_value || default` - an admin can deliberately
+      // clear a field to blank, and that's a real, distinct value from
+      // "never configured" (which is what the initial defaultSiteContent
+      // spread above already covers for keys with no row at all).
+      content[row.key as SiteContentKey] = row.published_value;
     }
   }
   return content;
@@ -45,8 +48,10 @@ export async function readAdminSiteContent() {
   for (const row of rows.results) {
     if (!siteContentKeys.includes(row.key as SiteContentKey)) continue;
     const key = row.key as SiteContentKey;
-    draft[key] = row.draft_value || row.published_value || defaultSiteContent[key];
-    published[key] = row.published_value || defaultSiteContent[key];
+    // Same reasoning as readPublishedSiteContent above - a deliberately
+    // blanked field must stay blank, not fall back to an older/default value.
+    draft[key] = row.draft_value;
+    published[key] = row.published_value;
     if (row.published_at && (!publishedAt || row.published_at > publishedAt)) {
       publishedAt = row.published_at;
     }
@@ -88,7 +93,12 @@ export async function saveSiteContent(input: {
   const db = getD1();
   await db.batch(
     siteContentKeys.map((key) => {
-      const draftValue = values[key] || defaultSiteContent[key];
+      // `values` was seeded from current.draft (every key already has a
+      // string, possibly "") and only overwritten above for keys the admin
+      // actually submitted - never undefined here, so no `|| default`
+      // fallback is needed (and none should exist: it would silently
+      // discard an intentionally-cleared field).
+      const draftValue = values[key];
       const publishedValue =
         input.action === "publish" ? draftValue : current.published[key];
       return db

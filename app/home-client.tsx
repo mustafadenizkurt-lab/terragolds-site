@@ -821,8 +821,12 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
       themeCollectionTileMeta.map((tile) => ({
         category: tile.category,
         image: managedContent[tile.imageKey] || tile.defaultImage,
-        title: managedContent[tile.titleKey] || tile.defaultTitle,
-        tagline: managedContent[tile.taglineKey] || tile.defaultTagline,
+        // Title/tagline are free-text admin content - an intentionally
+        // blanked field must render blank, not silently fall back (image/
+        // link keep a fallback since an empty src/href would actually
+        // break the tile, not just omit some text).
+        title: managedContent[tile.titleKey],
+        tagline: managedContent[tile.taglineKey],
         link: managedContent[tile.linkKey] || tile.defaultLink,
       })),
     [managedContent],
