@@ -141,6 +141,12 @@ export default async function ProductPage({ params }: ProductPageProps) {
         address={[settings.address, settings.district, settings.city]
           .filter(Boolean)
           .join(", ")}
+        phone={settings.phone}
+        whatsapp={settings.whatsapp}
+        email={settings.email}
+        instagram={settings.instagram}
+        facebook={settings.facebook}
+        tiktok={settings.tiktok}
       />
       <FloatingSocialLinks />
     </>

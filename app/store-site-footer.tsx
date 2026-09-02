@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Mail, MessageCircle, Phone, ShieldCheck } from "lucide-react";
 
 const legalLinks = [
   ["KVKK Aydınlatma Metni", "/kvkk"],
@@ -10,6 +11,8 @@ const legalLinks = [
   ["Kullanım Koşulları", "/kullanim-kosullari"],
   ["Güvenli Alışveriş", "/guvenli-alisveris"],
 ] as const;
+
+const paymentBadges = ["Visa", "Mastercard", "Troy", "Maestro"] as const;
 
 const copy = {
   tr: {
@@ -28,7 +31,14 @@ const copy = {
     secureShopping: "Güvenli Alışveriş",
     legal: "Yasal",
     terms: "Kullanım Koşulları",
-    copyright: "© 2026 Terragolds. Tüm hakları saklıdır.",
+    copyright: "Tüm hakları saklıdır.",
+    supportCenter: "Destek Merkezi",
+    callCenter: "Çağrı Merkezi",
+    whatsappSupport: "WhatsApp Destek",
+    support247: "7/24 Destek",
+    socialMedia: "Sosyal Medya",
+    securePayment: "Güvenli Ödeme",
+    sslSecure: "SSL Güvenli",
   },
   en: {
     tagline:
@@ -46,7 +56,14 @@ const copy = {
     secureShopping: "Secure Shopping",
     legal: "Legal",
     terms: "Terms of Use",
-    copyright: "© 2026 Terragolds. All rights reserved.",
+    copyright: "All rights reserved.",
+    supportCenter: "Support Center",
+    callCenter: "Call Center",
+    whatsappSupport: "WhatsApp Support",
+    support247: "24/7 Support",
+    socialMedia: "Social Media",
+    securePayment: "Secure Payment",
+    sslSecure: "SSL Secure",
   },
 } as const;
 
@@ -56,14 +73,29 @@ export default function StoreSiteFooter({
   footerNote,
   businessName,
   address,
+  phone,
+  whatsapp,
+  email,
+  instagram,
+  facebook,
+  tiktok,
 }: {
   lang?: "tr" | "en";
   description?: string;
   footerNote?: string;
   businessName?: string;
   address?: string;
+  phone?: string;
+  whatsapp?: string;
+  email?: string;
+  instagram?: string;
+  facebook?: string;
+  tiktok?: string;
 }) {
   const t = copy[lang];
+  const hasSupportInfo = Boolean(phone || whatsapp || email);
+  const hasSocialLinks = Boolean(instagram || facebook || tiktok);
+
   return (
     <footer className="store-site-footer">
       <div className="store-site-footer-main">
@@ -105,8 +137,88 @@ export default function StoreSiteFooter({
           <Link href="/kullanim-kosullari">{t.terms}</Link>
         </nav>
       </div>
+
+      {(hasSupportInfo || hasSocialLinks) && (
+        <div className="store-site-footer-extra">
+          {hasSupportInfo && (
+            <div className="store-site-footer-support">
+              <strong>{t.supportCenter}</strong>
+              {phone && (
+                <a className="store-site-footer-support-row" href={`tel:${phone.replace(/\s+/g, "")}`}>
+                  <Phone aria-hidden="true" size={18} strokeWidth={1.75} />
+                  <span>
+                    <small>{t.callCenter}</small>
+                    <b>{phone}</b>
+                  </span>
+                </a>
+              )}
+              {whatsapp && (
+                <a
+                  className="store-site-footer-support-row"
+                  href={`https://wa.me/${whatsapp.replace(/\D/g, "")}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <MessageCircle aria-hidden="true" size={18} strokeWidth={1.75} />
+                  <span>
+                    <small>{t.whatsappSupport}</small>
+                    <b>{whatsapp}</b>
+                  </span>
+                </a>
+              )}
+              {email && (
+                <a className="store-site-footer-support-row" href={`mailto:${email}`}>
+                  <Mail aria-hidden="true" size={18} strokeWidth={1.75} />
+                  <span>
+                    <small>{t.support247}</small>
+                    <b>{email}</b>
+                  </span>
+                </a>
+              )}
+            </div>
+          )}
+          <div className="store-site-footer-side">
+            {hasSocialLinks && (
+              <div className="store-site-footer-social">
+                <strong>{t.socialMedia}</strong>
+                <div className="store-site-footer-social-row">
+                  {instagram && (
+                    <a href={instagram} target="_blank" rel="noreferrer" aria-label="Instagram">
+                      <img src="https://cdn.jsdelivr.net/npm/simple-icons@v16/icons/instagram.svg" alt="" width={16} height={16} />
+                    </a>
+                  )}
+                  {facebook && (
+                    <a href={facebook} target="_blank" rel="noreferrer" aria-label="Facebook">
+                      <img src="https://cdn.jsdelivr.net/npm/simple-icons@v16/icons/facebook.svg" alt="" width={16} height={16} />
+                    </a>
+                  )}
+                  {tiktok && (
+                    <a href={tiktok} target="_blank" rel="noreferrer" aria-label="TikTok">
+                      <img src="https://cdn.jsdelivr.net/npm/simple-icons@v16/icons/tiktok.svg" alt="" width={16} height={16} />
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
+            <div className="store-site-footer-payments">
+              <strong>{t.securePayment}</strong>
+              <div className="store-site-footer-payments-row">
+                {paymentBadges.map((label) => (
+                  <span className="store-site-footer-payment-badge" key={label}>{label}</span>
+                ))}
+                <span className="store-site-footer-payment-badge ssl">
+                  <ShieldCheck aria-hidden="true" size={13} strokeWidth={2} />
+                  {t.sslSecure}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="store-site-footer-legal">
         <span>
+          {businessName ? `© 2026 ${businessName}. ` : "© 2026 Terragolds. "}
           {t.copyright}
           {footerNote ? ` · ${footerNote}` : ""}
         </span>

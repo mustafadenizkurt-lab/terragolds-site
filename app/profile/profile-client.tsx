@@ -143,9 +143,21 @@ function formatDate(value: string) {
 export default function ProfileClient({
   businessName,
   businessAddress,
+  phone,
+  whatsapp,
+  email,
+  instagram,
+  facebook,
+  tiktok,
 }: {
   businessName?: string;
   businessAddress?: string;
+  phone?: string;
+  whatsapp?: string;
+  email?: string;
+  instagram?: string;
+  facebook?: string;
+  tiktok?: string;
 } = {}) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -1097,7 +1109,16 @@ export default function ProfileClient({
           <div className="profile-loading">{error || "Profil bulunamadı."}</div>
         )}
       </section>
-      <StoreSiteFooter businessName={businessName} address={businessAddress} />
+      <StoreSiteFooter
+        businessName={businessName}
+        address={businessAddress}
+        phone={phone}
+        whatsapp={whatsapp}
+        email={email}
+        instagram={instagram}
+        facebook={facebook}
+        tiktok={tiktok}
+      />
     </main>
   );
 }

@@ -32,9 +32,21 @@ function collectionMessage(product: Product) {
 export default function FavoritesClient({
   businessName,
   businessAddress,
+  phone,
+  whatsapp,
+  email,
+  instagram,
+  facebook,
+  tiktok,
 }: {
   businessName?: string;
   businessAddress?: string;
+  phone?: string;
+  whatsapp?: string;
+  email?: string;
+  instagram?: string;
+  facebook?: string;
+  tiktok?: string;
 } = {}) {
   const [favorites, setFavorites] = useState<Product[]>([]);
   const [liked, setLiked] = useState<number[]>([]);
@@ -154,7 +166,16 @@ export default function FavoritesClient({
           </div>
         )}
       </section>
-      <StoreSiteFooter businessName={businessName} address={businessAddress} />
+      <StoreSiteFooter
+        businessName={businessName}
+        address={businessAddress}
+        phone={phone}
+        whatsapp={whatsapp}
+        email={email}
+        instagram={instagram}
+        facebook={facebook}
+        tiktok={tiktok}
+      />
     </main>
   );
 }

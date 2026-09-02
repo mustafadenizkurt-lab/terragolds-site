@@ -15578,6 +15578,104 @@ body::after {
 .store-site-footer-legal a {
   color: rgba(255, 255, 255, 0.48);
 }
+.store-site-footer-extra {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 40px;
+  width: min(1400px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 36px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+.store-site-footer-extra strong {
+  display: block;
+  margin-bottom: 16px;
+  color: #dcb888;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.store-site-footer-support {
+  display: grid;
+  gap: 16px;
+}
+.store-site-footer-support-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--gold);
+  text-decoration: none;
+}
+.store-site-footer-support-row span {
+  display: grid;
+  gap: 2px;
+  line-height: 1.25;
+}
+.store-site-footer-support-row small {
+  color: rgba(255, 255, 255, 0.48);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.store-site-footer-support-row b {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  transition: color 180ms ease;
+}
+.store-site-footer-support-row:hover b {
+  color: var(--gold);
+}
+.store-site-footer-side {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 40px;
+}
+.store-site-footer-social-row {
+  display: flex;
+  gap: 10px;
+}
+.store-site-footer-social-row a {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--gold);
+  transition: background 180ms ease, transform 180ms ease;
+}
+.store-site-footer-social-row a:hover {
+  background: var(--gold-dark);
+  transform: translateY(-2px);
+}
+.store-site-footer-social-row img {
+  filter: brightness(0) invert(1);
+}
+.store-site-footer-payments-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.store-site-footer-payment-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+.store-site-footer-payment-badge.ssl {
+  border-color: rgba(201, 162, 79, 0.4);
+  color: var(--gold);
+}
 .legal-hero {
   width: min(1400px, calc(100% - 48px));
   margin: 0 auto;
@@ -15983,6 +16081,12 @@ body::after {
   }
   .store-site-footer-main > div {
     grid-column: 1 / -1;
+  }
+  .store-site-footer-extra {
+    flex-direction: column;
+    gap: 30px;
+    width: calc(100% - 32px);
+    padding: 30px 0;
   }
   .store-site-footer-legal {
     display: grid;
