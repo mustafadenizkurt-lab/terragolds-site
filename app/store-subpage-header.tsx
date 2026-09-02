@@ -1,14 +1,35 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { activeCategoryGroups, type CategoryGroup } from "../lib/category-groups";
 import {
   subgroupsForGroup,
   type CategorySubgroup,
 } from "../lib/category-subgroups";
 import { useCart } from "../lib/cart-context";
+import { getDiscountedPrice, type Product } from "../lib/store-data";
 import CategoryNavDropdown from "./category-nav-dropdown";
+
+const money = new Intl.NumberFormat("tr-TR", {
+  style: "currency",
+  currency: "TRY",
+  maximumFractionDigits: 0,
+});
+
+function SearchResultPrice({ product }: { product: Product }) {
+  const discountedPrice = getDiscountedPrice(product);
+  return (
+    <span
+      className={`price-display search-price${
+        product.discountPercent > 0 ? " discounted" : ""
+      }`}
+    >
+      {product.discountPercent > 0 && <del>{money.format(product.price)}</del>}
+      <strong>{money.format(discountedPrice)}</strong>
+    </span>
+  );
+}
 
 function groupUrl(group: CategoryGroup) {
   return `/kategori/${group.slug}`;
@@ -59,12 +80,19 @@ export default function StoreSubpageHeader({
   const [favoriteCount, setFavoriteCount] = useState(0);
   const [user, setUser] = useState<HeaderUser | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchResults, setSearchResults] = useState<Product[]>([]);
   const [contact, setContact] = useState<ContactSettings>({});
   const [menuOpen, setMenuOpen] = useState(false);
   const [groups, setGroups] = useState<CategoryGroup[]>([]);
   const [subgroupsByGroupSlug, setSubgroupsByGroupSlug] = useState<
     Map<string, CategorySubgroup[]>
   >(new Map());
+  const [categorySummary, setCategorySummary] = useState<
+    { name: string; count: number }[]
+  >([]);
+  const searchAreaRef = useRef<HTMLDivElement | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -99,13 +127,14 @@ export default function StoreSubpageHeader({
       )
       .then((data) => {
         setContact(data.settings ?? {});
-        const categorySummary = data.categorySummary ?? [];
+        const summary = data.categorySummary ?? [];
+        setCategorySummary(summary);
         const activeGroups = activeCategoryGroups(
-          categorySummary.map((entry) => entry.name),
+          summary.map((entry) => entry.name),
         );
         setGroups(activeGroups);
         const categoryCounts = Object.fromEntries(
-          categorySummary.map((entry) => [entry.name, entry.count]),
+          summary.map((entry) => [entry.name, entry.count]),
         );
         setSubgroupsByGroupSlug(
           new Map(
@@ -123,8 +152,73 @@ export default function StoreSubpageHeader({
     };
   }, []);
 
+  // Debounced live search - same /api/search endpoint and scoring as the
+  // homepage header (home-client.tsx), so results are consistent on every
+  // page (product detail, category, etc.), not just the homepage.
+  useEffect(() => {
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      const params = new URLSearchParams();
+      if (searchQuery.trim()) params.set("q", searchQuery.trim());
+      fetch(`/api/search?${params.toString()}`, {
+        cache: "no-store",
+        signal: controller.signal,
+      })
+        .then((response) => response.json() as Promise<{ products?: Product[] }>)
+        .then((data) => setSearchResults(data.products ?? []))
+        .catch((error) => {
+          if (error instanceof Error && error.name === "AbortError") return;
+          setSearchResults([]);
+        });
+    }, 300);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [searchQuery]);
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    const closeSearchOutside = (event: PointerEvent) => {
+      if (
+        searchAreaRef.current &&
+        !searchAreaRef.current.contains(event.target as Node)
+      ) {
+        setSearchOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", closeSearchOutside);
+    return () => document.removeEventListener("pointerdown", closeSearchOutside);
+  }, [searchOpen]);
+
+  const searchCategorySuggestions = useMemo(() => {
+    const query = searchQuery.trim().toLocaleLowerCase("tr-TR");
+    if (!query) return [];
+    return categorySummary
+      .map((entry) => entry.name)
+      .filter((item) => item.toLocaleLowerCase("tr-TR").includes(query))
+      .slice(0, 4);
+  }, [categorySummary, searchQuery]);
+
+  const categoryCountsByName = useMemo(
+    () =>
+      Object.fromEntries(categorySummary.map((entry) => [entry.name, entry.count])),
+    [categorySummary],
+  );
+
+  const selectSearchProduct = (product: Product) => {
+    setSearchOpen(false);
+    setSearchQuery("");
+    window.location.href = `/products/${product.slug || product.id}`;
+  };
+
   const submitSearch = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const firstResult = searchResults[0];
+    if (firstResult) {
+      selectSearchProduct(firstResult);
+      return;
+    }
     const query = searchQuery.trim();
     window.location.href = query
       ? `/#shop?search=${encodeURIComponent(query)}`
@@ -176,11 +270,19 @@ export default function StoreSubpageHeader({
         </span>
       </Link>
 
-      <div className="header-search-area">
+      <div className="header-search-area" ref={searchAreaRef}>
         <form className="header-search" role="search" onSubmit={submitSearch}>
+          <span className="header-search-icon" aria-hidden="true">
+            <span className="search-glyph" />
+          </span>
           <input
+            ref={searchInputRef}
             value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
+            onFocus={() => setSearchOpen(true)}
+            onChange={(event) => {
+              setSearchQuery(event.target.value);
+              setSearchOpen(true);
+            }}
             placeholder="Ürün, taş veya kategori ara"
             aria-label="Ürün, taş veya kategori ara"
           />
@@ -188,7 +290,10 @@ export default function StoreSubpageHeader({
             <button
               className="header-search-clear"
               type="button"
-              onClick={() => setSearchQuery("")}
+              onClick={() => {
+                setSearchQuery("");
+                searchInputRef.current?.focus();
+              }}
             >
               Temizle
             </button>
@@ -197,6 +302,87 @@ export default function StoreSubpageHeader({
             <span className="search-glyph" aria-hidden="true" />
           </button>
         </form>
+
+        {searchOpen && (
+          <div
+            className="header-search-dropdown"
+            role="dialog"
+            aria-label="Arama sonuçları"
+          >
+            <div className="search-result-meta">
+              <span>
+                {searchQuery
+                  ? `"${searchQuery}" için sonuçlar`
+                  : "Öne çıkan ürünler"}
+              </span>
+              <strong>{searchResults.length} ürün</strong>
+            </div>
+
+            {searchCategorySuggestions.length > 0 && (
+              <div className="search-category-suggestions">
+                {searchCategorySuggestions.map((item) => (
+                  <button
+                    type="button"
+                    key={item}
+                    onClick={() => {
+                      setSearchOpen(false);
+                      setSearchQuery("");
+                      window.location.href = `/#shop?search=${encodeURIComponent(item)}`;
+                    }}
+                  >
+                    {item}
+                    <span>{categoryCountsByName[item] ?? 0}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="search-results">
+              {searchResults.length ? (
+                searchResults.map((product) => (
+                  <button
+                    type="button"
+                    className="search-result"
+                    key={product.id}
+                    onClick={() => selectSearchProduct(product)}
+                  >
+                    <img src={product.image} alt={product.name} loading="lazy" />
+                    <span>
+                      <small>
+                        {product.stone} · {product.category}
+                      </small>
+                      <strong>{product.name}</strong>
+                    </span>
+                    <SearchResultPrice product={product} />
+                  </button>
+                ))
+              ) : (
+                <div className="search-empty">
+                  <strong>Aradığınız ürün henüz mağazamızda bulunmuyor.</strong>
+                  <p>
+                    Farklı bir kelime deneyebilir veya taş seçimi için ekibimizden
+                    destek alabilirsiniz.
+                  </p>
+                  <a href="/support" onClick={() => setSearchOpen(false)}>
+                    Destek ekibiyle iletişime geç
+                  </a>
+                </div>
+              )}
+            </div>
+
+            <a
+              className="search-support"
+              href="/support"
+              onClick={() => setSearchOpen(false)}
+            >
+              <span>
+                <small>Doğru taşı bulmakta zorlanıyor musunuz?</small>
+                <strong>Sizinle birlikte bulalım</strong>
+              </span>
+              <b>Bize ulaşın</b>
+            </a>
+          </div>
+        )}
       </div>
 
       <div className="header-actions">
