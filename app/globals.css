@@ -11,6 +11,12 @@
   --muted: #766c5e;
   --gold: #c9a24f;
   --gold-dark: #8c6823;
+  /* Used only on dark-background chrome (category nav, announcement bar
+     social icons, footer) to match ebijuteri.com's pink accent on those
+     elements - kept separate from --gold/--market-accent so prices,
+     ratings and sale badges elsewhere on the site keep the Terragolds
+     brand color. */
+  --dark-accent-pink: #e6007e;
   --line: rgba(89, 70, 35, 0.18);
   --champagne: #f7e4b8;
   --ivory: #fffdf8;
@@ -11731,11 +11737,6 @@ footer {
   --market-dark: #181818;
   --market-border: #e5e5e5;
   --market-muted: #777;
-  /* Used only on dark-background chrome (category nav, announcement bar
-     social icons) to match ebijuteri.com's pink accent on those elements -
-     kept separate from --market-accent (gold) so prices/ratings/sale
-     badges elsewhere on the site keep the Terragolds brand color. */
-  --dark-accent-pink: #e6007e;
   background: #fff;
   color: #222;
   font-family: Arial, Helvetica, sans-serif;
@@ -12979,12 +12980,12 @@ body:has(.market-theme)::before, body:has(.market-theme)::after, .market-theme .
   width: 42px;
   height: 42px;
   place-items: center;
-  border: 1px solid rgba(180, 126, 37, 0.28);
+  border: 1px solid var(--dark-accent-pink);
   border-radius: 50%;
-  background: rgba(255, 253, 247, 0.88);
+  background: var(--dark-accent-pink);
   box-shadow: 0 16px 34px rgba(78, 54, 18, 0.16),
-    inset 0 1px 0 rgba(255, 255, 255, 0.78);
-  color: #8e661f;
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  color: #fff;
   font-size: 13px;
   font-weight: 900;
   text-decoration: none;
@@ -12996,20 +12997,15 @@ body:has(.market-theme)::before, body:has(.market-theme)::after, .market-theme .
 .floating-social-link img {
   width: 18px;
   height: 18px;
-  filter: invert(42%) sepia(32%) saturate(1064%) hue-rotate(3deg)
-    brightness(91%) contrast(86%);
+  filter: brightness(0) invert(1);
   transition: filter 180ms ease;
 }
 .floating-social-link:hover, .floating-social-link:focus-visible {
-  border-color: rgba(142, 102, 37, 0.54);
-  background: #c99839;
-  color: #fffaf0;
+  border-color: var(--dark-accent-pink);
+  background: color-mix(in srgb, var(--dark-accent-pink) 78%, white);
+  color: #fff;
   outline: none;
   transform: translateY(-2px);
-}
-.floating-social-link:hover img, .floating-social-link:focus-visible img {
-  filter: invert(99%) sepia(11%) saturate(763%) hue-rotate(325deg)
-    brightness(105%) contrast(104%);
 }
 .product-profile-visual .product-image-zoom-trigger {
   display: block;
@@ -15559,7 +15555,7 @@ body::after {
   font-size: 13px;
 }
 .store-site-footer-main nav a:hover {
-  color: var(--gold);
+  color: var(--dark-accent-pink);
 }
 .store-site-footer-legal {
   display: flex;
