@@ -11984,12 +11984,20 @@ body:has(.market-theme)::before, body:has(.market-theme)::after, .market-theme .
   z-index: 20;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: safe center;
+  flex-wrap: nowrap;
   gap: clamp(18px, 2vw, 34px);
   min-height: 52px;
   padding: 0 24px;
   border: 0;
   background: #17140f;
+  overflow-x: auto;
+  scrollbar-width: none;
+  mask-image: linear-gradient(to right, black calc(100% - 28px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, black calc(100% - 28px), transparent 100%);
+}
+.market-category-nav::-webkit-scrollbar {
+  display: none;
 }
 .market-category-nav a, .market-category-nav button {
   min-height: 50px;
@@ -11997,7 +12005,7 @@ body:has(.market-theme)::before, body:has(.market-theme)::after, .market-theme .
   border: 0;
   background: transparent;
   color: #f2ede3;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.015em;
   white-space: nowrap;
@@ -12241,12 +12249,6 @@ body:has(.market-theme)::before, body:has(.market-theme)::after, .market-theme .
     grid-template-columns: 190px minmax(260px, 1fr) auto;
     gap: 18px;
   }
-  .market-category-nav {
-    justify-content: flex-start;
-    overflow-x: auto;
-    mask-image: linear-gradient(to right, black calc(100% - 28px), transparent 100%);
-    -webkit-mask-image: linear-gradient(to right, black calc(100% - 28px), transparent 100%);
-  }
   .market-theme .product-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
@@ -12328,7 +12330,7 @@ body:has(.market-theme)::before, body:has(.market-theme)::after, .market-theme .
     align-items: center;
     justify-content: center;
     min-height: 42px;
-    font-size: 10px;
+    font-size: 11px;
   }
   .category-page .market-category-nav {
     display: none;
@@ -15961,7 +15963,7 @@ body::after {
   }
   .store-market-categories a {
     min-height: 42px !important;
-    font-size: 10px !important;
+    font-size: 11px !important;
   }
   .subpage-trust-strip {
     justify-content: flex-start !important;
