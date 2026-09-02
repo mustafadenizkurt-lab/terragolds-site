@@ -12523,6 +12523,26 @@ body:has(.market-theme)::before, body:has(.market-theme)::after, .market-theme .
 .category-product-price strong {
   font-size: 18px;
 }
+@media (max-width: 760px) {
+  .category-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+  .category-product-copy {
+    padding: 12px;
+    gap: 6px;
+  }
+  .category-product-copy a {
+    font-size: 14px;
+  }
+  .category-product-copy p {
+    min-height: 0;
+    -webkit-line-clamp: 2;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
 .catalog-filter-group > span, .catalog-filter-search > span, .catalog-check span {
   color: #4f3d22;
   font-size: 12.5px;
