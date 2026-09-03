@@ -274,6 +274,9 @@ export default function ProductDetailClient({
           <p className="profile-collection-label">{collectionMessage(product)}</p>
           <span className="product-profile-stone">{product.stone}</span>
           <h1>{product.name}</h1>
+          {product.xmlExternalId && (
+            <span className="product-profile-code">#{product.xmlExternalId}</span>
+          )}
 
           <a className="product-rating-line" href="#yorumlar">
             <strong>

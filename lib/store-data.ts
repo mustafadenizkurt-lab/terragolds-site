@@ -26,6 +26,7 @@ export type Product = {
   shopierSyncStatus: "manual" | "connected" | "pending" | "error";
   featured: boolean;
   sortOrder: number;
+  xmlExternalId?: string;
   createdAt?: string;
   updatedAt?: string;
 };

@@ -34,6 +34,7 @@ type ProductRow = {
   meta_description: string | null;
   featured: number;
   sort_order: number;
+  xml_external_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -217,6 +218,7 @@ function mapProduct(row: ProductRow): Product {
     metaDescription: row.meta_description ?? undefined,
     featured: Boolean(row.featured),
     sortOrder: row.sort_order,
+    xmlExternalId: row.xml_external_id ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
