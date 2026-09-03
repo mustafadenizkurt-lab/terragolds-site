@@ -21,6 +21,11 @@ export const categoryGroups: CategoryGroup[] = [
     label: "Şahmeran ve Halhal",
     keywords: ["şahmeran", "halhal", "hal hal"],
   },
+  {
+    slug: "antika-vintage",
+    label: "Antika ~ Vintage",
+    keywords: ["antika", "vintage"],
+  },
   { slug: "saat-kombin", label: "Saat & Kombin", keywords: ["saat", "kombin"] },
   { slug: "aksesuar", label: "Aksesuar", keywords: ["aksesuar"] },
   { slug: "kristaller", label: "Kristaller", keywords: ["kristal"] },
