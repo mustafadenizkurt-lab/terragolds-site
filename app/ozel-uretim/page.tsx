@@ -44,8 +44,6 @@ export default async function CustomOrderPage() {
         </p>
       </section>
 
-      <CustomOrderForm whatsapp={settings.whatsapp} phone={settings.phone} />
-
       {galleryItems.length > 0 && (
         <section className="custom-order-gallery-section section-shell">
           <div className="market-section-title">
@@ -70,6 +68,8 @@ export default async function CustomOrderPage() {
           </div>
         </section>
       )}
+
+      <CustomOrderForm whatsapp={settings.whatsapp} phone={settings.phone} />
 
       <StoreSiteFooter
         footerNote={settings.footerNote}
