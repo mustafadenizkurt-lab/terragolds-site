@@ -52,3 +52,7 @@ next-env.d.ts
 # stray debug screenshots left at project root
 /live-terragolds*.png
 /mobile-polish-*.png
+
+# generated repo-packing output (npx repomix) - a local analysis artifact,
+# not source code
+/repomix-output.xml
