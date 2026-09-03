@@ -18,6 +18,7 @@ import MediaLibraryPanel from "./media-library-panel";
 import SavedCardsPanel from "./saved-cards-panel";
 import SupplierImportPanel from "./supplier-import-panel";
 import XmlSuppliersPanel from "./xml-suppliers-panel";
+import XmlCodeBackfillPanel from "./xml-code-backfill-panel";
 import {
   defaultSettings,
   getDiscountedPrice,
@@ -41,6 +42,7 @@ type AdminView =
   | "xmlSuppliers"
   | "xmlPricing"
   | "xmlLogs"
+  | "skuBackfill"
   | "customers"
   | "operations"
   | "reports"
@@ -515,6 +517,9 @@ export default function AdminClient({
           <button type="button" className={view === "xmlLogs" ? "active" : ""} onClick={() => setView("xmlLogs")}>
             <span>▤</span> XML senkron geçmişi
           </button>
+          <button type="button" className={view === "skuBackfill" ? "active" : ""} onClick={() => setView("skuBackfill")}>
+            <span>#</span> Ürün Kodu Eşleştirme
+          </button>
           <button
             type="button"
             className={view === "reports" ? "active" : ""}
@@ -624,6 +629,7 @@ export default function AdminClient({
               {view === "xmlSuppliers" && "XML tedarikçileri"}
               {view === "xmlPricing" && "XML fiyatlandırma kuralları"}
               {view === "xmlLogs" && "XML senkron geçmişi"}
+              {view === "skuBackfill" && "Ürün Kodu Eşleştirme"}
               {view === "shipping" && "Kargo yönetimi"}
               {view === "payments" && "Ödeme yöntemleri"}
               {view === "discounts" && "İndirim kodları"}
@@ -1033,6 +1039,7 @@ export default function AdminClient({
             {view === "xmlSuppliers" && <XmlSuppliersPanel tab="suppliers" onNotice={flash} initialEditId={editSupplierId} onInitialEditConsumed={() => setEditSupplierId(null)} />}
             {view === "xmlPricing" && <XmlSuppliersPanel tab="pricing" onNotice={flash} onEditSupplier={id => { setEditSupplierId(id); setView("xmlSuppliers"); }} />}
             {view === "xmlLogs" && <XmlSuppliersPanel tab="logs" onNotice={flash} />}
+            {view === "skuBackfill" && <XmlCodeBackfillPanel onNotice={flash} />}
 
             {view === "operations" && (
               <OperationsPanel
