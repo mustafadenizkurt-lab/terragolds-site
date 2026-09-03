@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { readSettings } from "../../lib/store-db";
+import {
+  ensureCustomOrderGalleryTable,
+  readCustomOrderGallery,
+} from "../../lib/custom-order-gallery";
 import { FloatingSocialLinks } from "../store-shared-chrome";
 import StoreSiteFooter from "../store-site-footer";
 import StoreSubpageHeader from "../store-subpage-header";
@@ -16,7 +20,11 @@ export const metadata: Metadata = {
 };
 
 export default async function CustomOrderPage() {
-  const settings = await readSettings();
+  await ensureCustomOrderGalleryTable();
+  const [settings, galleryItems] = await Promise.all([
+    readSettings(),
+    readCustomOrderGallery(),
+  ]);
   return (
     <main className="custom-order-page">
       <StoreSubpageHeader />
@@ -37,6 +45,31 @@ export default async function CustomOrderPage() {
       </section>
 
       <CustomOrderForm whatsapp={settings.whatsapp} phone={settings.phone} />
+
+      {galleryItems.length > 0 && (
+        <section className="custom-order-gallery-section section-shell">
+          <div className="market-section-title">
+            <span aria-hidden="true">✦</span>
+            <div>
+              <small>Geçmiş işlerimiz</small>
+              <h2>Örnek Çalışmalarımız</h2>
+            </div>
+          </div>
+          <div className="custom-order-gallery-grid">
+            {galleryItems.map((item) => (
+              <figure className="custom-order-gallery-card" key={item.id}>
+                <img src={item.imageUrl} alt={item.title || "Özel üretim çalışması"} loading="lazy" />
+                {(item.title || item.description) && (
+                  <figcaption>
+                    {item.title && <strong>{item.title}</strong>}
+                    {item.description && <span>{item.description}</span>}
+                  </figcaption>
+                )}
+              </figure>
+            ))}
+          </div>
+        </section>
+      )}
 
       <StoreSiteFooter
         footerNote={settings.footerNote}
