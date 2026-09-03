@@ -61,7 +61,7 @@ export default function XmlCodeBackfillPanel({
     setCommitted(null);
     try {
       const body = await readJson(
-        await fetch("/api/admin/xml-suppliers/backfill-external-id", {
+        await fetch("/api/admin/xml-code-backfill", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
@@ -100,7 +100,7 @@ export default function XmlCodeBackfillPanel({
     setError("");
     try {
       const body = await readJson(
-        await fetch("/api/admin/xml-suppliers/backfill-external-id", {
+        await fetch("/api/admin/xml-code-backfill", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
