@@ -11,10 +11,13 @@ type BackfillReport = {
   imageField: string;
   candidateCount: number;
   matchedCount: number;
+  matchedByFilenameFallbackCount: number;
   unmatchedCount: number;
   ambiguousImageCount: number;
+  ambiguousFilenameCount: number;
   sampleMatched: { id: number; name: string; image: string; externalId: string }[];
   sampleUnmatched: { id: number; name: string; image: string }[];
+  sampleFeedRecords: { code: string; image: string }[];
 };
 
 async function readJson(response: Response) {
@@ -77,10 +80,17 @@ export default function XmlCodeBackfillPanel({
       setCodeField(nextReport.codeField);
       setImageField(nextReport.imageField);
     } catch (previewError) {
-      setError(
+      const message =
         previewError instanceof Error
           ? previewError.message
-          : "Dry-run raporu alınamadı.",
+          : "Dry-run raporu alınamadı.";
+      const looksLikeConnectivityError = /HTTP \d{3}|zaman aşımı|bağlanılamadı/i.test(
+        message,
+      );
+      setError(
+        looksLikeConnectivityError
+          ? `${message} Bu feed URL'sine şu an ulaşılamıyor - listede aynı feed'in başka bir tedarikçi kaydı varsa (farklı URL/protokol) onu seçip tekrar deneyin.`
+          : message,
       );
     } finally {
       setRunning(false);
@@ -164,10 +174,16 @@ export default function XmlCodeBackfillPanel({
               </option>
               {suppliers.map((supplier) => (
                 <option key={supplier.id} value={supplier.id}>
-                  {supplier.name}
+                  {supplier.name} — {supplier.feedUrl}
                 </option>
               ))}
             </select>
+            {supplierId !== "" && (
+              <small>
+                Seçili feed adresi:{" "}
+                {suppliers.find((supplier) => supplier.id === supplierId)?.feedUrl}
+              </small>
+            )}
           </label>
           <label className="admin-field">
             <span>Ürün kodu alanı (boş = otomatik tespit)</span>
@@ -212,12 +228,20 @@ export default function XmlCodeBackfillPanel({
               <span>Eşleşen</span>
             </div>
             <div>
+              <strong>{report.matchedByFilenameFallbackCount}</strong>
+              <span>...bunlardan sadece dosya adıyla eşleşen</span>
+            </div>
+            <div>
               <strong>{report.unmatchedCount}</strong>
               <span>Eşleşmeyen</span>
             </div>
             <div>
               <strong>{report.ambiguousImageCount}</strong>
-              <span>Belirsiz görsel (feed&apos;de aynı görsel, farklı kod)</span>
+              <span>Belirsiz görsel (tam URL, feed&apos;de farklı kod)</span>
+            </div>
+            <div>
+              <strong>{report.ambiguousFilenameCount}</strong>
+              <span>Belirsiz dosya adı (feed&apos;de farklı kod)</span>
             </div>
           </div>
 
@@ -231,6 +255,28 @@ export default function XmlCodeBackfillPanel({
               <summary>Feed&apos;de tespit edilen tüm alanlar ({report.detectedFields.length})</summary>
               <p>{report.detectedFields.join(", ")}</p>
             </details>
+          )}
+
+          {report.sampleFeedRecords.length > 0 && (
+            <div className="admin-backfill-sample">
+              <h3>Feed&apos;den ham örnek kayıtlar (seçili alanlarla)</h3>
+              <table className="admin-supplier-table">
+                <thead>
+                  <tr>
+                    <th>Kod ({report.codeField})</th>
+                    <th>Görsel ({report.imageField})</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {report.sampleFeedRecords.map((item, index) => (
+                    <tr key={index}>
+                      <td>{item.code || "(boş)"}</td>
+                      <td className="admin-supplier-image-cell">{item.image || "(boş)"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
 
           {report.sampleMatched.length > 0 && (
