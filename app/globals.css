@@ -1186,12 +1186,20 @@ body::before {
 }
 .product-profile-copy h1 {
   max-width: 650px;
-  margin: 13px 0 17px;
+  margin: 13px 0 8px;
   color: var(--forest-deep);
   font-family: var(--serif);
   font-size: clamp(42px, 4.2vw, 65px);
   font-weight: 500;
   line-height: 0.98;
+}
+.product-profile-code {
+  display: block;
+  margin-bottom: 17px;
+  color: #9a9a9a;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
 }
 .product-rating-line {
   width: fit-content;
