@@ -128,15 +128,15 @@ export async function POST(request: Request) {
     }
 
     const db = getD1();
-    const statements = batch.map(({ product }) =>
+    const statements = batch.map(({ product, externalId }) =>
       db
         .prepare(
           `INSERT INTO products
             (name, stone, category, price, cost, stock, image, hover_image, badge,
              campaign_label, discount_percent, description,
              status, shopier_url, shopier_product_id, shopier_sync_status,
-             featured, sort_order, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+             featured, sort_order, xml_external_id, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
            RETURNING id`,
         )
         .bind(
@@ -158,6 +158,7 @@ export async function POST(request: Request) {
           product.shopierSyncStatus,
           product.featured ? 1 : 0,
           product.sortOrder,
+          externalId || null,
         ),
     );
     const insertResults = await db.batch<{ id: number }>(statements);

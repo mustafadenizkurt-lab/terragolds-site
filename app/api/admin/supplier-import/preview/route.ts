@@ -105,6 +105,7 @@ export async function POST(request: Request) {
         warnings: row.warnings,
         product: row.product,
         brand: row.brand,
+        externalId: row.externalId,
       })),
       validCount: rows.length,
       errors: errors.slice(0, 20),
