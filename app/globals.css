@@ -2968,6 +2968,7 @@ img {
   justify-content: flex-start;
   gap: 8px;
   width: 100%;
+  min-width: 0;
 }
 .quick-add-qty {
   display: flex;
@@ -3015,7 +3016,8 @@ img {
   user-select: none;
 }
 .quick-add-bag {
-  flex: 0 0 auto;
+  flex: 1 1 auto;
+  min-width: 0;
   height: 28px;
   padding: 0 14px;
   border: 0;
@@ -3034,12 +3036,43 @@ img {
   cursor: pointer;
   transition: background 160ms ease, opacity 160ms ease;
 }
+.quick-add-bag span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: clip;
+}
 .quick-add-bag:hover:not(:disabled) {
   background: #262626;
 }
 .quick-add-bag:disabled {
   background: #c2c2c2;
   cursor: default;
+}
+@media (max-width: 760px) {
+  /* Narrow mobile 2-column cards don't have room for the qty stepper +
+     full "Ekle" button side by side - shrinking the stepper alone isn't
+     enough, so the button drops to icon-only here to guarantee the row
+     never exceeds the card's content width (was overflowing/getting
+     clipped by the card's overflow: hidden). */
+  .quick-add-qty {
+    width: 76px;
+  }
+  .quick-add-qty button {
+    flex: 0 0 24px;
+    width: 24px;
+  }
+  .quick-add-qty span {
+    flex: 0 0 28px;
+    width: 28px;
+  }
+  .quick-add-bag {
+    flex: 0 0 auto;
+    padding: 0;
+    width: 28px;
+  }
+  .quick-add-bag span {
+    display: none;
+  }
 }
 .product-info {
   width: 100%;
