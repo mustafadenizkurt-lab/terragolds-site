@@ -30,10 +30,12 @@ export default function CategoriesPanel({
   categories,
   onChanged,
   onNotice,
+  onAddProduct,
 }: {
   categories: ProductCategory[];
   onChanged: (categories: ProductCategory[]) => void;
   onNotice: (message: string) => void;
+  onAddProduct: (categoryName: string) => void;
 }) {
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -266,6 +268,12 @@ export default function CategoriesPanel({
             </span>
             <em>{category.sortOrder}</em>
             <div>
+              <button
+                type="button"
+                onClick={() => onAddProduct(category.name)}
+              >
+                ＋ Ürün ekle
+              </button>
               <button type="button" onClick={() => beginEdit(category)}>
                 Düzenle
               </button>

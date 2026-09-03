@@ -5600,7 +5600,7 @@ footer {
 }
 .admin-category-list > header, .admin-category-list > article {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) 110px 120px 90px 150px;
+  grid-template-columns: minmax(220px, 1fr) 110px 120px 90px 225px;
   align-items: center;
   gap: 14px;
   padding: 14px 18px;
@@ -5655,6 +5655,7 @@ footer {
 }
 .admin-category-list > article > div:last-child {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 7px;
 }

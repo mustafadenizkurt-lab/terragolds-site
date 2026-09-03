@@ -217,6 +217,15 @@ export default function AdminClient({
     setView("editor");
   };
 
+  const openNewProductInCategory = (categoryName: string) => {
+    setDraft({
+      ...emptyProduct,
+      category: categoryName,
+      sortOrder: products.length + 1,
+    });
+    setView("editor");
+  };
+
   const duplicateProduct = (product: Product) => {
     setDraft({
       ...product,
@@ -1078,6 +1087,7 @@ export default function AdminClient({
                   void loadAdminData();
                 }}
                 onNotice={flash}
+                onAddProduct={openNewProductInCategory}
               />
             )}
 
