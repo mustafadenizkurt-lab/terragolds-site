@@ -450,6 +450,7 @@ export default function StoreSubpageHeader({
           />
         ))}
         <Link className="sale" href="/#shop">Outlet</Link>
+        <Link href="/ozel-uretim">Özel Üretim</Link>
       </nav>
 
       {menuOpen && (
@@ -532,6 +533,9 @@ export default function StoreSubpageHeader({
               onClick={() => setMenuOpen(false)}
             >
               Outlet
+            </a>
+            <a href="/ozel-uretim" onClick={() => setMenuOpen(false)}>
+              Özel Üretim
             </a>
           </div>
 
