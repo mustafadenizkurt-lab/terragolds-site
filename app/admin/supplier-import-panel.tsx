@@ -22,6 +22,7 @@ type PreviewRow = {
     image: string;
   };
   brand: string;
+  externalId: string;
 };
 
 type RowError = { index: number; reason: string };
@@ -571,6 +572,7 @@ export default function SupplierImportPanel({
                     <th>Stok</th>
                     <th>Kategori</th>
                     {mapping.brand && <th>Marka</th>}
+                    {mapping.externalId && <th>Ürün Kodu</th>}
                     <th>Görsel</th>
                     <th>Uyarılar</th>
                   </tr>
@@ -583,6 +585,7 @@ export default function SupplierImportPanel({
                       <td>{row.product.stock}</td>
                       <td>{row.product.category || "—"}</td>
                       {mapping.brand && <td>{row.brand || "—"}</td>}
+                      {mapping.externalId && <td>{row.externalId || "—"}</td>}
                       <td className="admin-supplier-image-cell">
                         {row.product.image || "—"}
                       </td>

@@ -21,7 +21,8 @@ export type TargetField =
   | "category"
   | "brand"
   | "image"
-  | "description";
+  | "description"
+  | "externalId";
 
 export const targetFields: { key: TargetField; label: string; required: boolean }[] = [
   { key: "name", label: "Ürün Adı", required: true },
@@ -31,6 +32,7 @@ export const targetFields: { key: TargetField; label: string; required: boolean 
   { key: "brand", label: "Marka", required: false },
   { key: "image", label: "Görsel", required: false },
   { key: "description", label: "Açıklama", required: false },
+  { key: "externalId", label: "Ürün Kodu (SKU)", required: false },
 ];
 
 export type FieldMapping = Partial<Record<TargetField, string>>;
@@ -276,6 +278,19 @@ const keywordsByTarget: Record<TargetField, string[]> = {
   brand: ["marka", "brand", "uretici", "manufacturer"],
   image: ["resim", "gorsel", "image", "img", "foto", "photo", "picture"],
   description: ["aciklama", "description", "detay", "desc", "aciklamasi"],
+  externalId: [
+    "stokkodu",
+    "urunkodu",
+    "urunkod",
+    "productcode",
+    "itemcode",
+    "stockcode",
+    "sku",
+    "kod",
+    "code",
+    "barkod",
+    "barcode",
+  ],
 };
 
 export function guessFieldMapping(fieldNames: string[]): FieldMapping {
@@ -289,6 +304,7 @@ export function guessFieldMapping(fieldNames: string[]): FieldMapping {
     "stock",
     "image",
     "description",
+    "externalId",
   ];
 
   for (const target of priority) {
@@ -320,6 +336,7 @@ export type ImportRow = {
   index: number;
   product: ProductInput;
   brand: string;
+  externalId: string;
   warnings: string[];
 };
 export type ImportRowError = { index: number; reason: string };
@@ -362,6 +379,9 @@ export function applyMapping(
     const rawStock = mapping.stock ? (record[mapping.stock] ?? "").trim() : "";
     const rawCategory = mapping.category ? (record[mapping.category] ?? "").trim() : "";
     const rawBrand = mapping.brand ? (record[mapping.brand] ?? "").trim() : "";
+    const rawExternalId = mapping.externalId
+      ? (record[mapping.externalId] ?? "").trim()
+      : "";
     const rawImage = mapping.image ? (record[mapping.image] ?? "").trim() : "";
     const rawDescription = mapping.description
       ? (record[mapping.description] ?? "").trim()
@@ -398,7 +418,7 @@ export function applyMapping(
         filteredCount += 1;
         return;
       }
-      rows.push({ index, product, brand: rawBrand, warnings });
+      rows.push({ index, product, brand: rawBrand, externalId: rawExternalId, warnings });
     } catch (error) {
       errors.push({
         index,
