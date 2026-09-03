@@ -1,14 +1,14 @@
 import {
   getAuthorizedAdmin,
   unauthorizedAdminResponse,
-} from "../../../../../lib/admin-auth";
-import { isSameOriginRequest } from "../../../../../lib/customer-auth";
-import { getD1 } from "../../../../../lib/store-db";
+} from "../../../../lib/admin-auth";
+import { isSameOriginRequest } from "../../../../lib/customer-auth";
+import { getD1 } from "../../../../lib/store-db";
 import {
   buildReport,
   fetchFeedRecords,
   type CandidateProduct,
-} from "../../../../../lib/xml-code-backfill";
+} from "../../../../lib/xml-code-backfill";
 
 export const dynamic = "force-dynamic";
 
