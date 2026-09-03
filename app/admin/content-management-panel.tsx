@@ -10,6 +10,7 @@ import {
 } from "../../lib/site-content-types";
 import LegalDocumentsPanel from "./legal-documents-panel";
 import HomeTileImagesPanel from "./home-tile-images-panel";
+import CustomOrderGalleryPanel from "./custom-order-gallery-panel";
 
 type AdminContentState = {
   draft: SiteContent;
@@ -181,6 +182,8 @@ export default function ContentManagementPanel({
             <div className="admin-content-loading">İçerik hazırlanıyor…</div>
           ) : group.id === "legal" ? (
             <LegalDocumentsPanel draft={content.draft} onFieldChange={updateField} />
+          ) : group.id === "customOrder" ? (
+            <CustomOrderGalleryPanel onNotice={onNotice} />
           ) : (
             <>
               <div className="admin-content-fields">
@@ -226,7 +229,7 @@ export default function ContentManagementPanel({
             </>
           )}
 
-          {!loading && (
+          {!loading && group.id !== "customOrder" && (
             <footer>
               <button
                 className="admin-secondary-button"

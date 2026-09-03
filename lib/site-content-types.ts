@@ -87,7 +87,7 @@ export type SiteContent = {
 };
 
 export type SiteContentKey = keyof SiteContent;
-export type ContentGroupId = "home" | "support" | "navigation" | "seo" | "legal";
+export type ContentGroupId = "home" | "support" | "navigation" | "seo" | "legal" | "customOrder";
 
 export type LegalDocumentKey =
   | "kvkk"
@@ -370,6 +370,13 @@ export const contentGroups: ContentGroupDefinition[] = [
     label: "Hukuki Belgeler",
     description: "KVKK, gizlilik, çerez, mesafeli satış ve diğer yasal metinler.",
     previewUrl: "/kvkk",
+    fields: [],
+  },
+  {
+    id: "customOrder",
+    label: "Özel Üretim Galerisi",
+    description: "Özel Üretim sayfasındaki örnek çalışma fotoğrafları.",
+    previewUrl: "/ozel-uretim",
     fields: [],
   },
 ];
