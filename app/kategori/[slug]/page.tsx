@@ -10,6 +10,7 @@ import { subgroupsForGroup, tallyCategoryCounts } from "../../../lib/category-su
 import type { Product } from "../../../lib/store-data";
 import { readProducts, readSettings } from "../../../lib/store-db";
 import QuickAddToCart from "../../quick-add-to-cart";
+import FavoriteHeartButton from "../../favorite-heart-button";
 
 export const dynamic = "force-dynamic";
 
@@ -176,51 +177,56 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
               const imageLoading = index < 6 ? "eager" : "lazy";
               return (
                 <article className="category-product-card" key={product.id}>
-                  <Link
-                    className={`category-product-image${
-                      product.hoverImage ? " has-hover-image" : ""
-                    }`}
-                    href={`/products/${product.slug || product.id}`}
-                    aria-label={`${product.name} detaylarını gör`}
-                  >
-                    {product.stock > 0 && product.stock <= 3 ? (
-                      <span>Son parçalar</span>
-                    ) : product.discountPercent > 0 ? (
-                      <span>%{product.discountPercent} indirim</span>
-                    ) : product.badge ? (
-                      <em>{product.badge}</em>
-                    ) : null}
-                    {product.hoverImage && (
-                      <>
-                        <i className="product-hover-zone left" />
-                        <i className="product-hover-zone right" />
-                      </>
-                    )}
-                    <img
-                      className="product-hover-image primary"
-                      src={product.image}
-                      alt={product.name}
-                      loading={imageLoading}
-                    />
-                    {product.hoverImage && (
+                  <div className="category-product-image-wrap">
+                    <FavoriteHeartButton productId={product.id} productName={product.name} />
+                    <Link
+                      className={`category-product-image${
+                        product.hoverImage ? " has-hover-image" : ""
+                      }`}
+                      href={`/products/${product.slug || product.id}`}
+                      aria-label={`${product.name} detaylarını gör`}
+                    >
+                      {product.stock > 0 && product.stock <= 3 ? (
+                        <span>Son parçalar</span>
+                      ) : product.discountPercent > 0 ? (
+                        <span>%{product.discountPercent} indirim</span>
+                      ) : product.badge ? (
+                        <em>{product.badge}</em>
+                      ) : null}
+                      {product.hoverImage && (
+                        <>
+                          <i className="product-hover-zone left" />
+                          <i className="product-hover-zone right" />
+                        </>
+                      )}
                       <img
-                        className="product-hover-image secondary"
-                        src={product.hoverImage}
-                        alt=""
+                        className="product-hover-image primary"
+                        src={product.image}
+                        alt={product.name}
                         loading={imageLoading}
                       />
-                    )}
-                    {product.hoverImage && (
-                      <span className="product-image-progress" aria-hidden="true">
-                        <i className="left" />
-                        <i className="right" />
-                      </span>
-                    )}
-                  </Link>
+                      {product.hoverImage && (
+                        <img
+                          className="product-hover-image secondary"
+                          src={product.hoverImage}
+                          alt=""
+                          loading={imageLoading}
+                        />
+                      )}
+                      {product.hoverImage && (
+                        <span className="product-image-progress" aria-hidden="true">
+                          <i className="left" />
+                          <i className="right" />
+                        </span>
+                      )}
+                    </Link>
+                  </div>
                   <div className="category-product-copy">
                     <small>{product.stone}</small>
+                    {product.xmlExternalId && (
+                      <span className="product-code">#{product.xmlExternalId}</span>
+                    )}
                     <Link href={`/products/${product.slug || product.id}`}>{product.name}</Link>
-                    <p>{product.description}</p>
                     <QuickAddToCart product={product} />
                   </div>
                 </article>

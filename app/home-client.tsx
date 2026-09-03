@@ -542,6 +542,9 @@ function ProductCard({
       <a className="product-info" href={`/products/${product.slug || product.id}`}>
         <span className="product-info-copy">
           <small>{product.stone}</small>
+          {product.xmlExternalId && (
+            <span className="product-code">#{product.xmlExternalId}</span>
+          )}
           <strong>{product.name}</strong>
         </span>
       </a>
