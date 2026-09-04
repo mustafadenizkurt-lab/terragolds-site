@@ -83,6 +83,8 @@ export const products = sqliteTable("products", {
   metaDescription: text("meta_description"),
   featured: integer("featured", { mode: "boolean" }).notNull().default(false),
   sortOrder: integer("sort_order").notNull().default(0),
+  isDailyDeal: integer("is_daily_deal", { mode: "boolean" }).notNull().default(false),
+  dailyDealOrder: integer("daily_deal_order").notNull().default(0),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, (table) => [

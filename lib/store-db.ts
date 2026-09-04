@@ -35,6 +35,8 @@ type ProductRow = {
   featured: number;
   sort_order: number;
   xml_external_id: string | null;
+  is_daily_deal: number;
+  daily_deal_order: number;
   created_at: string;
   updated_at: string;
 };
@@ -73,6 +75,16 @@ export async function ensureSeedData() {
     .all<{ name: string }>();
   if (!columns.results.some((column) => column.name === "hover_image")) {
     await db.prepare("ALTER TABLE products ADD COLUMN hover_image TEXT").run();
+  }
+  if (!columns.results.some((column) => column.name === "is_daily_deal")) {
+    await db
+      .prepare("ALTER TABLE products ADD COLUMN is_daily_deal INTEGER NOT NULL DEFAULT 0")
+      .run();
+  }
+  if (!columns.results.some((column) => column.name === "daily_deal_order")) {
+    await db
+      .prepare("ALTER TABLE products ADD COLUMN daily_deal_order INTEGER NOT NULL DEFAULT 0")
+      .run();
   }
 
   const count = await db
@@ -219,6 +231,8 @@ function mapProduct(row: ProductRow): Product {
     featured: Boolean(row.featured),
     sortOrder: row.sort_order,
     xmlExternalId: row.xml_external_id ?? undefined,
+    isDailyDeal: Boolean(row.is_daily_deal),
+    dailyDealOrder: row.daily_deal_order,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -457,11 +471,11 @@ export type ShowcaseProducts = {
 };
 
 /**
- * Backs the homepage's "Öne Çıkanlar" / "Yeni Gelenler" / "İndirimde" rows
- * and the profile page's low-stock alert rail, without fetching the full
- * catalog to compute them in the browser.
+ * Backs the homepage's "Öne Çıkanlar" / "Yeni Gelenler" / "Günün Fırsatları"
+ * rows and the profile page's low-stock alert rail, without fetching the
+ * full catalog to compute them in the browser.
  *
- * "newest" and "discount" reproduce today's client-side behavior exactly:
+ * "newest" reproduces today's client-side behavior exactly:
  * pickRotatingShowcase() does a seeded shuffle (same seed/salt as
  * home-client.tsx uses) over the *entire* eligible pool, re-picking every 6
  * hours. Shuffling full Product rows in memory would defeat the point of
@@ -470,6 +484,10 @@ export type ShowcaseProducts = {
  * same selection, far less data moved. The id pool is fetched in the same
  * sort_order/id ordering readProducts() used to return it in, so the
  * shuffle lands on the identical picks for a given seed.
+ *
+ * "discount" ("Günün Fırsatları") is NOT automatic - it's the set of
+ * products an admin has manually marked is_daily_deal, in their own
+ * daily_deal_order, capped by discountCount (see /api/showcase).
  */
 export async function readShowcaseProducts(
   counts: ShowcaseCounts = {},
@@ -482,7 +500,7 @@ export async function readShowcaseProducts(
   const discountCount = counts.discountCount ?? 8;
   const lowStockCount = counts.lowStockCount ?? 4;
 
-  const [featuredRows, newestPoolIds, discountPoolIds, lowStockRows] =
+  const [featuredRows, newestPoolIds, discountRows, lowStockRows] =
     await Promise.all([
       db
         .prepare(
@@ -505,13 +523,24 @@ export async function readShowcaseProducts(
            ORDER BY sort_order, id`,
         )
         .all<{ id: number }>(),
+      // "Günün Fırsatları" - manually curated by an admin (is_daily_deal),
+      // not an automatic discount-based pick. Ordered by the admin's own
+      // daily_deal_order, capped so an admin marking too many products
+      // can't blow out the homepage row.
       db
         .prepare(
-          `SELECT id FROM products
-           WHERE status = 'published' AND stock > 0 AND discount_percent > 0
-           ORDER BY sort_order, id`,
+          `SELECT products.*,
+                  COALESCE(ROUND(AVG(product_reviews.rating), 1), 0) AS review_average,
+                  COUNT(product_reviews.id) AS review_count
+           FROM products
+           LEFT JOIN product_reviews ON product_reviews.product_id = products.id
+           WHERE products.status = 'published' AND products.stock > 0 AND products.is_daily_deal = 1
+           GROUP BY products.id
+           ORDER BY products.daily_deal_order, products.id
+           LIMIT ?`,
         )
-        .all<{ id: number }>(),
+        .bind(discountCount)
+        .all<ProductRow>(),
       db
         .prepare(
           `SELECT products.*,
@@ -528,22 +557,13 @@ export async function readShowcaseProducts(
         .all<ProductRow>(),
     ]);
 
-  // Same seed/salt as home-client.tsx's newestProducts/discountShowcase.
+  // Same seed/salt as home-client.tsx's newestProducts.
   const newestIds = pickRotatingShowcase(
     newestPoolIds.results.map((row) => row.id),
     newestCount,
     1,
   );
-  const discountIds = pickRotatingShowcase(
-    discountPoolIds.results.map((row) => row.id),
-    discountCount,
-    2,
-  );
-
-  const [newestFetched, discountFetched] = await Promise.all([
-    readProductsByIds(newestIds),
-    readProductsByIds(discountIds),
-  ]);
+  const newestFetched = await readProductsByIds(newestIds);
 
   // readProductsByIds() orders by sort_order/id, not shuffle order - put
   // the picked items back in the order pickRotatingShowcase() chose them.
@@ -557,7 +577,7 @@ export async function readShowcaseProducts(
   return {
     featured: featuredRows.results.map(mapProduct),
     newest: inShuffleOrder(newestIds, newestFetched),
-    discount: inShuffleOrder(discountIds, discountFetched),
+    discount: discountRows.results.map(mapProduct),
     lowStock: lowStockRows.results.map(mapProduct),
   };
 }

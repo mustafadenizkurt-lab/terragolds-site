@@ -102,7 +102,7 @@ const moneyWithCents = new Intl.NumberFormat("tr-TR", {
 const CATALOG_PRODUCTS_PER_PAGE = 15;
 const NEW_ARRIVALS_COUNT = 12;
 const FEATURED_PRODUCTS_COUNT = 10;
-const DISCOUNT_SHOWCASE_COUNT = 12;
+const DISCOUNT_SHOWCASE_COUNT = 10;
 
 type NoticeState = {
   id: number;
@@ -667,13 +667,15 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
             NEW_ARRIVALS_COUNT,
             1,
           ),
-          discount: pickRotatingShowcase(
-            defaultProducts.filter(
-              (product) => product.discountPercent > 0 && product.stock > 0,
-            ),
-            DISCOUNT_SHOWCASE_COUNT,
-            2,
-          ),
+          // "Günün Fırsatları" is admin-curated (isDailyDeal/dailyDealOrder),
+          // not a rotating pick - same rule as readShowcaseProducts() uses
+          // server-side, just applied to the offline demo catalog here.
+          discount: defaultProducts
+            .filter((product) => product.isDailyDeal && product.stock > 0)
+            .sort(
+              (a, b) => (a.dailyDealOrder ?? 0) - (b.dailyDealOrder ?? 0),
+            )
+            .slice(0, DISCOUNT_SHOWCASE_COUNT),
         });
       });
 
@@ -1745,13 +1747,13 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
       {showcase.discount.length > 0 && (
         <section
           className="featured-section section-shell"
-          aria-label="İndirimdeki ürünler"
+          aria-label="Günün fırsatları"
         >
           <div className="market-section-title">
             <span aria-hidden="true">%</span>
             <div>
               <small>Şimdi kaçırılmayacak fiyatlar</small>
-              <h2>İndirimde</h2>
+              <h2>Günün Fırsatları</h2>
             </div>
           </div>
           <div className="featured-row">
@@ -1773,7 +1775,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
           <span aria-hidden="true">%</span>
           <div>
             <small>Seçili koleksiyon</small>
-            <h2>Günün Fırsatları</h2>
+            <h2>Tüm Ürünler</h2>
           </div>
         </div>
         <div className="catalog-trust-strip" aria-label="Mağaza güvenceleri">

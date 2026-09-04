@@ -52,5 +52,7 @@ export function parseProductInput(payload: unknown): ProductInput {
     metaDescription: String(body.metaDescription ?? "").trim() || undefined,
     featured: Boolean(body.featured),
     sortOrder: Math.max(0, Math.round(Number(body.sortOrder) || 0)),
+    isDailyDeal: Boolean(body.isDailyDeal),
+    dailyDealOrder: Math.max(0, Math.round(Number(body.dailyDealOrder) || 0)),
   };
 }
