@@ -1,7 +1,7 @@
 import { getAuthorizedAdmin, unauthorizedAdminResponse } from "../../../../lib/admin-auth";
 import { parseProductInput } from "../../../../lib/product-input";
 import { resolveProductSlug } from "../../../../lib/product-slugs";
-import { getD1, readProducts } from "../../../../lib/store-db";
+import { ensureSeedData, getD1, readProducts } from "../../../../lib/store-db";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +26,7 @@ export async function POST(request: Request) {
 
   try {
     const product = parseProductInput(await request.json());
+    await ensureSeedData();
     const db = getD1();
     const created = await db
       .prepare(
@@ -34,8 +35,8 @@ export async function POST(request: Request) {
            campaign_label, discount_percent, description,
            status, shopier_url, shopier_product_id, shopier_sync_status,
            meta_title, meta_description,
-           featured, sort_order, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+           featured, sort_order, is_daily_deal, daily_deal_order, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
          RETURNING id`,
       )
       .bind(
@@ -59,6 +60,8 @@ export async function POST(request: Request) {
         product.metaDescription ?? null,
         product.featured ? 1 : 0,
         product.sortOrder,
+        product.isDailyDeal ? 1 : 0,
+        product.dailyDealOrder,
       )
       .first<{ id: number }>();
 

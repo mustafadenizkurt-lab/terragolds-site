@@ -81,6 +81,8 @@ const emptyProduct: ProductDraft = {
   metaDescription: "",
   featured: false,
   sortOrder: 0,
+  isDailyDeal: false,
+  dailyDealOrder: 0,
 };
 
 const money = new Intl.NumberFormat("tr-TR", {
@@ -1541,6 +1543,42 @@ export default function AdminClient({
                           <small>Koleksiyonun üst sırasında gösterilir.</small>
                         </span>
                       </label>
+                      <label className="admin-check">
+                        <input
+                          type="checkbox"
+                          checked={draft.isDailyDeal ?? false}
+                          onChange={(event) =>
+                            setDraft({
+                              ...draft,
+                              isDailyDeal: event.target.checked,
+                            })
+                          }
+                        />
+                        <span>
+                          <strong>Günün Fırsatları&rsquo;nda göster</strong>
+                          <small>
+                            Ana sayfada &ldquo;Günün Fırsatları&rdquo;
+                            bölümünde listelenir - en fazla ilk 10 ürün
+                            (sıraya göre) gösterilir.
+                          </small>
+                        </span>
+                      </label>
+                      {draft.isDailyDeal && (
+                        <label className="admin-field">
+                          <span>Günün Fırsatları sırası</span>
+                          <input
+                            type="number"
+                            min="0"
+                            value={draft.dailyDealOrder ?? 0}
+                            onChange={(event) =>
+                              setDraft({
+                                ...draft,
+                                dailyDealOrder: Number(event.target.value),
+                              })
+                            }
+                          />
+                        </label>
+                      )}
                     </section>
                   </aside>
                 </div>

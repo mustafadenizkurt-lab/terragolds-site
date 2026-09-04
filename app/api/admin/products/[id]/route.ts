@@ -1,7 +1,7 @@
 import { getAuthorizedAdmin, unauthorizedAdminResponse } from "../../../../../lib/admin-auth";
 import { parseProductInput } from "../../../../../lib/product-input";
 import { resolveProductSlug } from "../../../../../lib/product-slugs";
-import { getD1 } from "../../../../../lib/store-db";
+import { ensureSeedData, getD1 } from "../../../../../lib/store-db";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +19,7 @@ export async function PUT(request: Request, context: RouteContext) {
     }
 
     const product = parseProductInput(await request.json());
+    await ensureSeedData();
     const db = getD1();
     const slug = await resolveProductSlug(db, product.name, id, product.slug);
     const result = await db
@@ -29,7 +30,7 @@ export async function PUT(request: Request, context: RouteContext) {
              description = ?, status = ?,
              shopier_url = ?, shopier_product_id = ?,
              shopier_sync_status = ?, slug = ?, meta_title = ?, meta_description = ?,
-             featured = ?, sort_order = ?,
+             featured = ?, sort_order = ?, is_daily_deal = ?, daily_deal_order = ?,
              updated_at = CURRENT_TIMESTAMP
          WHERE id = ?`,
       )
@@ -55,6 +56,8 @@ export async function PUT(request: Request, context: RouteContext) {
         product.metaDescription ?? null,
         product.featured ? 1 : 0,
         product.sortOrder,
+        product.isDailyDeal ? 1 : 0,
+        product.dailyDealOrder,
         id,
       )
       .run();
