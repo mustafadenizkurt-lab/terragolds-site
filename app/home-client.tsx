@@ -232,7 +232,7 @@ const uiText = {
     faqGiftTitle: "Hediye paketi seçeneği var mı?",
     faqGiftBody: "Evet. Sipariş notunuza kısa mesajınızı ekleyerek Terragolds hediye paketiyle gönderim talep edebilirsiniz.",
     newsletter: "Bülten",
-    newsletterTitle: "Yeni taşlar geldiğinde ilk siz görün.",
+    newsletterTitle: "Yeni ürünler geldiğinde ilk siz görün.",
     emailAddress: "E-posta adresiniz",
     join: "Katıl",
     newsletterSuccessTitle: "Kaydınız alındı",
