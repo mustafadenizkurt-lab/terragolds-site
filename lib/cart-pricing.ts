@@ -1,5 +1,6 @@
 import { getDiscountedPrice } from "./store-data";
 import { getD1, readSettings } from "./store-db";
+import { VAT_RATE } from "./xml-sync/calculatePrice";
 
 export type CartInputItem = {
   productId: number;
@@ -186,7 +187,13 @@ export async function calculateCartQuote(
     freeShippingThreshold > 0 &&
     discountedSubtotal >= freeShippingThreshold;
   const shippingAmount = freeShipping ? 0 : shippingFee;
-  const totalAmount = discountedSubtotal + shippingAmount;
+  // `price` is now treated as VAT-exclusive: KDV is added on top here, on
+  // the discounted subtotal (net of any discount code - VAT is only owed
+  // on what the customer actually pays for the goods, not the pre-discount
+  // list price). Shipping is not taxed here (kept as its own line, matching
+  // the requested breakdown).
+  const vatAmount = Math.round(discountedSubtotal * VAT_RATE);
+  const totalAmount = discountedSubtotal + vatAmount + shippingAmount;
   if (totalAmount <= 0 || totalAmount > 99_999_900) {
     throw new Error("Ödenecek sipariş tutarı geçersiz.");
   }
@@ -195,6 +202,7 @@ export async function calculateCartQuote(
     items: pricedItems,
     subtotalAmount,
     discountAmount,
+    vatAmount,
     shippingAmount,
     shippingFee,
     freeShipping,

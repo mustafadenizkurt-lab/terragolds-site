@@ -358,6 +358,7 @@ export const orders = sqliteTable(
     shippingCountry: text("shipping_country").notNull().default("Turkey"),
     subtotalAmount: integer("subtotal_amount").notNull().default(0),
     discountAmount: integer("discount_amount").notNull().default(0),
+    vatAmount: integer("vat_amount").notNull().default(0),
     shippingAmount: integer("shipping_amount").notNull().default(0),
     discountCode: text("discount_code"),
     totalAmount: integer("total_amount").notNull(),

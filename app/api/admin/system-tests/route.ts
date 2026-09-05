@@ -362,6 +362,7 @@ export async function POST(request: Request) {
         quote: {
           subtotalAmount: quote.subtotalAmount,
           discountAmount: quote.discountAmount,
+          vatAmount: quote.vatAmount,
           shippingAmount: quote.shippingAmount,
           totalAmount: quote.totalAmount,
           discountCode: quote.discountCode,

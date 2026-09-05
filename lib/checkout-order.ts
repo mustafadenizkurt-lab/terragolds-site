@@ -3,6 +3,15 @@ import { calculateCartQuote } from "./cart-pricing";
 import type { PaymentProviderId } from "./payment-types";
 import { getD1 } from "./store-db";
 
+async function ensureOrdersVatColumn(db: D1Database) {
+  const columns = await db.prepare("PRAGMA table_info(orders)").all<{ name: string }>();
+  if (!columns.results.some((column) => column.name === "vat_amount")) {
+    await db
+      .prepare("ALTER TABLE orders ADD COLUMN vat_amount INTEGER NOT NULL DEFAULT 0")
+      .run();
+  }
+}
+
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function stringField(
@@ -69,6 +78,7 @@ export async function createCheckoutOrder(
   const customer = await getCustomerFromRequest(request);
 
   const db = getD1();
+  await ensureOrdersVatColumn(db);
   const quote = await calculateCartQuote(body.items, discountCode);
   const orderItems = quote.items;
   const totalAmount = quote.totalAmount;
@@ -82,11 +92,11 @@ export async function createCheckoutOrder(
           (id, user_id, status, customer_first_name, customer_last_name,
            customer_email, customer_phone, shipping_address,
            shipping_district, shipping_city, shipping_postcode,
-           shipping_country, subtotal_amount, discount_amount,
+           shipping_country, subtotal_amount, discount_amount, vat_amount,
            shipping_amount, discount_code, total_amount, currency,
            payment_provider, shopier_random_nr, customer_note, updated_at)
          VALUES (?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, 'Turkey',
-                 ?, ?, ?, ?, ?, 'TRY', ?, ?, ?, CURRENT_TIMESTAMP)`,
+                 ?, ?, ?, ?, ?, ?, 'TRY', ?, ?, ?, CURRENT_TIMESTAMP)`,
       )
       .bind(
         orderId,
@@ -101,6 +111,7 @@ export async function createCheckoutOrder(
         postcode,
         quote.subtotalAmount,
         quote.discountAmount,
+        quote.vatAmount,
         quote.shippingAmount,
         quote.discountCode,
         totalAmount,
@@ -131,6 +142,7 @@ export async function createCheckoutOrder(
     totalAmount,
     subtotalAmount: quote.subtotalAmount,
     discountAmount: quote.discountAmount,
+    vatAmount: quote.vatAmount,
     shippingAmount: quote.shippingAmount,
     discountCode: quote.discountCode,
     currency: "TRY" as const,

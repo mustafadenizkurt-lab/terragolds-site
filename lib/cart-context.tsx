@@ -20,6 +20,7 @@ export type CartEntry = {
 export type CartQuote = {
   subtotalAmount: number;
   discountAmount: number;
+  vatAmount: number;
   shippingAmount: number;
   shippingFee: number;
   freeShipping: boolean;
@@ -780,6 +781,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
                   <div className="cart-summary-row discount">
                     <span>İndirim</span>
                     <strong>−{formatCents(cartQuote.discountAmount)}</strong>
+                  </div>
+                )}
+                {cartQuote && (
+                  <div className="cart-summary-row vat">
+                    <span>KDV (%20)</span>
+                    <strong>{formatCents(cartQuote.vatAmount)}</strong>
                   </div>
                 )}
                 <div className="cart-summary-row shipping">
