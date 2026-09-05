@@ -17,6 +17,7 @@ export async function POST(request: Request) {
     return Response.json({
       subtotalAmount: quote.subtotalAmount,
       discountAmount: quote.discountAmount,
+      vatAmount: quote.vatAmount,
       shippingAmount: quote.shippingAmount,
       shippingFee: quote.shippingFee,
       freeShipping: quote.freeShipping,

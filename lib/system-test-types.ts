@@ -28,6 +28,7 @@ export type SystemTestRun = {
     quote?: {
       subtotalAmount: number;
       discountAmount: number;
+      vatAmount: number;
       shippingAmount: number;
       totalAmount: number;
       discountCode: string | null;
