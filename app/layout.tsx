@@ -5,6 +5,11 @@ import { readPublishedSiteContent } from "../lib/site-content";
 import { defaultSiteContent } from "../lib/site-content-types";
 import { readSettings } from "../lib/store-db";
 import { CartProvider } from "../lib/cart-context";
+import {
+  organizationSchema,
+  websiteSchema,
+  toJsonLd,
+} from "../lib/seo/structured-data";
 import "./globals.css";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -106,6 +111,18 @@ export default async function RootLayout({
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: toJsonLd(websiteSchema()) }}
+        />
+        {settings && (
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: toJsonLd(organizationSchema(settings)),
+            }}
+          />
+        )}
         {gaId && (
           <>
             <script

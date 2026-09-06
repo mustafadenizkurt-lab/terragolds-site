@@ -6,6 +6,13 @@ import {
   productDescriptorPhrase,
 } from "../../../lib/store-data";
 import { readProductByIdOrSlug, readSettings } from "../../../lib/store-db";
+import { categoryToSlug } from "../../../lib/category-slugs";
+import {
+  productSchema,
+  breadcrumbSchema,
+  toJsonLd,
+  SITE_URL,
+} from "../../../lib/seo/structured-data";
 import { FloatingSocialLinks } from "../../store-shared-chrome";
 import StoreSubpageHeader from "../../store-subpage-header";
 import StoreSiteFooter from "../../store-site-footer";
@@ -83,44 +90,33 @@ export default async function ProductPage({ params }: ProductPageProps) {
     permanentRedirect(`/products/${product.slug}`);
   }
 
-  const productUrl = product
-    ? `https://www.terragolds.com/products/${product.slug || product.id}`
-    : "";
   const structuredData = product
-    ? {
-        "@context": "https://schema.org",
-        "@type": "Product",
+    ? productSchema({
+        id: product.id,
         name: product.name,
         description: product.description,
-        image: [product.image, product.hoverImage]
-          .filter(Boolean)
-          .map((image) =>
-            new URL(image as string, "https://www.terragolds.com").toString(),
-          ),
-        sku: `TG-${product.id}`,
+        image: product.image,
+        hoverImage: product.hoverImage,
         category: product.category,
-        brand: { "@type": "Brand", name: "Terragolds" },
-        offers: {
-          "@type": "Offer",
-          url: productUrl,
-          priceCurrency: "TRY",
-          price: getDiscountedPrice(product).toFixed(2),
-          availability:
-            product.stock > 0
-              ? "https://schema.org/InStock"
-              : "https://schema.org/OutOfStock",
-          itemCondition: "https://schema.org/NewCondition",
+        slug: product.slug,
+        price: getDiscountedPrice(product),
+        stock: product.stock,
+        reviewAverage: product.reviewAverage,
+        reviewCount: product.reviewCount,
+      })
+    : null;
+  const breadcrumb = product
+    ? breadcrumbSchema([
+        { name: "Ana Sayfa", url: `${SITE_URL}/` },
+        {
+          name: product.category,
+          url: `${SITE_URL}/kategori/${categoryToSlug(product.category)}`,
         },
-        ...(product.reviewCount && product.reviewAverage
-          ? {
-              aggregateRating: {
-                "@type": "AggregateRating",
-                ratingValue: product.reviewAverage,
-                reviewCount: product.reviewCount,
-              },
-            }
-          : {}),
-      }
+        {
+          name: product.name,
+          url: `${SITE_URL}/products/${product.slug || product.id}`,
+        },
+      ])
     : null;
 
   return (
@@ -128,9 +124,13 @@ export default async function ProductPage({ params }: ProductPageProps) {
       {structuredData && (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify(structuredData).replaceAll("<", "\\u003c"),
-          }}
+          dangerouslySetInnerHTML={{ __html: toJsonLd(structuredData) }}
+        />
+      )}
+      {breadcrumb && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: toJsonLd(breadcrumb) }}
         />
       )}
       <StoreSubpageHeader />

@@ -43,6 +43,8 @@ export async function GET() {
     { loc: `${siteUrl}/`, priority: "1.0", frequency: "weekly" },
     { loc: `${siteUrl}/support`, priority: "0.5", frequency: "monthly" },
     { loc: `${siteUrl}/hakkimizda`, priority: "0.6", frequency: "monthly" },
+    { loc: `${siteUrl}/sss`, priority: "0.6", frequency: "monthly" },
+    { loc: `${siteUrl}/ozel-uretim`, priority: "0.5", frequency: "monthly" },
     {
       loc: `${siteUrl}/guvenli-alisveris`,
       priority: "0.5",

@@ -9,6 +9,7 @@ import { findCategoryGroupBySlug, groupForCategory } from "../../../lib/category
 import { subgroupsForGroup, tallyCategoryCounts } from "../../../lib/category-subgroups";
 import type { Product } from "../../../lib/store-data";
 import { readProducts, readSettings } from "../../../lib/store-db";
+import { breadcrumbSchema, toJsonLd } from "../../../lib/seo/structured-data";
 import QuickAddToCart from "../../quick-add-to-cart";
 import FavoriteHeartButton from "../../favorite-heart-button";
 
@@ -131,15 +132,13 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "BreadcrumbList",
-              itemListElement: [
-                { "@type": "ListItem", position: 1, name: "Ana Sayfa", item: `${SITE_URL}/` },
-                { "@type": "ListItem", position: 2, name: "Ürünler", item: `${SITE_URL}/#shop` },
-                { "@type": "ListItem", position: 3, name: title, item: breadcrumbUrl },
-              ],
-            }).replaceAll("<", "\\u003c"),
+            __html: toJsonLd(
+              breadcrumbSchema([
+                { name: "Ana Sayfa", url: `${SITE_URL}/` },
+                { name: "Ürünler", url: `${SITE_URL}/#shop` },
+                { name: title, url: breadcrumbUrl },
+              ]),
+            ),
           }}
         />
       )}
