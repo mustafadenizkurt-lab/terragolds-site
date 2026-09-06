@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { Mail, MessageCircle, Phone, ShieldCheck } from "lucide-react";
+import { Mail, MessageCircle, Phone, ShieldCheck, Star } from "lucide-react";
+
+const GOOGLE_REVIEW_URL = "https://g.page/r/CULplaYbZk3XECE/review";
 
 const legalLinks = [
   ["KVKK Aydınlatma Metni", "/kvkk"],
@@ -37,6 +39,7 @@ const copy = {
     whatsappSupport: "WhatsApp Destek",
     support247: "7/24 Destek",
     socialMedia: "Sosyal Medya",
+    googleReview: "Bizi Değerlendirin",
     securePayment: "Güvenli Ödeme",
     sslSecure: "SSL Güvenli",
   },
@@ -62,6 +65,7 @@ const copy = {
     whatsappSupport: "WhatsApp Support",
     support247: "24/7 Support",
     socialMedia: "Social Media",
+    googleReview: "Rate Us on Google",
     securePayment: "Secure Payment",
     sslSecure: "SSL Secure",
   },
@@ -132,89 +136,145 @@ export default function StoreSiteFooter({
         <nav aria-label={t.legal}>
           <strong>{t.legal}</strong>
           {legalLinks.slice(0, 3).map(([label, href]) => (
-            <Link href={href} key={href}>{label}</Link>
+            <Link href={href} key={href}>
+              {label}
+            </Link>
           ))}
           <Link href="/kullanim-kosullari">{t.terms}</Link>
         </nav>
       </div>
 
-      {(hasSupportInfo || hasSocialLinks) && (
-        <div className="store-site-footer-extra">
-          {hasSupportInfo && (
-            <div className="store-site-footer-support">
-              <strong>{t.supportCenter}</strong>
-              {phone && (
-                <a className="store-site-footer-support-row" href={`tel:${phone.replace(/\s+/g, "")}`}>
-                  <Phone aria-hidden="true" size={18} strokeWidth={1.75} />
-                  <span>
-                    <small>{t.callCenter}</small>
-                    <b>{phone}</b>
-                  </span>
-                </a>
-              )}
-              {whatsapp && (
-                <a
-                  className="store-site-footer-support-row"
-                  href={`https://wa.me/${whatsapp.replace(/\D/g, "")}`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <MessageCircle aria-hidden="true" size={18} strokeWidth={1.75} />
-                  <span>
-                    <small>{t.whatsappSupport}</small>
-                    <b>{whatsapp}</b>
-                  </span>
-                </a>
-              )}
-              {email && (
-                <a className="store-site-footer-support-row" href={`mailto:${email}`}>
-                  <Mail aria-hidden="true" size={18} strokeWidth={1.75} />
-                  <span>
-                    <small>{t.support247}</small>
-                    <b>{email}</b>
-                  </span>
-                </a>
-              )}
-            </div>
-          )}
-          <div className="store-site-footer-side">
+      <div className="store-site-footer-extra">
+        {hasSupportInfo && (
+          <div className="store-site-footer-support">
+            <strong>{t.supportCenter}</strong>
+            {phone && (
+              <a
+                className="store-site-footer-support-row"
+                href={`tel:${phone.replace(/\s+/g, "")}`}
+              >
+                <Phone aria-hidden="true" size={18} strokeWidth={1.75} />
+                <span>
+                  <small>{t.callCenter}</small>
+                  <b>{phone}</b>
+                </span>
+              </a>
+            )}
+            {whatsapp && (
+              <a
+                className="store-site-footer-support-row"
+                href={`https://wa.me/${whatsapp.replace(/\D/g, "")}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <MessageCircle
+                  aria-hidden="true"
+                  size={18}
+                  strokeWidth={1.75}
+                />
+                <span>
+                  <small>{t.whatsappSupport}</small>
+                  <b>{whatsapp}</b>
+                </span>
+              </a>
+            )}
+            {email && (
+              <a
+                className="store-site-footer-support-row"
+                href={`mailto:${email}`}
+              >
+                <Mail aria-hidden="true" size={18} strokeWidth={1.75} />
+                <span>
+                  <small>{t.support247}</small>
+                  <b>{email}</b>
+                </span>
+              </a>
+            )}
+          </div>
+        )}
+        <div className="store-site-footer-side">
+          <div className="store-site-footer-social">
+            <strong>{t.socialMedia}</strong>
             {hasSocialLinks && (
-              <div className="store-site-footer-social">
-                <strong>{t.socialMedia}</strong>
-                <div className="store-site-footer-social-row">
-                  {instagram && (
-                    <a href={instagram} target="_blank" rel="noreferrer" aria-label="Instagram">
-                      <img src="https://cdn.jsdelivr.net/npm/simple-icons@v16/icons/instagram.svg" alt="" width={16} height={16} />
-                    </a>
-                  )}
-                  {facebook && (
-                    <a href={facebook} target="_blank" rel="noreferrer" aria-label="Facebook">
-                      <img src="https://cdn.jsdelivr.net/npm/simple-icons@v16/icons/facebook.svg" alt="" width={16} height={16} />
-                    </a>
-                  )}
-                  {tiktok && (
-                    <a href={tiktok} target="_blank" rel="noreferrer" aria-label="TikTok">
-                      <img src="https://cdn.jsdelivr.net/npm/simple-icons@v16/icons/tiktok.svg" alt="" width={16} height={16} />
-                    </a>
-                  )}
-                </div>
+              <div className="store-site-footer-social-row">
+                {instagram && (
+                  <a
+                    href={instagram}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label="Instagram"
+                  >
+                    <img
+                      src="https://cdn.jsdelivr.net/npm/simple-icons@v16/icons/instagram.svg"
+                      alt=""
+                      width={16}
+                      height={16}
+                    />
+                  </a>
+                )}
+                {facebook && (
+                  <a
+                    href={facebook}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label="Facebook"
+                  >
+                    <img
+                      src="https://cdn.jsdelivr.net/npm/simple-icons@v16/icons/facebook.svg"
+                      alt=""
+                      width={16}
+                      height={16}
+                    />
+                  </a>
+                )}
+                {tiktok && (
+                  <a
+                    href={tiktok}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label="TikTok"
+                  >
+                    <img
+                      src="https://cdn.jsdelivr.net/npm/simple-icons@v16/icons/tiktok.svg"
+                      alt=""
+                      width={16}
+                      height={16}
+                    />
+                  </a>
+                )}
               </div>
             )}
-            <div className="store-site-footer-payments">
-              <strong>{t.securePayment}</strong>
-              <div className="store-site-footer-payments-row">
-                {paymentBadges.map((label) => (
-                  <span className="store-site-footer-payment-badge" key={label}>{label}</span>
-                ))}
-                <span className="store-site-footer-payment-badge ssl">
-                  <ShieldCheck aria-hidden="true" size={13} strokeWidth={2} />
-                  {t.sslSecure}
+            <a
+              className="store-site-footer-google-review"
+              href={GOOGLE_REVIEW_URL}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <Star
+                aria-hidden="true"
+                size={13}
+                strokeWidth={2}
+                fill="currentColor"
+              />
+              {t.googleReview}
+            </a>
+          </div>
+          <div className="store-site-footer-payments">
+            <strong>{t.securePayment}</strong>
+            <div className="store-site-footer-payments-row">
+              {paymentBadges.map((label) => (
+                <span className="store-site-footer-payment-badge" key={label}>
+                  {label}
                 </span>
-              </div>
+              ))}
+              <span className="store-site-footer-payment-badge ssl">
+                <ShieldCheck aria-hidden="true" size={13} strokeWidth={2} />
+                {t.sslSecure}
+              </span>
             </div>
           </div>
         </div>
-      )}
+      </div>
 
       <div className="store-site-footer-legal">
         <span>
@@ -224,7 +284,9 @@ export default function StoreSiteFooter({
         </span>
         <nav aria-label="Sözleşmeler">
           {legalLinks.map(([label, href]) => (
-            <Link href={href} key={href}>{label}</Link>
+            <Link href={href} key={href}>
+              {label}
+            </Link>
           ))}
         </nav>
       </div>
