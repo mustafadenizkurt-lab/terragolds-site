@@ -5,7 +5,7 @@ import { readSettings } from "../../lib/store-db";
 
 export const metadata: Metadata = {
   title: "Favorilerim | Terragolds",
-  description: "Beğendiğiniz Terragolds doğal taşlarını tek yerde inceleyin.",
+  description: "Beğendiğiniz Terragolds takılarını tek yerde inceleyin.",
   robots: { index: false, follow: false },
 };
 

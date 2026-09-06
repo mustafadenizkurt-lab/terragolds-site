@@ -153,7 +153,7 @@ function mapRecord(record: XmlRecord, mapping: SupplierMapping, markup: number) 
     externalId: readMappedValue(record, mapping.externalId),
     name: readMappedValue(record, mapping.name),
     stone: readMappedValue(record, mapping.stone),
-    category: readMappedValue(record, mapping.category) || "Doğal Taşlar",
+    category: readMappedValue(record, mapping.category) || "Takı",
     brand: readMappedValue(record, mapping.brand),
     // cost must be a positive finite number: an empty/unmapped price string
     // coerces to 0 via Number(""), which would otherwise pass Number.isFinite

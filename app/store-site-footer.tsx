@@ -17,7 +17,7 @@ const paymentBadges = ["Visa", "Mastercard", "Troy", "Maestro"] as const;
 const copy = {
   tr: {
     tagline:
-      "Doğanın zamansız parçaları. Özenle seçilmiş doğal taş ürünleri.",
+      "Şıklığın yeni adresi. Özenle seçilmiş takı ve aksesuar koleksiyonları.",
     discover: "Keşfet",
     products: "Ürünler",
     corporate: "Kurumsal",
@@ -42,7 +42,7 @@ const copy = {
   },
   en: {
     tagline:
-      "Curated natural stones, crystals and decorative pieces delivered across Türkiye.",
+      "Curated jewelry and accessory collections delivered across Türkiye.",
     discover: "Discover",
     products: "Products",
     corporate: "Company",

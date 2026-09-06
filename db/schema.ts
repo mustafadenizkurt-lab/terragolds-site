@@ -57,7 +57,7 @@ export const products = sqliteTable("products", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
   stone: text("stone").notNull().default(""),
-  category: text("category").notNull().default("Doğal Taşlar"),
+  category: text("category").notNull().default("Takı"),
   price: integer("price").notNull().default(0),
   // Purchase/supplier cost, when known — used to estimate profit margin.
   // 0 means "unknown", not "free"; treat 0 as missing data, not a real cost.

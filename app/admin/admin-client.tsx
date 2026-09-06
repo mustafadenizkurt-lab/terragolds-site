@@ -970,7 +970,7 @@ export default function AdminClient({
                     <p>
                       {products.length
                         ? "Filtreleri değiştirerek yeniden deneyin."
-                        : "İlk doğal taşınızı mağazaya ekleyin."}
+                        : "İlk ürününüzü mağazaya ekleyin."}
                     </p>
                     {!products.length && (
                       <button type="button" onClick={openNewProduct}>
@@ -1120,7 +1120,7 @@ export default function AdminClient({
                                 name: event.target.value,
                               })
                             }
-                            placeholder="Örn. Ametist Kristal Küme"
+                            placeholder="Örn. Gümüş Zincir Kolye"
                             required
                           />
                         </label>

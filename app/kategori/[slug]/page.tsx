@@ -88,14 +88,7 @@ export async function generateMetadata({
   const heroImage = categoryProducts[0]?.image
     ? new URL(categoryProducts[0].image, SITE_URL).toString()
     : `${SITE_URL}/og.png`;
-  const isStoneCategory = title === "Kristaller";
-  const stoneNames = [
-    ...new Set(categoryProducts.map((product) => product.stone).filter(Boolean)),
-  ].slice(0, 3);
-  const stoneText = stoneNames.length
-    ? ` ${stoneNames.join(", ")} gibi doğal taşlardan üretilmiş`
-    : "";
-  const description = `${title} kategorisinde${stoneText} ${categoryProducts.length} seçilmiş ${isStoneCategory ? "doğal taş ürünü" : "ürün"}. Terragolds koleksiyonunu inceleyin.`;
+  const description = `${title} kategorisinde ${categoryProducts.length} seçilmiş ürün. Terragolds koleksiyonunu inceleyin.`;
 
   return {
     title: `${title} | Terragolds`,
@@ -165,7 +158,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
         <h1>{title ?? "Kategori bulunamadı"}</h1>
         <p>
           {title
-            ? `${categoryProducts.length} seçilmiş parça. Doğal form, yüzey ve renk karakteri korunmuş ürünleri inceleyin.`
+            ? `${categoryProducts.length} seçilmiş parça. Kaliteli işçilik ve özenli tasarımlarla hazırlanmış ürünleri inceleyin.`
             : "Aradığınız kategori bulunamadı. Tüm ürünlere geri dönebilirsiniz."}
         </p>
       </section>
