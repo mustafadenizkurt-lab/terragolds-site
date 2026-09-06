@@ -321,7 +321,7 @@ export async function initializeIyzicoPayment(
         )
         .join(", ")
         .slice(0, 180),
-      category1: "Doğal Taş",
+      category1: "Takı",
       itemType: "PHYSICAL",
       price,
     }],

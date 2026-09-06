@@ -618,7 +618,7 @@ export const defaultProducts: Product[] = demoProducts.map((product, index) => (
 export const defaultSettings: StoreSettings = {
   businessName: "Terragolds",
   announcement:
-    "Özenle seçilmiş doğal taşlar • Güvenli paketleme • Türkiye'nin her yerine gönderim",
+    "Özenle seçilmiş takılar • Güvenli paketleme • Türkiye'nin her yerine gönderim",
   email: "merhaba@terragolds.com",
   phone: "",
   whatsapp: "",
@@ -664,17 +664,18 @@ const jewelryTypeKeywords: { match: string; label: string }[] = [
 
 /**
  * A short noun phrase describing what kind of product this is, for use in
- * auto-generated meta descriptions/titles. Products with a stone value are
- * genuine natural-stone pieces; products without one (most of the jewelry
- * catalog — rings, bracelets, necklaces) get a category-derived phrase
- * instead of the old hardcoded "doğal taş ürünü", which was factually wrong
- * for plated/brass jewelry with no stone at all.
+ * auto-generated meta descriptions/titles. The jewelry type (yüzük/kolye/
+ * küpe/...) is always the headline noun — a "stone" value only ever
+ * describes the gemstone set into a jewelry piece here, never means the
+ * product itself is a raw stone, so it's appended as a detail rather than
+ * driving the whole phrase (that used to render e.g. an amethyst ring as
+ * "Ametist doğal taş ürünü", which read as a raw-stone listing).
  */
 export function productDescriptorPhrase(
   product: Pick<Product, "stone" | "category" | "name">,
 ): string {
-  if (product.stone.trim()) return `${product.stone} doğal taş ürünü`;
   const haystack = `${product.category} ${product.name}`.toLocaleLowerCase("tr-TR");
   const match = jewelryTypeKeywords.find((entry) => haystack.includes(entry.match));
-  return match ? `el işçiliği ${match.label}` : "el işçiliği takı ürünü";
+  const jewelryPhrase = match ? `el işçiliği ${match.label}` : "el işçiliği takı ürünü";
+  return product.stone.trim() ? `${product.stone} detaylı ${jewelryPhrase}` : jewelryPhrase;
 }

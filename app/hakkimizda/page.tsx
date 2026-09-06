@@ -7,7 +7,7 @@ import StoreSubpageHeader from "../store-subpage-header";
 
 export const metadata: Metadata = {
   title: "Hakkımızda | Terragolds",
-  description: "Terragolds doğal taş koleksiyonu, seçim ve paketleme yaklaşımı.",
+  description: "Terragolds takı koleksiyonu, seçim ve paketleme yaklaşımı.",
   alternates: { canonical: "https://www.terragolds.com/hakkimizda" },
 };
 
@@ -19,18 +19,18 @@ export default async function AboutPage() {
       <section className="about-hero">
         <div>
           <p>Terragolds</p>
-          <h1>Doğanın benzersiz parçalarını özenle seçiyoruz.</h1>
+          <h1>Zarafetin ve şıklığın benzersiz parçalarını özenle seçiyoruz.</h1>
           <span>
-            Rengi, dokusu ve doğal karakteri güçlü taşları güvenli paketleme ve
+            Kaliteli işçilik ve modern tasarımı, güvenli paketleme ve
             şeffaf alışveriş deneyimiyle buluşturuyoruz.
           </span>
           <Link href="/#shop">Koleksiyonu incele</Link>
         </div>
-        <img src="/terragolds-gold-showcase.webp" alt="Terragolds doğal taş koleksiyonu" />
+        <img src="/terragolds-gold-showcase.webp" alt="Terragolds takı koleksiyonu" />
       </section>
       <section className="about-values">
         <article><span>01</span><h2>Özenli seçim</h2><p>Her parçayı form, yüzey, renk dengesi ve sergileme karakteri açısından inceliyoruz.</p></article>
-        <article><span>02</span><h2>Şeffaf sunum</h2><p>Doğal taşların benzersiz damar, ton ve form farklılıklarını ürün bilgilerinde açıkça belirtiyoruz.</p></article>
+        <article><span>02</span><h2>Şeffaf sunum</h2><p>Ürünlerimizin malzeme ve tasarım özelliklerini ürün bilgilerinde açıkça belirtiyoruz.</p></article>
         <article><span>03</span><h2>Güvenli teslimat</h2><p>Hassas yüzeylere uygun koruyucu katmanlar ve darbe emici paketleme kullanıyoruz.</p></article>
       </section>
       <section className="about-company">

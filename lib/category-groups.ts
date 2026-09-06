@@ -1,7 +1,6 @@
 // Top-level navigation groups the site's raw product categories collapse
 // into — modeled on ebijuteri.com's nav (Kolyeler, Küpeler, Bileklik &
-// Halhal, Yüzük, Saat & Kombin, Aksesuar), plus "Kristaller" preserved for
-// the site's original natural-stone catalog. The underlying `products`
+// Halhal, Yüzük, Saat & Kombin, Aksesuar). The underlying `products`
 // table keeps its granular category names (KADIN YÜZÜK, Erkek Bileklik,
 // etc., including duplicates from different import batches) — this module
 // only groups them for navigation, it never renames stored data.
@@ -28,7 +27,6 @@ export const categoryGroups: CategoryGroup[] = [
   },
   { slug: "saat-kombin", label: "Saat & Kombin", keywords: ["saat", "kombin"] },
   { slug: "aksesuar", label: "Aksesuar", keywords: ["aksesuar"] },
-  { slug: "kristaller", label: "Kristaller", keywords: ["kristal"] },
 ];
 
 function normalize(value: string): string {

@@ -232,7 +232,7 @@ export default function StoreSubpageHeader({
   return (
     <>
       <div className="store-market-announcement">
-        <span>Özenle seçilmiş doğal taşlar</span>
+        <span>Özenle seçilmiş takılar</span>
         <i />
         <span>Güvenli paketleme</span>
         <i />

@@ -677,7 +677,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
                   </div>
                   <h3>Henüz ürün eklemediniz</h3>
                   <p>
-                    Beğendiğiniz doğal taşları sepetinize ekleyerek
+                    Beğendiğiniz ürünleri sepetinize ekleyerek
                     alışverişinizi tamamlayabilirsiniz.
                   </p>
                   <button

@@ -38,8 +38,8 @@ const heroStoneSlides = [
     name: "Ametist",
     latin: "Amethyst",
     image: "/stone-amethyst.jpg",
-    accent: "Mor kristal dokusu",
-    detail: "Derin mor tonları ve belirgin kristal yüzeyiyle vitrinde güçlü durur.",
+    accent: "Derin mor tonu",
+    detail: "Derin mor tonlarıyla vitrinde güçlü durur.",
   },
   {
     name: "Gül Kuvars",
@@ -53,8 +53,8 @@ const heroStoneSlides = [
 const themeCollectionTileMeta = [
   {
     category: "Ham Taşlar",
-    defaultTitle: "Ham Taşlar",
-    defaultTagline: "İşlenmemiş, doğal halinde",
+    defaultTitle: "Koleksiyon",
+    defaultTagline: "Özenle seçilmiş parçalar",
     imageKey: "homeTileRawStonesImage" as const,
     titleKey: "homeTileRawStonesTitle" as const,
     taglineKey: "homeTileRawStonesTagline" as const,
@@ -76,7 +76,7 @@ const themeCollectionTileMeta = [
   {
     category: "Koleksiyon Setleri",
     defaultTitle: "Koleksiyon Setleri",
-    defaultTagline: "Bir arada, özenle hazırlanmış taş setleri",
+    defaultTagline: "Bir arada, özenle hazırlanmış koleksiyon setleri",
     imageKey: "homeTileCollectionSetsImage" as const,
     titleKey: "homeTileCollectionSetsTitle" as const,
     taglineKey: "homeTileCollectionSetsTagline" as const,
@@ -124,26 +124,26 @@ type Language = "tr" | "en";
 const englishSiteContent: Partial<SiteContent> = {
   navigationProducts: "Products",
   navigationSupport: "Support",
-  homeHeroEyebrow: "Natural stone selection",
-  homeHeroTitle: "Curated natural stones",
-  homeHeroAccent: "with refined character",
+  homeHeroEyebrow: "The new address of elegance",
+  homeHeroTitle: "Curated jewelry",
+  homeHeroAccent: "with timeless character",
   homeHeroDescription:
-    "Discover selected crystals, minerals and decorative stones prepared with careful packaging and reliable delivery.",
+    "Discover selected necklaces, rings, earrings and bracelets prepared with careful packaging and reliable delivery.",
   homeHeroPrimaryLabel: "Shop now",
   homeHeroSecondaryLabel: "Explore the guide",
-  homeHeroNote: "Carefully selected natural stones",
+  homeHeroNote: "Every piece is carefully selected for quality and elegance",
   homeIntroEyebrow: "Our approach",
-  homeIntroTitle: "A calm, refined collection for stone lovers.",
+  homeIntroTitle: "A calm, refined collection for jewelry lovers.",
   homeIntroBody:
-    "Each piece is chosen for its texture, color balance and display character, then prepared for a secure delivery experience.",
+    "Each piece is chosen for its craftsmanship, design and display character, then prepared for a secure delivery experience.",
   footerDescription:
-    "Curated natural stones, crystals and decorative pieces delivered across Türkiye.",
+    "Curated jewelry and accessory collections delivered across Türkiye.",
 };
 
 const uiText = {
   tr: {
     languageLabel: "Dil",
-    searchPlaceholder: "Ürün, taş veya kategori ara",
+    searchPlaceholder: "Ürün adı veya kategori ara",
     clear: "Temizle",
     searchSubmit: "Aramayı çalıştır",
     searchResults: "Arama sonuçları",
@@ -151,10 +151,10 @@ const uiText = {
     resultsFor: (query: string) => `"${query}" için sonuçlar`,
     productCount: (count: number) => `${count} ürün`,
     searchEmptyTitle: "Aradığınız ürün henüz mağazamızda bulunmuyor.",
-    searchEmptyBody: "Farklı bir kelime deneyebilir veya taş seçimi için ekibimizden destek alabilirsiniz.",
+    searchEmptyBody: "Farklı bir kelime deneyebilir veya ürün seçimi için ekibimizden destek alabilirsiniz.",
     contactSupport: "Destek ekibine ulaşın →",
     selectionHelp: "Seçim desteği",
-    findStoneTogether: "Doğru taşı birlikte bulalım",
+    findStoneTogether: "Doğru ürünü birlikte bulalım",
     contactUs: "İletişime geç →",
     account: "Hesabım",
     accountShort: "Hesap",
@@ -175,14 +175,14 @@ const uiText = {
     openCart: (count: number) => `Sepeti aç, ${count} ürün`,
     favoritesCount: (count: number) => `Favorilerim, ${count} ürün`,
     newArrivals: "Yeni Gelenler",
-    naturalStones: "Doğal Taşlar",
-    crystals: "Kristaller",
+    naturalStones: "Takılar",
+    crystals: "Aksesuarlar",
     decorativePieces: "Dekoratif Parçalar",
     sale: "İndirim",
     filter: "Filtrele",
     reset: "Sıfırla",
     searchInProducts: "Ürün içinde ara",
-    filterPlaceholder: "Taş, ürün adı, kategori",
+    filterPlaceholder: "Ürün adı, kategori",
     categories: "Kategoriler",
     priceRange: "Fiyat aralığı",
     minPrice: "Min TL",
@@ -220,13 +220,13 @@ const uiText = {
     carefulSelection: "Özenli seçim",
     carefulSelectionBody: "Her parçayı görsel denge, yüzey bütünlüğü ve sergileme karakteri açısından inceliyoruz.",
     safeDelivery: "Güvenli teslimat",
-    safeDeliveryBody: "Hassas yüzeyleri koruyan çok katmanlı paketleme ile taşınızı yolculuğa hazırlıyoruz.",
+    safeDeliveryBody: "Hassas yüzeyleri koruyan çok katmanlı paketleme ile ürününüzü yolculuğa hazırlıyoruz.",
     faqEyebrow: "Merak edilenler",
-    faqTitle: "Taşınıza dair kısa notlar",
-    faqPhotoTitle: "Gönderilen taş fotoğraftakiyle aynı mı?",
-    faqPhotoBody: "Doğal taşların form ve damar yapısı benzersizdir. Tekil ürünlerde fotoğraftaki parça, setlerde ise aynı kalite ve görsel dengede özenle eşleştirilmiş parçalar gönderilir.",
-    faqCareTitle: "Taşımı nasıl temizlemeliyim?",
-    faqCareBody: "Genel bakım için yumuşak ve kuru bir bez yeterlidir. Her mineralin suya ve güneşe dayanımı farklı olabileceğinden ürün notlarını ayrıca kontrol etmenizi öneririz.",
+    faqTitle: "Ürününüze dair kısa notlar",
+    faqPhotoTitle: "Gönderilen ürün fotoğraftakiyle aynı mı?",
+    faqPhotoBody: "Tekil ürünlerde fotoğraftaki parça, setlerde ise aynı kalite ve görsel dengede özenle eşleştirilmiş parçalar gönderilir.",
+    faqCareTitle: "Ürünümü nasıl temizlemeliyim?",
+    faqCareBody: "Genel bakım için yumuşak ve kuru bir bez yeterlidir. Malzemeye göre suya ve güneşe dayanım farklı olabileceğinden ürün notlarını ayrıca kontrol etmenizi öneririz.",
     faqPackageTitle: "Paketleme nasıl yapılıyor?",
     faqPackageBody: "Her parça yüzey ve formuna uygun koruyucu katmanlarla sabitlenir, darbe emici malzemelerle güçlendirilmiş kutuda gönderilir.",
     faqGiftTitle: "Hediye paketi seçeneği var mı?",
@@ -243,7 +243,7 @@ const uiText = {
     shoppingCart: "Alışveriş sepetiniz",
     close: "Kapat",
     emptyCartTitle: "Henüz ürün eklemediniz",
-    emptyCartBody: "Beğendiğiniz doğal taşları sepetinize ekleyerek alışverişinizi tamamlayabilirsiniz.",
+    emptyCartBody: "Beğendiğiniz ürünleri sepetinize ekleyerek alışverişinizi tamamlayabilirsiniz.",
     continueShopping: "Alışverişe devam et",
     cartSummary: "Sepet Özeti",
     subtotal: "Ara Toplam",
@@ -262,11 +262,11 @@ const uiText = {
     cartClearedTitle: "Sepetiniz boşaltıldı",
     cartClearedDetail: "Alışverişe dilediğiniz zaman devam edebilirsiniz.",
     productDetails: (name: string) => `${name} ürün ayrıntıları`,
-    productBullets: ["Doğal renk ve doku farklılıkları", "Özenli, koruyucu paketleme", "Parçaya özel bakım notu"],
+    productBullets: ["Özenli işçilik ve kaliteli malzeme", "Özenli, koruyucu paketleme", "Parçaya özel bakım notu"],
   },
   en: {
     languageLabel: "Language",
-    searchPlaceholder: "Search product, stone or category",
+    searchPlaceholder: "Search product name or category",
     clear: "Clear",
     searchSubmit: "Run search",
     searchResults: "Search results",
@@ -274,10 +274,10 @@ const uiText = {
     resultsFor: (query: string) => `Results for "${query}"`,
     productCount: (count: number) => `${count} products`,
     searchEmptyTitle: "The product you searched for is not in our store yet.",
-    searchEmptyBody: "Try another word or contact our team for help choosing a stone.",
+    searchEmptyBody: "Try another word or contact our team for help choosing a product.",
     contactSupport: "Contact support →",
     selectionHelp: "Selection help",
-    findStoneTogether: "Let's find the right stone together",
+    findStoneTogether: "Let's find the right piece together",
     contactUs: "Contact us →",
     account: "My Account",
     accountShort: "Account",
@@ -298,14 +298,14 @@ const uiText = {
     openCart: (count: number) => `Open cart, ${count} products`,
     favoritesCount: (count: number) => `Favorites, ${count} products`,
     newArrivals: "New Arrivals",
-    naturalStones: "Natural Stones",
-    crystals: "Crystals",
+    naturalStones: "Jewelry",
+    crystals: "Accessories",
     decorativePieces: "Decorative Pieces",
     sale: "Sale",
     filter: "Filter",
     reset: "Reset",
     searchInProducts: "Search products",
-    filterPlaceholder: "Stone, product name, category",
+    filterPlaceholder: "Product name, category",
     categories: "Categories",
     priceRange: "Price range",
     minPrice: "Min TRY",
@@ -343,19 +343,19 @@ const uiText = {
     carefulSelection: "Careful selection",
     carefulSelectionBody: "Every piece is reviewed for visual balance, surface integrity and display character.",
     safeDelivery: "Secure delivery",
-    safeDeliveryBody: "We prepare your stone for delivery with layered packaging that protects delicate surfaces.",
+    safeDeliveryBody: "We prepare your piece for delivery with layered packaging that protects delicate surfaces.",
     faqEyebrow: "Questions",
-    faqTitle: "Short notes about your stone",
-    faqPhotoTitle: "Will the stone match the photo?",
-    faqPhotoBody: "Natural stones have unique form and vein patterns. For individual products, the photographed piece is sent; for sets, matching pieces with the same quality and visual balance are prepared.",
-    faqCareTitle: "How should I clean my stone?",
-    faqCareBody: "A soft, dry cloth is enough for general care. Since each mineral reacts differently to water and sunlight, we recommend checking the product notes.",
+    faqTitle: "Short notes about your piece",
+    faqPhotoTitle: "Will the product match the photo?",
+    faqPhotoBody: "For individual products, the photographed piece is sent; for sets, matching pieces with the same quality and visual balance are prepared.",
+    faqCareTitle: "How should I clean my jewelry?",
+    faqCareBody: "A soft, dry cloth is enough for general care. Since each material reacts differently to water and sunlight, we recommend checking the product notes.",
     faqPackageTitle: "How is packaging prepared?",
     faqPackageBody: "Each piece is secured with protective layers suited to its surface and form, then shipped in a reinforced box with impact-absorbing materials.",
     faqGiftTitle: "Is gift packaging available?",
     faqGiftBody: "Yes. Add your short message to the order note and request Terragolds gift packaging.",
     newsletter: "Newsletter",
-    newsletterTitle: "Be the first to see new stones.",
+    newsletterTitle: "Be the first to see new arrivals.",
     emailAddress: "Email address",
     join: "Join",
     newsletterSuccessTitle: "You're subscribed",
@@ -366,7 +366,7 @@ const uiText = {
     shoppingCart: "Your shopping cart",
     close: "Close",
     emptyCartTitle: "You haven't added a product yet",
-    emptyCartBody: "Add the natural stones you like to your cart and complete your order.",
+    emptyCartBody: "Add the products you like to your cart and complete your order.",
     continueShopping: "Continue shopping",
     cartSummary: "Cart Summary",
     subtotal: "Subtotal",
@@ -385,7 +385,7 @@ const uiText = {
     cartClearedTitle: "Your cart is cleared",
     cartClearedDetail: "You can continue shopping whenever you like.",
     productDetails: (name: string) => `${name} product details`,
-    productBullets: ["Natural color and texture variations", "Careful protective packaging", "Piece-specific care note"],
+    productBullets: ["Careful craftsmanship and quality materials", "Careful protective packaging", "Piece-specific care note"],
   },
 };
 
@@ -1088,7 +1088,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
             url: "https://www.terragolds.com",
             logo: "https://www.terragolds.com/og.png",
             description:
-              "Özenle seçilmiş doğal taşlar, kristaller ve koleksiyon parçaları.",
+              "Zarif kolye, bileklik, küpe ve yüzük koleksiyonları.",
             email: settings.email || undefined,
             sameAs: [
               settings.facebook,
@@ -1803,7 +1803,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
         </nav>
         <div
           className="gold-showcase stone-showcase"
-          aria-label="Terragolds doğal taş animasyonu"
+          aria-label="Terragolds takı vitrini"
         >
           <div className="stone-showcase-slides" aria-hidden="true">
             {heroStoneSlides.map((slide, index) => (
@@ -1817,8 +1817,8 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
             ))}
           </div>
           <div className="stone-showcase-copy" key={`stone-copy-${activeHeroStone}`}>
-            <p>Doğanın en değerli hazineleri</p>
-            <h2>Seçkin kristal koleksiyonu</h2>
+            <p>Şıklığın en değerli parçaları</p>
+            <h2>Seçkin takı koleksiyonu</h2>
             <div className="stone-showcase-texts">
               {heroStoneSlides.map((slide, index) => (
                 <article
@@ -1835,7 +1835,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
             </div>
           </div>
         </div>
-        <div className="stone-showcase-dots" aria-label="Vitrin taş seçimi">
+        <div className="stone-showcase-dots" aria-label="Vitrin seçimi">
           {heroStoneSlides.map((slide, index) => (
             <button
               className={activeHeroStone === index ? "active" : ""}

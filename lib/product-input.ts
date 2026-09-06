@@ -30,7 +30,7 @@ export function parseProductInput(payload: unknown): ProductInput {
   return {
     name,
     stone: String(body.stone ?? "").trim(),
-    category: String(body.category ?? "Doğal Taşlar").trim(),
+    category: String(body.category ?? "Takı").trim(),
     price,
     cost,
     stock,

@@ -83,7 +83,7 @@ ${salePrice}    <g:brand>${escapeXml(brand)}</g:brand>
 <channel>
   <title>${escapeXml(brand)} Ürün Feed'i</title>
   <link>${siteUrl}</link>
-  <description>${escapeXml(`${brand} doğal taş ürün kataloğu`)}</description>
+  <description>${escapeXml(`${brand} takı ve aksesuar ürün kataloğu`)}</description>
   <lastBuildDate>${now}</lastBuildDate>
 ${items}
 </channel>
