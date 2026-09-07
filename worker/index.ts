@@ -51,6 +51,16 @@ const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
+    // Canonicalize on www: the bare apex domain serves identical content
+    // with no redirect, which Google treats as duplicate content and
+    // arbitrarily picks a canonical for - keeping pages out of the index.
+    // Every URL in the codebase (sitemap, robots.txt, llms.txt, SITE_URL)
+    // already assumes www, so redirect the apex to it permanently.
+    if (url.hostname === "terragolds.com") {
+      url.hostname = "www.terragolds.com";
+      return Response.redirect(url.toString(), 301);
+    }
+
     const staticResponse = await fetchStaticAsset(request, env);
     if (staticResponse) return staticResponse;
 
