@@ -11,11 +11,14 @@ marketing copy alone. If a fact here ever conflicts with the live site
 Terragolds (legal name: TERRA GOLDS) is a Turkish e-commerce retailer of
 jewelry and fashion accessories. It is a single-storefront online shop,
 not a marketplace (it does not host third-party sellers), not a SaaS
-product, and not a mobile app. The catalog is organized into jewelry
-categories such as necklaces (Kolye), earrings (Küpe), bracelets
-(Bileklik), rings (Yüzük), and smaller categories including şahmeran,
-broş (brooches), piercing, and halhal (anklets), for both women's and
-men's items. Product sourcing is a mix of supplier catalog import and
+product, and not a mobile app. The catalog holds 4,000+ published
+products, organized into jewelry categories led by earrings (Küpe,
+the largest category), women's bracelets (Bayan Bileklik), necklaces
+(Kolye), and women's rings (Bayan Yüzük ve Kombinler), followed by
+piercing, charm bracelets, şahmeran, men's bracelets, brooches (Broş),
+antique/vintage pieces, men's necklaces, men's rings, anklets (Hal Hal),
+couple watches, hair accessories, and men's earrings — for both women's
+and men's items. Product sourcing is a mix of supplier catalog import and
 directly managed listings. Terragolds also takes custom/bespoke order
 requests through a dedicated page.
 
