@@ -43,7 +43,7 @@ export function organizationSchema(settings: StoreSettings) {
     name: settings.businessName || SITE_NAME,
     alternateName: SITE_NAME,
     url: SITE_URL,
-    logo: `${SITE_URL}/og.png`,
+    logo: `${SITE_URL}/apple-touch-icon.png`,
     ...(email ? { email } : {}),
     ...(phone ? { telephone: phone } : {}),
     ...(address
