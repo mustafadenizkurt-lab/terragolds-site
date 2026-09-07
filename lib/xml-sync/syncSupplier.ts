@@ -77,13 +77,24 @@ export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<
         continue;
       }
       const existing = await db.prepare(
-        "SELECT id FROM products WHERE xml_supplier_id = ? AND xml_external_id = ? LIMIT 1",
-      ).bind(supplier.id, product.externalId).first<{ id: number }>();
+        "SELECT id, xml_sync_status AS xmlSyncStatus FROM products WHERE xml_supplier_id = ? AND xml_external_id = ? LIMIT 1",
+      ).bind(supplier.id, product.externalId).first<{ id: number; xmlSyncStatus: string }>();
       // Match only on an exact (supplier, external id) link, never by name:
       // products without that link may be sourced independently of this
       // feed (e.g. added by hand from a different supplier) and coincidentally
       // share a name with a feed row, so name alone is never safe grounds to
       // attach them to this supplier and start overwriting their price/stock.
+      //
+      // A matched row is only updated when it was itself created by a
+      // previous run of this same sync (xml_sync_status = 'synced'). Many
+      // existing rows share this supplier's own external-id scheme (their
+      // stok_kodu) from an earlier one-off bulk import that set
+      // xml_sync_status = 'manual' - those are managed by hand (pricing
+      // included) and must never be silently overwritten by this feed.
+      if (existing && existing.xmlSyncStatus !== "synced") {
+        skipped += 1;
+        continue;
+      }
       const matchedId = existing?.id;
       if (matchedId) {
         await db.prepare(
