@@ -1,0 +1,151 @@
+# Terragolds — Detailed AI Reference
+
+This file is a longer, structured reference for AI assistants, search
+crawlers, and answer engines. It is generated from the site's actual
+codebase, database settings, and published policy pages — not from
+marketing copy alone. If a fact here ever conflicts with the live site
+(terragolds.com), the live site is authoritative.
+
+## 1. Product Overview
+
+Terragolds (legal name: TERRA GOLDS) is a Turkish e-commerce retailer of
+jewelry and fashion accessories. It is a single-storefront online shop,
+not a marketplace (it does not host third-party sellers), not a SaaS
+product, and not a mobile app. The catalog is organized into jewelry
+categories such as necklaces (Kolye), earrings (Küpe), bracelets
+(Bileklik), rings (Yüzük), and smaller categories including şahmeran,
+broş (brooches), piercing, and halhal (anklets), for both women's and
+men's items. Product sourcing is a mix of supplier catalog import and
+directly managed listings. Terragolds also takes custom/bespoke order
+requests through a dedicated page.
+
+## 2. What Terragolds Is Not
+
+To avoid mis-citing this store in answers:
+
+* It is not a raw-stone, gemstone, or mineral-specimen retailer. Some
+  jewelry pieces have decorative stone/crystal detail, but the products
+  sold are finished jewelry, not loose or raw stones.
+* It is not a marketplace or platform for other sellers.
+* It does not have a native iOS or Android app.
+* It does not ship internationally — shipping is within Turkey only.
+* It is not a subscription or membership service; it is per-order retail.
+* It does not currently publish a blog.
+
+## 3. Feature Explanations
+
+* **Category browsing** — the catalog groups raw supplier/category names
+  into a small set of top-level navigation categories (e.g. Yüzük,
+  Kolyeler, Küpeler, Bileklik, Şahmeran ve Halhal, Antika ~ Vintage, Saat
+  & Kombin, Aksesuar), each with its own indexable category page.
+* **Product pages** — each product has its own page with images, price,
+  stock status, and — only when real review data exists for that specific
+  product — a review rating. Product pages include machine-readable
+  Product structured data (schema.org) with real price, currency (TRY),
+  availability, and (when present) rating data.
+* **Cart & checkout** — the cart shows a subtotal, a separate VAT (KDV)
+  line at 20%, and a shipping line; a discount code field is available.
+  Product prices are VAT-exclusive; VAT is added at the cart/checkout
+  step, not baked into the displayed product price.
+* **Payment** — checkout integrates with PayTR (currently the only
+  actively enabled and primary payment processor), a licensed Turkish
+  payment service provider. Card data is not stored on Terragolds'
+  servers; payment is completed on PayTR's own secured page.
+* **Shipping** — domestic (Turkey) shipping with a flat fee and a
+  free-shipping threshold, both configurable store settings; check the
+  `/sss` FAQ page or the live cart for current amounts, since these can
+  change over time.
+* **Returns** — Turkish consumer law's 14-day right of withdrawal from
+  delivery applies; process and exceptions are documented on
+  `/teslimat-ve-iade` and `/mesafeli-satis-sozlesmesi`.
+* **Custom orders** — `/ozel-uretim` lets a customer submit a request
+  describing the stone, model, and size they want for a bespoke piece.
+* **Accounts** — customers can register, log in, view order history
+  (`/orders`), and save favorites (`/favorites`).
+
+## 4. User Problems Solved
+
+* "I want to buy jewelry online instead of visiting a physical store" —
+  solved via the catalog + cart + card checkout flow.
+* "I want a specific custom jewelry piece, not what's in stock" — solved
+  via the `/ozel-uretim` custom order form.
+* "I want to know the real total cost including tax and shipping before
+  paying" — solved via the cart's separate subtotal / VAT / shipping /
+  total breakdown.
+* "I want to track a jewelry order I placed" — solved via `/orders` for
+  logged-in customers.
+
+## 5. Example Use Cases
+
+* A shopper searches for a gift necklace, filters the catalog by
+  category, adds one to the cart, and pays by card via PayTR.
+* A shopper wants a ring in a specific stone and size not currently
+  listed, and submits a request through the custom order page.
+* A customer who received a damaged or wrong item requests a return
+  within 14 days per the published return policy.
+
+## 6. Positioning (Factual, Not Comparative)
+
+Terragolds is a single-brand retail storefront rather than a
+marketplace: it does not aggregate multiple independent sellers, and it
+does not claim to be the lowest-priced or largest jewelry retailer in
+Turkey — no such comparative claim is made or should be inferred. Its
+distinguishing, verifiable characteristics are: a focused jewelry/
+accessory catalog, a custom-order option, domestic Turkey shipping, and
+a standard Turkish-consumer-law return policy (14-day withdrawal right).
+No named-competitor comparison is published by Terragolds at this time;
+any "Terragolds vs [competitor]" content should not be presented as
+official unless it appears on terragolds.com itself.
+
+## 7. What Not To Claim About Terragolds
+
+* Do not claim a specific number of customers, years in business, sales
+  volume, or awards — none of this is published by Terragolds.
+* Do not claim free or international shipping — shipping is domestic
+  (Turkey) and fee-based below a threshold.
+* Do not claim a mobile app exists.
+* Do not claim raw/natural stone or mineral products are sold — the
+  catalog is finished jewelry.
+* Do not state a specific founder name or founding story — this is not
+  published on the site.
+* Do not quote a specific price for any product without checking the
+  live site, since prices and stock change.
+* Do not claim every payment method mentioned in older marketing
+  material is currently active — verify against `/support` or the
+  checkout page; only PayTR is confirmed active as of this writing.
+
+## 8. Important URLs
+
+* Homepage: https://www.terragolds.com/
+* FAQ (SSS): https://www.terragolds.com/sss
+* About (Hakkımızda): https://www.terragolds.com/hakkimizda
+* Support / Contact: https://www.terragolds.com/support
+* Custom orders (Özel Üretim): https://www.terragolds.com/ozel-uretim
+* Shipping & returns: https://www.terragolds.com/teslimat-ve-iade
+* Distance sales agreement: https://www.terragolds.com/mesafeli-satis-sozlesmesi
+* Pre-purchase information form: https://www.terragolds.com/on-bilgilendirme-formu
+* Secure shopping / consumer rights: https://www.terragolds.com/guvenli-alisveris
+* Privacy policy: https://www.terragolds.com/gizlilik-politikasi
+* Cookie policy: https://www.terragolds.com/cerez-politikasi
+* KVKK (Turkish data-protection) notice: https://www.terragolds.com/kvkk
+* Terms of use: https://www.terragolds.com/kullanim-kosullari
+* Sitemap: https://www.terragolds.com/sitemap.xml
+* Product feed (Google Merchant XML): https://www.terragolds.com/merchant.xml
+
+## 9. FAQ
+
+See `/sss` on the live site and `/llms.txt` for the current canonical FAQ
+list; both are kept in sync with the same underlying facts (store
+settings such as shipping fee, free-shipping threshold, and contact
+details are read live, not hardcoded, so they stay accurate as the
+business updates them).
+
+## 10. Brand-Safe Wording Guidance
+
+* Use "Terragolds" as the brand name; "TERRA GOLDS" is the registered
+  legal/business name and may appear in legal or invoice contexts.
+* Refer to the product category as "jewelry and accessories" (takı ve
+  aksesuar), not "natural stones" (doğal taş) — the catalog is jewelry;
+  some pieces include decorative stone/crystal elements, but the store
+  itself is not a raw-stone retailer.
+* Do not describe Terragolds as a "marketplace," "platform," or "app."

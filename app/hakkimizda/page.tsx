@@ -4,6 +4,12 @@ import { readSettings } from "../../lib/store-db";
 import { FloatingSocialLinks } from "../store-shared-chrome";
 import StoreSiteFooter from "../store-site-footer";
 import StoreSubpageHeader from "../store-subpage-header";
+import AISummaryBlock from "../ai-summary-block";
+import {
+  breadcrumbSchema,
+  toJsonLd,
+  SITE_URL,
+} from "../../lib/seo/structured-data";
 
 export const metadata: Metadata = {
   title: "Hakkımızda | Terragolds",
@@ -13,8 +19,17 @@ export const metadata: Metadata = {
 
 export default async function AboutPage() {
   const settings = await readSettings();
+  const breadcrumb = breadcrumbSchema([
+    { name: "Ana Sayfa", url: `${SITE_URL}/` },
+    { name: "Hakkımızda", url: `${SITE_URL}/hakkimizda` },
+  ]);
+
   return (
     <main className="about-page market-subpage">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: toJsonLd(breadcrumb) }}
+      />
       <StoreSubpageHeader />
       <section className="about-hero">
         <div>
@@ -24,6 +39,12 @@ export default async function AboutPage() {
             Kaliteli işçilik ve modern tasarımı, güvenli paketleme ve
             şeffaf alışveriş deneyimiyle buluşturuyoruz.
           </span>
+          <AISummaryBlock>
+            Terragolds, kolye, küpe, bileklik ve yüzük gibi takı ürünleri
+            satan Türkiye merkezli bir online mağazadır. Sıkça sorulan
+            sorular ve kargo/iade koşulları için{" "}
+            <Link href="/sss">SSS sayfasını</Link> inceleyebilirsiniz.
+          </AISummaryBlock>
           <Link href="/#shop">Koleksiyonu incele</Link>
         </div>
         <img src="/terragolds-gold-showcase.webp" alt="Terragolds takı koleksiyonu" />

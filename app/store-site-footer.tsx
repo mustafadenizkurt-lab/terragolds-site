@@ -28,6 +28,7 @@ const copy = {
     orderTracking: "Sipariş Takibi",
     support: "Müşteri Hizmetleri",
     delivery: "Teslimat ve İade",
+    faq: "Sıkça Sorulan Sorular",
     preInfo: "Ön Bilgilendirme",
     distanceSales: "Mesafeli Satış",
     secureShopping: "Güvenli Alışveriş",
@@ -54,6 +55,7 @@ const copy = {
     orderTracking: "Track Order",
     support: "Customer Service",
     delivery: "Shipping & Returns",
+    faq: "FAQ",
     preInfo: "Pre-Information",
     distanceSales: "Distance Sales",
     secureShopping: "Secure Shopping",
@@ -128,6 +130,7 @@ export default function StoreSiteFooter({
         </nav>
         <nav aria-label={t.support}>
           <strong>{t.support}</strong>
+          <Link href="/sss">{t.faq}</Link>
           <Link href="/teslimat-ve-iade">{t.delivery}</Link>
           <Link href="/on-bilgilendirme-formu">{t.preInfo}</Link>
           <Link href="/mesafeli-satis-sozlesmesi">{t.distanceSales}</Link>

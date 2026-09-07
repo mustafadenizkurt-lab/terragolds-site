@@ -24,6 +24,8 @@ import { useCart } from "../lib/cart-context";
 import StoreSiteFooter from "./store-site-footer";
 import FloatingSocialVisibility from "./floating-social-visibility";
 import QuickAddToCart from "./quick-add-to-cart";
+import FAQSection from "./faq-section";
+import AISummaryBlock from "./ai-summary-block";
 
 const heroStoneSlides = [
   {
@@ -1078,39 +1080,6 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
 
   return (
     <main className="market-theme">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "Organization",
-            name: "Terragolds",
-            url: "https://www.terragolds.com",
-            logo: "https://www.terragolds.com/og.png",
-            description:
-              "Zarif kolye, bileklik, küpe ve yüzük koleksiyonları.",
-            email: settings.email || undefined,
-            sameAs: [
-              settings.facebook,
-              settings.instagram,
-              settings.pinterest,
-              settings.tiktok,
-            ].filter(Boolean),
-          }).replaceAll("<", "\\u003c"),
-        }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "WebSite",
-            name: "Terragolds",
-            url: "https://www.terragolds.com",
-            inLanguage: "tr-TR",
-          }).replaceAll("<", "\\u003c"),
-        }}
-      />
       <div className="announcement">
         <div className="announcement-copy">
           {settings.announcement
@@ -1640,6 +1609,13 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
           <h2>{managedContent.homeIntroTitle}</h2>
           <div>
             <p>{managedContent.homeIntroBody}</p>
+            <AISummaryBlock>
+              Terragolds, kolye, küpe, bileklik ve yüzük gibi takı ve
+              aksesuar ürünleri satan, Türkiye&apos;nin her yerine gönderim
+              yapan bir online mağazadır. Siparişler PayTR üzerinden güvenli
+              kart ödemesiyle alınır ve 14 gün içinde cayma/iade hakkı
+              tanınır.
+            </AISummaryBlock>
             <a className="text-link" href="#shop">
               {managedContent.homeIntroEyebrow} <span>↗</span>
             </a>
@@ -2026,44 +2002,14 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
             <h2>{ui.faqTitle}</h2>
           </div>
         </div>
-        <div className="faq-list">
-          <details>
-            <summary>
-              {ui.faqPhotoTitle}
-              <span aria-hidden="true">+</span>
-            </summary>
-            <p>
-              {ui.faqPhotoBody}
-            </p>
-          </details>
-          <details>
-            <summary>
-              {ui.faqCareTitle}
-              <span aria-hidden="true">+</span>
-            </summary>
-            <p>
-              {ui.faqCareBody}
-            </p>
-          </details>
-          <details>
-            <summary>
-              {ui.faqPackageTitle}
-              <span aria-hidden="true">+</span>
-            </summary>
-            <p>
-              {ui.faqPackageBody}
-            </p>
-          </details>
-          <details>
-            <summary>
-              {ui.faqGiftTitle}
-              <span aria-hidden="true">+</span>
-            </summary>
-            <p>
-              {ui.faqGiftBody}
-            </p>
-          </details>
-        </div>
+        <FAQSection
+          items={[
+            { question: ui.faqPhotoTitle, answer: ui.faqPhotoBody },
+            { question: ui.faqCareTitle, answer: ui.faqCareBody },
+            { question: ui.faqPackageTitle, answer: ui.faqPackageBody },
+            { question: ui.faqGiftTitle, answer: ui.faqGiftBody },
+          ]}
+        />
       </section>
 
       <section className="newsletter section-shell">
