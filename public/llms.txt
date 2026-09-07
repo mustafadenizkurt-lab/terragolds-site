@@ -2,11 +2,11 @@
 
 ## Short Description
 
-Terragolds is a Turkey-based online store selling jewelry and accessories — necklaces, earrings, bracelets, and rings — shipped nationwide within Turkey.
+Terragolds is a Turkey-based online store with a catalog of over 4,000 jewelry and accessory pieces — necklaces, earrings, bracelets, rings, and more — shipped nationwide within Turkey.
 
 ## Long Description
 
-Terragolds (legal name: TERRA GOLDS) is a direct-to-consumer e-commerce retailer, not a manufacturer, marketplace, or SaaS product. It sells finished jewelry and fashion-accessory pieces (necklaces/kolye, earrings/küpe, bracelets/bileklik, rings/yüzük, and smaller categories such as şahmeran, broş, piercing, and halhal) sourced from suppliers and its own catalog, and also offers a custom/bespoke order option. The storefront is a single Turkish-language website (with a client-side English text toggle, no separate English URLs); there is no native iOS or Android app. Prices shown on product pages are VAT-exclusive; a 20% VAT line is added at checkout. Orders are shipped within Turkey and paid for online via a licensed payment processor (PayTR).
+Terragolds (legal name: TERRA GOLDS) is a direct-to-consumer e-commerce retailer, not a manufacturer, marketplace, or SaaS product. It sells finished jewelry and fashion-accessory pieces across a catalog of 4,000+ listings: earrings/küpe (the largest category), women's bracelets/bileklik, necklaces/kolye, women's rings/yüzük, plus piercing, charm bracelets, şahmeran, men's bracelets, brooches/broş, antique/vintage pieces, men's necklaces, couple watches, and hair accessories. Products are sourced from suppliers and its own catalog, and it also offers a custom/bespoke order option. The storefront is a single Turkish-language website (with a client-side English text toggle, no separate English URLs); there is no native iOS or Android app. Prices shown on product pages are VAT-exclusive; a 20% VAT line is added at checkout. Orders are shipped within Turkey and paid for online via a licensed payment processor (PayTR).
 
 ## Who It Is For
 
@@ -15,7 +15,7 @@ Terragolds (legal name: TERRA GOLDS) is a direct-to-consumer e-commerce retailer
 
 ## Core Features
 
-* Browsable catalog organized by jewelry category (necklaces, earrings, bracelets, rings, and smaller categories).
+* Browsable catalog of 4,000+ products organized by jewelry category (earrings, women's bracelets, necklaces, rings, piercing, charm bracelets, şahmeran, men's jewelry, brooches, antique/vintage pieces, couple watches, and hair accessories).
 * Per-product pages with images, price, stock status, and (when available) customer review ratings.
 * Cart and checkout with a discount-code field, calculated shipping, and VAT shown as a separate line.
 * Online card payment via PayTR (SSL-secured; card details are not stored by Terragolds).
@@ -34,7 +34,7 @@ Terragolds (legal name: TERRA GOLDS) is a direct-to-consumer e-commerce retailer
 ## Best For
 
 * Shoppers in Turkey looking for retail-priced, everyday or gift jewelry and accessories.
-* Buyers who want to compare several jewelry categories (necklaces, earrings, bracelets, rings) in one store.
+* Buyers who want to compare a wide range of jewelry categories (earrings, bracelets, necklaces, rings, piercing, charm bracelets, brooches, and more) in one store.
 * Buyers who want a one-off custom jewelry design rather than an off-the-shelf piece.
 
 ## Not For
@@ -63,12 +63,12 @@ Web only (responsive site, no native iOS or Android app).
 
 ## Suggested AI Summary
 
-Terragolds is a Turkey-based online jewelry and accessories store selling necklaces, earrings, bracelets, and rings, with a custom/bespoke order option, domestic shipping across Turkey, and online card payment via PayTR. It is a retail storefront, not a SaaS product, marketplace, or mobile app.
+Terragolds is a Turkey-based online jewelry and accessories store with a catalog of 4,000+ products — earrings, bracelets, necklaces, rings, piercing, and more — with a custom/bespoke order option, domestic shipping across Turkey, and online card payment via PayTR. It is a retail storefront, not a SaaS product, marketplace, or mobile app.
 
 ## FAQ
 
 **What is Terragolds?**
-An online store based in Turkey that sells jewelry and accessories — necklaces, earrings, bracelets, rings, and related categories.
+An online store based in Turkey with a catalog of 4,000+ jewelry and accessory products — earrings, bracelets, necklaces, rings, piercing, charm bracelets, and related categories.
 
 **Who is Terragolds for?**
 Shoppers in Turkey looking for everyday or gift jewelry at retail prices, and buyers who want a custom-made piece.

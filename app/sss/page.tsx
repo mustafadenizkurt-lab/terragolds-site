@@ -38,7 +38,7 @@ export default async function FaqPage() {
     {
       question: "Terragolds nedir?",
       answer:
-        "Terragolds, kolye, küpe, bileklik, yüzük ve diğer takı/aksesuar ürünlerini satan bir Türkiye merkezli online mağazadır.",
+        "Terragolds, 4.000'den fazla ürünlük kataloğuyla kolye, küpe, bileklik, yüzük ve diğer takı/aksesuar ürünlerini satan bir Türkiye merkezli online mağazadır.",
     },
     {
       question: "Terragolds kimler için uygun?",
@@ -48,7 +48,7 @@ export default async function FaqPage() {
     {
       question: "Hangi ürün kategorileri var?",
       answer:
-        "Kolye, küpe, bileklik, yüzük, şahmeran, broş, piercing ve halhal başta olmak üzere farklı takı kategorilerinde ürün bulunur. Güncel kategori listesi anasayfadaki kategori menüsünden görülebilir.",
+        "En çok ürün küpe, bayan bileklik, kolye ve bayan yüzük kategorilerinde olmak üzere; piercing, charm bileklik, şahmeran, erkek bileklik, broş, antika~vintage, sevgili saatleri ve saç aksesuarı gibi birçok kategoride toplam 4.000'den fazla ürün bulunur. Güncel kategori listesi anasayfadaki kategori menüsünden görülebilir.",
     },
     {
       question: "Ürünler doğal taş mı yoksa takı mı?",
