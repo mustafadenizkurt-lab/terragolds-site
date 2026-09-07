@@ -60,9 +60,9 @@ export async function generateMetadata(): Promise<Metadata> {
       url: `${origin}/`,
       images: [
         {
-          url: `${origin}/og.png`,
-          width: 1200,
-          height: 630,
+          url: `${origin}/og.jpg`,
+          width: 1290,
+          height: 1274,
           alt: "Terragolds takı koleksiyonu",
         },
       ],
@@ -72,7 +72,7 @@ export async function generateMetadata(): Promise<Metadata> {
       site: "@terragolds",
       title: content.seoHomeTitle,
       description: content.seoHomeDescription,
-      images: [`${origin}/og.png`],
+      images: [`${origin}/og.jpg`],
     },
     verification: {
       google: getOptionalEnv("GOOGLE_SITE_VERIFICATION") || undefined,

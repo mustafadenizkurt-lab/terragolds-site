@@ -88,7 +88,7 @@ export async function generateMetadata({
     : `${SITE_URL}/kategori/${slug}`;
   const heroImage = categoryProducts[0]?.image
     ? new URL(categoryProducts[0].image, SITE_URL).toString()
-    : `${SITE_URL}/og.png`;
+    : `${SITE_URL}/og.jpg`;
   const description = `${title} kategorisinde ${categoryProducts.length} seçilmiş ürün. Terragolds koleksiyonunu inceleyin.`;
 
   return {
