@@ -204,14 +204,14 @@ export type ContentGroupDefinition = {
 };
 
 export const defaultSiteContent: SiteContent = {
-  homeHeroEyebrow: "Doğanın tek ve tekrarsız imzası",
-  homeHeroTitle: "Yeryüzünün",
-  homeHeroAccent: "zamansız parçaları.",
+  homeHeroEyebrow: "Zarafetin yeni adresi",
+  homeHeroTitle: "Zamansız",
+  homeHeroAccent: "şıklığın adresi.",
   homeHeroDescription:
-    "Doku, renk ve doğal oluşum karakterine göre özenle seçilmiş ürünler. Yaşam alanınız için benzersiz, kalıcı ve anlamlı parçalar.",
+    "Kolye, küpe, bileklik ve yüzük koleksiyonlarımızla her tarza uygun, özenle seçilmiş takılar. Güvenli paketleme ve Türkiye'nin her yerine hızlı teslimat.",
   homeHeroPrimaryLabel: "Ürünleri keşfet",
   homeHeroSecondaryLabel: "Doğru ürünü seçme rehberi",
-  homeHeroNote: "Her parça doğal olarak benzersizdir.",
+  homeHeroNote: "Her parça, zarafeti ve kaliteyi bir araya getirmek için özenle seçildi.",
   homeIntroEyebrow: "Seçim yaklaşımımız",
   homeIntroTitle: "Ürüne yalnızca bakmayız; karakterini seçeriz.",
   homeIntroBody:
@@ -224,17 +224,20 @@ export const defaultSiteContent: SiteContent = {
   homeGuideTitle: "Seçerken neye bakmalı?",
   homeGuideDescription:
     "Koleksiyonlarımız özenle seçilen özel parçalardan oluşur. Kaliteyi, zarafeti ve modern tasarımı bir araya getirerek her stile uyum sağlayan takıları sizlerle buluşturuyoruz.",
-  homeTileRawStonesImage: "/stone-amethyst.jpg",
-  homeTileRawStonesTitle: "Koleksiyon",
-  homeTileRawStonesTagline: "Özenle seçilmiş parçalar",
+  homeTileRawStonesImage:
+    "https://app.ebijuteri.com/storage/files/uploads/pimg/1754644550_BKO10451.jpg",
+  homeTileRawStonesTitle: "Kolye Koleksiyonu",
+  homeTileRawStonesTagline: "Zarif ve şık kolye modelleri",
   homeTileRawStonesLink: "/kategori/kadin-kolye",
-  homeTileMeditationImage: "/story-hands.jpg",
-  homeTileMeditationTitle: "Meditasyon Serisi",
-  homeTileMeditationTagline: "Huzur ve odaklanma için seçilmiş parçalar",
+  homeTileMeditationImage:
+    "https://app.ebijuteri.com/storage/files/uploads/pimg/1751969179_BKP10911.jpg",
+  homeTileMeditationTitle: "Küpe Koleksiyonu",
+  homeTileMeditationTagline: "Her tarza uygun küpe seçenekleri",
   homeTileMeditationLink: "/#shop",
-  homeTileCollectionSetsImage: "/stone-collection.jpg",
-  homeTileCollectionSetsTitle: "Koleksiyon Setleri",
-  homeTileCollectionSetsTagline: "Bir arada, özenle hazırlanmış koleksiyon setleri",
+  homeTileCollectionSetsImage:
+    "https://app.ebijuteri.com/storage/files/uploads/pimg/1770906964_BYK4144.jpg",
+  homeTileCollectionSetsTitle: "Yüzük Koleksiyonu",
+  homeTileCollectionSetsTagline: "Zamansız ve modern yüzük tasarımları",
   homeTileCollectionSetsLink: "/#shop",
   supportEyebrow: "Yardım merkezi",
   supportTitle: "Nasıl yardımcı olabiliriz?",
