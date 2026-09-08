@@ -9,6 +9,13 @@ type SyncResult = {
   errors: string[];
 };
 
+type PublishResult = {
+  published: number;
+  failed: number;
+  remaining: number;
+  errors: string[];
+};
+
 export default function ShopifySyncPanel({
   onNotice,
 }: {
@@ -18,6 +25,10 @@ export default function ShopifySyncPanel({
   const [error, setError] = useState("");
   const [lastResult, setLastResult] = useState<SyncResult | null>(null);
   const [batchSize, setBatchSize] = useState(25);
+  const [publishBusy, setPublishBusy] = useState(false);
+  const [publishError, setPublishError] = useState("");
+  const [lastPublishResult, setLastPublishResult] =
+    useState<PublishResult | null>(null);
 
   const sync = async () => {
     setBusy(true);
@@ -43,6 +54,35 @@ export default function ShopifySyncPanel({
       );
     } finally {
       setBusy(false);
+    }
+  };
+
+  const publish = async () => {
+    setPublishBusy(true);
+    setPublishError("");
+    try {
+      const response = await fetch("/api/admin/shopify/publish", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ batchSize: 50 }),
+        cache: "no-store",
+      });
+      const body = (await response.json()) as PublishResult & {
+        error?: string;
+      };
+      if (!response.ok) throw new Error(body.error ?? "İşlem tamamlanamadı.");
+      setLastPublishResult(body);
+      onNotice(
+        `Shopify vitrin: ${body.published} ürün yayınlandı, ${body.failed} hata, ${body.remaining} ürün sırada.`,
+      );
+    } catch (publishFail) {
+      setPublishError(
+        publishFail instanceof Error
+          ? publishFail.message
+          : "Shopify vitrin yayını başarısız.",
+      );
+    } finally {
+      setPublishBusy(false);
     }
   };
 
@@ -99,6 +139,56 @@ export default function ShopifySyncPanel({
             </thead>
             <tbody>
               {lastResult.errors.map((message, index) => (
+                <tr key={index}>
+                  <td>{message}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <div className="admin-panel-heading" style={{ marginTop: 32 }}>
+        <div>
+          <h2>Vitrine yayınla</h2>
+          <p>
+            Daha önce Shopify&apos;a gönderilmiş ama mağaza vitrininde
+            (Online Store satış kanalında) henüz görünmeyen ürünleri
+            yayınlar. Yeni gönderilen ürünler artık otomatik yayınlanıyor,
+            bu buton sadece eski bir senkron turundan kalanları düzeltir.
+          </p>
+        </div>
+        <button
+          className="admin-primary-button"
+          type="button"
+          disabled={publishBusy}
+          onClick={() => void publish()}
+        >
+          {publishBusy ? "Yayınlanıyor…" : "Şimdi yayınla"}
+        </button>
+      </div>
+      {publishError && (
+        <div className="admin-inline-error" role="alert">
+          {publishError}
+        </div>
+      )}
+      {lastPublishResult && (
+        <div className="admin-bulk-toolbar">
+          <strong>{lastPublishResult.published} ürün yayınlandı</strong>
+          <span>{lastPublishResult.failed} hata</span>
+          <span>{lastPublishResult.remaining} ürün sırada</span>
+        </div>
+      )}
+      {lastPublishResult && lastPublishResult.errors.length > 0 && (
+        <div className="admin-supplier-table-wrap">
+          <table className="admin-supplier-table">
+            <thead>
+              <tr>
+                <th>Hata</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lastPublishResult.errors.map((message, index) => (
                 <tr key={index}>
                   <td>{message}</td>
                 </tr>

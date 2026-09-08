@@ -84,6 +84,35 @@ export async function ensureShopifyColumns(db: D1Database) {
       )
       .run();
   }
+  if (!names.has("shopify_published_at")) {
+    await db
+      .prepare("ALTER TABLE products ADD COLUMN shopify_published_at TEXT")
+      .run();
+  }
+}
+
+// A product's `status: ACTIVE` alone doesn't make it appear on the Online
+// Store - Shopify treats each sales channel as a separate "publication" that
+// a product must be explicitly published to (see publishablePublish). Not
+// caching this across calls for the same reason we don't cache the location
+// id: the query is cheap and this avoids ever holding a stale id.
+export async function getOnlineStorePublicationId(
+  accessToken: string,
+): Promise<string> {
+  const data = await shopifyGraphQL<{
+    publications: { nodes: { id: string; name: string }[] };
+  }>(
+    accessToken,
+    `query { publications(first: 25) { nodes { id name } } }`,
+    {},
+  );
+  const publication = data.publications.nodes.find(
+    (node) => node.name === "Online Store",
+  );
+  if (!publication) {
+    throw new Error("Shopify mağazasında 'Online Store' satış kanalı bulunamadı.");
+  }
+  return publication.id;
 }
 
 // Shopify rejects `files.originalSource` unless it's a well-formed, absolute

@@ -81,6 +81,7 @@ export const products = sqliteTable("products", {
   shopifyProductId: text("shopify_product_id"),
   shopifyInventoryItemId: text("shopify_inventory_item_id"),
   shopifySyncedAt: text("shopify_synced_at"),
+  shopifyPublishedAt: text("shopify_published_at"),
   slug: text("slug").notNull().default(""),
   metaTitle: text("meta_title"),
   metaDescription: text("meta_description"),
