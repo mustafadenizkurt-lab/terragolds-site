@@ -1,6 +1,27 @@
 import { getShopifyAccessToken, SHOPIFY_SHOP_DOMAIN } from "./auth";
 
 const SHOPIFY_API_VERSION = "2026-07";
+const SITE_ORIGIN = "https://www.terragolds.com";
+
+// Shopify rejects `files.originalSource` unless it's a well-formed, absolute
+// URL. Product images in D1 aren't always that: some are relative paths
+// from our own media API (no domain), and some are absolute URLs copied
+// from the supplier feed containing a literal space or an un-encoded
+// Turkish character (e.g. "İ") in the path - all three read fine in a
+// browser (which encodes on the fly) but are invalid as a raw URI string.
+function toAbsoluteImageUrl(image: string): string | null {
+  if (!image) return null;
+  const absolute = /^https?:\/\//i.test(image)
+    ? image
+    : `${SITE_ORIGIN}${image.startsWith("/") ? "" : "/"}${image}`;
+  try {
+    // Percent-encodes spaces/non-ASCII characters; idempotent on a URL
+    // that's already properly encoded, since encodeURI leaves "%" alone.
+    return encodeURI(absolute);
+  } catch {
+    return null;
+  }
+}
 
 type PendingProduct = {
   id: number;
@@ -91,6 +112,7 @@ async function createShopifyProduct(
   locationId: string,
   product: PendingProduct,
 ): Promise<string> {
+  const imageUrl = toAbsoluteImageUrl(product.image);
   const data = await shopifyGraphQL<{
     productSet: {
       product: { id: string } | null;
@@ -131,8 +153,8 @@ async function createShopifyProduct(
             ],
           },
         ],
-        files: product.image
-          ? [{ originalSource: product.image, contentType: "IMAGE" }]
+        files: imageUrl
+          ? [{ originalSource: imageUrl, contentType: "IMAGE" }]
           : undefined,
       },
     },
