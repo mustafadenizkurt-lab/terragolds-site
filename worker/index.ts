@@ -3,7 +3,10 @@ import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } fr
 import handler from "vinext/server/app-router-entry";
 import { dispatchApiRequest } from "./api-dispatch";
 import { syncActiveSuppliers } from "../lib/xml-sync/syncSupplier";
-import { syncProductsToShopify } from "../lib/shopify/sync";
+import {
+  publishExistingProductsToShopify,
+  syncProductsToShopify,
+} from "../lib/shopify/sync";
 
 interface Env {
   ASSETS: Fetcher;
@@ -89,6 +92,12 @@ const worker = {
     // (see lib/shopify/auth.ts) - swallow failures here so a missing/invalid
     // Shopify credential never affects the unrelated XML supplier sync above.
     ctx.waitUntil(syncProductsToShopify(env.DB).catch(() => {}));
+    // Backfills products created before syncProductsToShopify started
+    // publishing to the Online Store channel - self-limiting since it only
+    // ever selects products still missing shopify_published_at.
+    ctx.waitUntil(
+      publishExistingProductsToShopify(env.DB, 200).catch(() => {}),
+    );
   },
 };
 

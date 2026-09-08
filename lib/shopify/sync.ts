@@ -1,6 +1,7 @@
 import { getShopifyAccessToken } from "./auth";
 import {
   ensureShopifyColumns,
+  getOnlineStorePublicationId,
   getPrimaryLocationId,
   shopifyGraphQL,
   toAbsoluteImageUrl,
@@ -91,6 +92,36 @@ async function createShopifyProduct(
   };
 }
 
+// productSet's `status: ACTIVE` only makes a product sellable in general -
+// it still won't appear on the storefront until it's explicitly published
+// to the "Online Store" sales channel (a separate concept from status).
+async function publishToOnlineStore(
+  accessToken: string,
+  publicationId: string,
+  productId: string,
+): Promise<void> {
+  const data = await shopifyGraphQL<{
+    publishablePublish: {
+      userErrors: { field: string[]; message: string }[];
+    };
+  }>(
+    accessToken,
+    `mutation publishablePublish($id: ID!, $input: [PublicationInput!]!) {
+      publishablePublish(id: $id, input: $input) {
+        userErrors { field message }
+      }
+    }`,
+    { id: productId, input: [{ publicationId }] },
+  );
+  if (data.publishablePublish.userErrors.length) {
+    throw new Error(
+      data.publishablePublish.userErrors
+        .map((error) => error.message)
+        .join(", "),
+    );
+  }
+}
+
 export type ShopifySyncResult = {
   created: number;
   failed: number;
@@ -132,6 +163,7 @@ export async function syncProductsToShopify(
   }
 
   const locationId = await getPrimaryLocationId(accessToken);
+  const publicationId = await getOnlineStorePublicationId(accessToken);
 
   let created = 0;
   let failed = 0;
@@ -143,10 +175,12 @@ export async function syncProductsToShopify(
         locationId,
         product,
       );
+      await publishToOnlineStore(accessToken, publicationId, productId);
       await db
         .prepare(
           `UPDATE products SET shopify_product_id = ?, shopify_inventory_item_id = ?,
-           shopify_synced_at = CURRENT_TIMESTAMP WHERE id = ?`,
+           shopify_synced_at = CURRENT_TIMESTAMP, shopify_published_at = CURRENT_TIMESTAMP
+           WHERE id = ?`,
         )
         .bind(productId, inventoryItemId, product.id)
         .run();
@@ -160,4 +194,74 @@ export async function syncProductsToShopify(
   }
 
   return { created, failed, remaining: await remainingCount(), errors };
+}
+
+export type ShopifyPublishResult = {
+  published: number;
+  failed: number;
+  remaining: number;
+  errors: string[];
+};
+
+// One-time (and self-healing) backfill for products that were created by an
+// earlier version of syncProductsToShopify, before it published to the
+// Online Store channel - they have a shopify_product_id but never actually
+// appeared on the storefront.
+export async function publishExistingProductsToShopify(
+  db: D1Database,
+  batchSize = 50,
+): Promise<ShopifyPublishResult> {
+  await ensureShopifyColumns(db);
+
+  const pending = await db
+    .prepare(
+      `SELECT id, shopify_product_id AS shopifyProductId FROM products
+       WHERE shopify_product_id IS NOT NULL AND shopify_published_at IS NULL
+       ORDER BY id LIMIT ?`,
+    )
+    .bind(batchSize)
+    .all<{ id: number; shopifyProductId: string }>();
+
+  const remainingCount = async () => {
+    const row = await db
+      .prepare(
+        "SELECT COUNT(*) AS c FROM products WHERE shopify_product_id IS NOT NULL AND shopify_published_at IS NULL",
+      )
+      .first<{ c: number }>();
+    return row?.c ?? 0;
+  };
+
+  if (pending.results.length === 0) {
+    return { published: 0, failed: 0, remaining: 0, errors: [] };
+  }
+
+  const accessToken = await getShopifyAccessToken();
+  const publicationId = await getOnlineStorePublicationId(accessToken);
+
+  let published = 0;
+  let failed = 0;
+  const errors: string[] = [];
+  for (const product of pending.results) {
+    try {
+      await publishToOnlineStore(
+        accessToken,
+        publicationId,
+        product.shopifyProductId,
+      );
+      await db
+        .prepare(
+          "UPDATE products SET shopify_published_at = CURRENT_TIMESTAMP WHERE id = ?",
+        )
+        .bind(product.id)
+        .run();
+      published += 1;
+    } catch (error) {
+      failed += 1;
+      errors.push(
+        `#${product.id}: ${error instanceof Error ? error.message : "bilinmeyen hata"}`,
+      );
+    }
+  }
+
+  return { published, failed, remaining: await remainingCount(), errors };
 }
