@@ -9,6 +9,8 @@ import {
 } from "../../../../lib/shipping-tracking-link";
 import { getShippingTrackingSettings } from "../../../../lib/shipping-tracking-settings";
 import { getD1 } from "../../../../lib/store-db";
+import { ensureShopifyOrdersTable } from "../../../../lib/shopify/orders";
+import { fulfillShopifyOrder } from "../../../../lib/shopify/fulfillment";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +26,7 @@ export async function GET(request: Request) {
 
   try {
     const db = getD1();
+    await ensureShopifyOrdersTable(db);
     await db
       .prepare(
         `UPDATE orders
@@ -36,7 +39,7 @@ export async function GET(request: Request) {
       )
       .run();
 
-    const [orders, items, trackingSettings] = await Promise.all([
+    const [orders, items, trackingSettings, shopifyOrders] = await Promise.all([
       db
         .prepare(
           `SELECT id, status, customer_first_name, customer_last_name,
@@ -96,6 +99,44 @@ export async function GET(request: Request) {
           unit_price: number;
         }>(),
       getShippingTrackingSettings(),
+      db
+        .prepare(
+          `SELECT id, status, customer_first_name, customer_last_name,
+                  customer_email, customer_phone, shipping_address,
+                  shipping_district, shipping_city, shipping_postcode,
+                  subtotal_amount, discount_amount, shipping_amount,
+                  total_amount, currency, customer_note, shipping_carrier,
+                  tracking_number, shipped_at, delivered_at, items_json,
+                  created_at
+           FROM shopify_orders
+           WHERE status IN ('pending', 'paid', 'shipped', 'delivered')
+           ORDER BY created_at DESC
+           LIMIT 150`,
+        )
+        .all<{
+          id: string;
+          status: string;
+          customer_first_name: string;
+          customer_last_name: string;
+          customer_email: string;
+          customer_phone: string;
+          shipping_address: string;
+          shipping_district: string;
+          shipping_city: string;
+          shipping_postcode: string;
+          subtotal_amount: number;
+          discount_amount: number;
+          shipping_amount: number;
+          total_amount: number;
+          currency: string;
+          customer_note: string;
+          shipping_carrier: string;
+          tracking_number: string;
+          shipped_at: string | null;
+          delivered_at: string | null;
+          items_json: string;
+          created_at: string;
+        }>(),
     ]);
 
     const itemsByOrder = new Map<
@@ -135,6 +176,7 @@ export async function GET(request: Request) {
         totalAmount: Number(order.total_amount) || 0,
         currency: order.currency,
         paymentProvider: order.payment_provider,
+        salesChannel: "terragolds.com",
         customerNote: order.customer_note,
         shippingCarrier: order.shipping_carrier,
         trackingNumber: order.tracking_number,
@@ -153,8 +195,71 @@ export async function GET(request: Request) {
       }),
     );
 
+    const shopifyShippingOrders: AdminShippingOrder[] =
+      shopifyOrders.results.map((order) => {
+        let parsedItems: AdminShippingOrder["items"] = [];
+        try {
+          parsedItems = (
+            JSON.parse(order.items_json) as {
+              name: string;
+              quantity: number;
+              unitPrice: number;
+            }[]
+          ).map((item) => ({
+            name: item.name,
+            quantity: Number(item.quantity),
+            unitPrice: Number(item.unitPrice),
+          }));
+        } catch {
+          parsedItems = [];
+        }
+        return {
+          id: order.id,
+          status: order.status,
+          customerName:
+            `${order.customer_first_name} ${order.customer_last_name}`.trim(),
+          email: order.customer_email,
+          phone: order.customer_phone,
+          address: [
+            order.shipping_address,
+            order.shipping_district,
+            order.shipping_city,
+            order.shipping_postcode,
+          ]
+            .filter(Boolean)
+            .join(", "),
+          subtotalAmount: Number(order.subtotal_amount) || 0,
+          discountAmount: Number(order.discount_amount) || 0,
+          shippingAmount: Number(order.shipping_amount) || 0,
+          discountCode: null,
+          totalAmount: Number(order.total_amount) || 0,
+          currency: order.currency,
+          paymentProvider: "shopify",
+          salesChannel: "shopify",
+          customerNote: order.customer_note,
+          shippingCarrier: order.shipping_carrier,
+          trackingNumber: order.tracking_number,
+          trackingUrl: createShippingTrackingUrl({
+            carrier: order.shipping_carrier,
+            trackingNumber: order.tracking_number,
+          }),
+          autoDeliverAt:
+            order.status === "shipped"
+              ? createAutoDeliverAt(order.shipped_at)
+              : null,
+          shippedAt: order.shipped_at,
+          deliveredAt: order.delivered_at,
+          createdAt: order.created_at,
+          items: parsedItems,
+        };
+      });
+
+    const combinedOrders = [...shippingOrders, ...shopifyShippingOrders].sort(
+      (a, b) => (a.createdAt < b.createdAt ? 1 : -1),
+    );
+
     return Response.json(
-      { orders: shippingOrders, trackingSettings },
+      { orders: combinedOrders, trackingSettings },
       { headers: { "cache-control": "no-store" } },
     );
   } catch (error) {
@@ -196,10 +301,20 @@ export async function PATCH(request: Request) {
     }
 
     const db = getD1();
-    const current = await db
+    await ensureShopifyOrdersTable(db);
+
+    let table: "orders" | "shopify_orders" = "orders";
+    let current = await db
       .prepare("SELECT status FROM orders WHERE id = ? LIMIT 1")
       .bind(id)
       .first<{ status: string }>();
+    if (!current) {
+      table = "shopify_orders";
+      current = await db
+        .prepare("SELECT status FROM shopify_orders WHERE id = ? LIMIT 1")
+        .bind(id)
+        .first<{ status: string }>();
+    }
     if (!current) {
       return Response.json({ error: "Sipariş bulunamadı." }, { status: 404 });
     }
@@ -218,7 +333,7 @@ export async function PATCH(request: Request) {
 
     const result = await db
       .prepare(
-        `UPDATE orders
+        `UPDATE ${table}
          SET status = ?, shipping_carrier = ?, tracking_number = ?,
              shipped_at = CASE
                WHEN ? IN ('shipped', 'delivered')
@@ -246,6 +361,25 @@ export async function PATCH(request: Request) {
     if (!result.meta.changes) {
       return Response.json({ error: "Sipariş bulunamadı." }, { status: 404 });
     }
+
+    // Terragolds admin is the only place shipping status is edited - this
+    // just reports "shipped" to Shopify (one-directional) so the customer
+    // sees the right status there too. A failure here doesn't roll back the
+    // D1 update above (that stays authoritative); the admin is told to
+    // check Shopify manually instead.
+    if (table === "shopify_orders" && status === "shipped") {
+      try {
+        await fulfillShopifyOrder(id, shippingCarrier, trackingNumber);
+      } catch (error) {
+        return Response.json({
+          ok: true,
+          warning: `Sipariş güncellendi ama Shopify'a bildirilemedi: ${
+            error instanceof Error ? error.message : "bilinmeyen hata"
+          }`,
+        });
+      }
+    }
+
     return Response.json({ ok: true });
   } catch (error) {
     return Response.json(

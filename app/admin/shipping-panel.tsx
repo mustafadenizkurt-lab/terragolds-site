@@ -279,7 +279,14 @@ export default function ShippingPanel({
                     <small>Sipariş</small>
                   </span>
                   <span className="admin-shipping-order-customer">
-                    <strong>{order.customerName}</strong>
+                    <strong>
+                      {order.customerName}
+                      {order.salesChannel === "shopify" && (
+                        <small className="admin-order-channel-badge">
+                          Shopify
+                        </small>
+                      )}
+                    </strong>
                     <small>
                       {order.id} ·{" "}
                       {new Date(order.createdAt).toLocaleString("tr-TR", {

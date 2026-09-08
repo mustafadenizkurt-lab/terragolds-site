@@ -5,7 +5,7 @@ import {
   shopifyGraphQL,
   toAbsoluteImageUrl,
 } from "./client";
-import { ensureOrdersPaidWebhookRegistered } from "./webhooks";
+import { ensureShopifyWebhooksRegistered } from "./webhooks";
 
 type PendingProduct = {
   id: number;
@@ -123,9 +123,9 @@ export async function syncProductsToShopify(
   };
 
   const accessToken = await getShopifyAccessToken();
-  // Idempotent and cheap - also self-heals if someone deletes the webhook
+  // Idempotent and cheap - also self-heals if someone deletes a webhook
   // subscription from the Shopify admin side.
-  await ensureOrdersPaidWebhookRegistered(accessToken);
+  await ensureShopifyWebhooksRegistered(accessToken);
 
   if (pending.results.length === 0) {
     return { created: 0, failed: 0, remaining: 0, errors: [] };
