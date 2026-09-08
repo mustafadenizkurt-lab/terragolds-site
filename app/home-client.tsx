@@ -29,61 +29,66 @@ import AISummaryBlock from "./ai-summary-block";
 
 const heroStoneSlides = [
   {
-    name: "Şeffaf Kuvars",
-    latin: "Clear Quartz",
-    image: "/hero-stone-clear-quartz.jpg",
-    accent: "Berraklık",
-    detail: "Işığı temiz taşıyan, sade ve güçlü bir koleksiyon parçası.",
-    hasEmbeddedLabel: true,
+    name: "Küpe",
+    latin: "Earrings",
+    image:
+      "https://app.ebijuteri.com/storage/files/uploads/pimg/1751969179_BKP10911.jpg",
+    accent: "Zarif detaylar",
+    detail: "Günlük ve özel anlar için seçilmiş, her tarza uyum sağlayan küpe modelleri.",
   },
   {
-    name: "Ametist",
-    latin: "Amethyst",
-    image: "/stone-amethyst.jpg",
-    accent: "Derin mor tonu",
-    detail: "Derin mor tonlarıyla vitrinde güçlü durur.",
+    name: "Kolye",
+    latin: "Necklace",
+    image:
+      "https://app.ebijuteri.com/storage/files/uploads/pimg/1732630353_BKO9531.jpg",
+    accent: "Zamansız şıklık",
+    detail: "İnce zincirlerden iddialı tasarımlara, tarzınızı tamamlayan kolye seçenekleri.",
   },
   {
-    name: "Gül Kuvars",
-    latin: "Rose Quartz",
-    image: "/stone-rose-quartz-hero.jpg",
-    accent: "Yumuşak pembe ton",
-    detail: "Pastel pembe yapısıyla sakin, zarif ve dekoratif bir parça.",
+    name: "Yüzük",
+    latin: "Ring",
+    image:
+      "https://app.ebijuteri.com/storage/files/uploads/pimg/1758543930_BYK3832.jpg",
+    accent: "Öne çıkan detay",
+    detail: "Modern ve klasik tasarımların buluştuğu, her ele yakışan yüzük koleksiyonu.",
   },
 ];
 
 const themeCollectionTileMeta = [
   {
-    category: "Ham Taşlar",
-    defaultTitle: "Koleksiyon",
-    defaultTagline: "Özenle seçilmiş parçalar",
+    category: "Kolye",
+    defaultTitle: "Kolye Koleksiyonu",
+    defaultTagline: "Zarif ve şık kolye modelleri",
     imageKey: "homeTileRawStonesImage" as const,
     titleKey: "homeTileRawStonesTitle" as const,
     taglineKey: "homeTileRawStonesTagline" as const,
     linkKey: "homeTileRawStonesLink" as const,
-    defaultImage: "/stone-amethyst.jpg",
+    defaultImage:
+      "https://app.ebijuteri.com/storage/files/uploads/pimg/1754644550_BKO10451.jpg",
     defaultLink: "/#shop",
   },
   {
-    category: "Meditasyon",
-    defaultTitle: "Meditasyon Serisi",
-    defaultTagline: "Huzur ve odaklanma için seçilmiş parçalar",
+    category: "Küpe",
+    defaultTitle: "Küpe Koleksiyonu",
+    defaultTagline: "Her tarza uygun küpe seçenekleri",
     imageKey: "homeTileMeditationImage" as const,
     titleKey: "homeTileMeditationTitle" as const,
     taglineKey: "homeTileMeditationTagline" as const,
     linkKey: "homeTileMeditationLink" as const,
-    defaultImage: "/story-hands.jpg",
+    defaultImage:
+      "https://app.ebijuteri.com/storage/files/uploads/pimg/1751969179_BKP10911.jpg",
     defaultLink: "/#shop",
   },
   {
-    category: "Koleksiyon Setleri",
-    defaultTitle: "Koleksiyon Setleri",
-    defaultTagline: "Bir arada, özenle hazırlanmış koleksiyon setleri",
+    category: "Bayan Yüzük ve Kombinler",
+    defaultTitle: "Yüzük Koleksiyonu",
+    defaultTagline: "Zamansız ve modern yüzük tasarımları",
     imageKey: "homeTileCollectionSetsImage" as const,
     titleKey: "homeTileCollectionSetsTitle" as const,
     taglineKey: "homeTileCollectionSetsTagline" as const,
     linkKey: "homeTileCollectionSetsLink" as const,
-    defaultImage: "/stone-collection.jpg",
+    defaultImage:
+      "https://app.ebijuteri.com/storage/files/uploads/pimg/1770906964_BYK4144.jpg",
     defaultLink: "/#shop",
   },
 ];
