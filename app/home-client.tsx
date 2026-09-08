@@ -1014,20 +1014,27 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
     category,
   ]);
 
-  useEffect(() => {
-    // Mirror the confirmed page into the URL (replacing, not pushing, so
-    // clicking through pages doesn't pile up history entries) so that
-    // leaving for a product page and coming back - via the browser's back
-    // button - restores this page instead of resetting to page 1.
+  function catalogPageUrl(page: number) {
     const params = new URLSearchParams(window.location.search);
-    if (catalogData.page > 1) {
-      params.set("sayfa", String(catalogData.page));
+    if (page > 1) {
+      params.set("sayfa", String(page));
     } else {
       params.delete("sayfa");
     }
     const query = params.toString();
-    const url = `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`;
-    window.history.replaceState(window.history.state, "", url);
+    return `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`;
+  }
+
+  useEffect(() => {
+    // Keep the URL correct when the page changes for a reason other than the
+    // user explicitly turning a page (filter change resetting to page 1, or
+    // the server clamping an out-of-range page) - replace in place so this
+    // doesn't add a "back" step of its own. Explicit page turns push their
+    // own history entry in goToCatalogPage instead, so the back button can
+    // step through 3 -> 2 -> 1 the way a paginated list is expected to.
+    if (String(catalogData.page) === new URLSearchParams(window.location.search).get("sayfa")) return;
+    if (catalogData.page === 1 && !new URLSearchParams(window.location.search).has("sayfa")) return;
+    window.history.replaceState(window.history.state, "", catalogPageUrl(catalogData.page));
   }, [catalogData.page]);
 
   const catalogPageWindow = buildPageWindow(
@@ -1037,6 +1044,10 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
 
   const goToCatalogPage = (page: number) => {
     const nextPage = Math.min(Math.max(1, page), catalogData.totalPages);
+    // Push (not replace) so each explicit page turn is its own history step -
+    // the back button can then step 3 -> 2 -> 1 like a normal paginated list,
+    // instead of jumping straight past every page in one go.
+    window.history.pushState(window.history.state, "", catalogPageUrl(nextPage));
     setCatalogPage(nextPage);
     window.setTimeout(() => {
       catalogResultsRef.current?.scrollIntoView({
@@ -1045,6 +1056,19 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
       });
     }, 0);
   };
+
+  useEffect(() => {
+    // pushState above doesn't reload the page, so the back/forward buttons
+    // moving between those pushed "sayfa" URLs fire popstate without a
+    // navigation - read the restored URL back into state so the catalog
+    // actually shows that page again.
+    const onPopState = () => {
+      const page = Number(new URLSearchParams(window.location.search).get("sayfa"));
+      setCatalogPage(Number.isInteger(page) && page > 0 ? page : 1);
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
 
   const resetCatalogFilters = () => {
     setCatalogQuery("");
