@@ -299,7 +299,7 @@ export default function ProductDetailClient({
               <del>{money.format(product.price)}</del>
             )}
             <strong>{money.format(currentPrice)}</strong>
-            <small>KDV dahil</small>
+            <small>+ KDV</small>
           </div>
 
           <p className="product-profile-description">{product.description}</p>
