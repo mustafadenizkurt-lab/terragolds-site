@@ -1189,9 +1189,9 @@ body::before {
   margin: 13px 0 8px;
   color: var(--forest-deep);
   font-family: var(--serif);
-  font-size: clamp(42px, 4.2vw, 65px);
+  font-size: clamp(22px, 2.4vw, 30px);
   font-weight: 500;
-  line-height: 0.98;
+  line-height: 1.15;
 }
 .product-profile-code {
   display: block;
@@ -1238,12 +1238,12 @@ body::before {
 }
 .product-profile-price strong {
   color: #a83c31;
-  font-size: 34px;
+  font-size: 28px;
   font-weight: 850;
 }
 .product-profile-price small {
   color: var(--muted);
-  font-size: 9px;
+  font-size: 13px;
 }
 .product-profile-description {
   margin: 26px 0;
@@ -1851,13 +1851,13 @@ body::before {
     height: 43px;
   }
   .product-profile-copy h1 {
-    font-size: 43px;
+    font-size: 22px;
   }
   .product-rating-line {
     flex-wrap: wrap;
   }
   .product-profile-price strong {
-    font-size: 30px;
+    font-size: 24px;
   }
   .product-assurances {
     grid-template-columns: 1fr;
@@ -2611,7 +2611,11 @@ img {
 .theme-tile-shade {
   position: absolute;
   inset: 0;
-  background: linear-gradient(0deg, rgba(17, 28, 24, 0.94) 0%, rgba(17, 28, 24, 0.6) 32%, rgba(17, 28, 24, 0.08) 62%, rgba(17, 28, 24, 0.3) 100%);
+  /* Dark only behind the text band at the bottom (0-45%) so the product
+     photo itself stays bright and unobscured across the rest of the tile -
+     previously the gradient darkened the whole image, including the top
+     where the product sits, making it look dull and hard to see. */
+  background: linear-gradient(0deg, rgba(17, 28, 24, 0.85) 0%, rgba(17, 28, 24, 0.45) 24%, rgba(17, 28, 24, 0) 45%, rgba(17, 28, 24, 0) 100%);
 }
 .theme-tile-copy {
   position: absolute;
