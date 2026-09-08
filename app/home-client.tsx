@@ -578,7 +578,11 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
   const [catalogMaxPrice, setCatalogMaxPrice] = useState("");
   const [catalogInStockOnly, setCatalogInStockOnly] = useState(false);
   const [catalogDiscountOnly, setCatalogDiscountOnly] = useState(false);
-  const [catalogPage, setCatalogPage] = useState(1);
+  const [catalogPage, setCatalogPage] = useState(() => {
+    if (typeof window === "undefined") return 1;
+    const page = Number(new URLSearchParams(window.location.search).get("sayfa"));
+    return Number.isInteger(page) && page > 0 ? page : 1;
+  });
   const [settings, setSettings] =
     useState<StoreSettings>(initialSettings);
   const [content, setContent] =
@@ -1009,6 +1013,22 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
     catalogQuery,
     category,
   ]);
+
+  useEffect(() => {
+    // Mirror the confirmed page into the URL (replacing, not pushing, so
+    // clicking through pages doesn't pile up history entries) so that
+    // leaving for a product page and coming back - via the browser's back
+    // button - restores this page instead of resetting to page 1.
+    const params = new URLSearchParams(window.location.search);
+    if (catalogData.page > 1) {
+      params.set("sayfa", String(catalogData.page));
+    } else {
+      params.delete("sayfa");
+    }
+    const query = params.toString();
+    const url = `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`;
+    window.history.replaceState(window.history.state, "", url);
+  }, [catalogData.page]);
 
   const catalogPageWindow = buildPageWindow(
     catalogData.page,
