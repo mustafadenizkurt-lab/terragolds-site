@@ -3,6 +3,7 @@ import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } fr
 import handler from "vinext/server/app-router-entry";
 import { dispatchApiRequest } from "./api-dispatch";
 import { syncActiveSuppliers } from "../lib/xml-sync/syncSupplier";
+import { syncProductsToShopify } from "../lib/shopify/sync";
 
 interface Env {
   ASSETS: Fetcher;
@@ -84,6 +85,10 @@ const worker = {
   },
   async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext) {
     ctx.waitUntil(syncActiveSuppliers(env.DB));
+    // Shopify secrets are only configured once the store owner sets them up
+    // (see lib/shopify/auth.ts) - swallow failures here so a missing/invalid
+    // Shopify credential never affects the unrelated XML supplier sync above.
+    ctx.waitUntil(syncProductsToShopify(env.DB).catch(() => {}));
   },
 };
 
