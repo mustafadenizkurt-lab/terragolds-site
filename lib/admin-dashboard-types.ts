@@ -84,6 +84,11 @@ export type AdminShippingOrder = {
   totalAmount: number;
   currency: string;
   paymentProvider: string;
+  // "terragolds.com" for a site order (the `orders` table), "shopify" for
+  // one imported from the Shopify orders/create webhook (`shopify_orders`
+  // table) - kept separate purely for reporting/filtering, the rest of
+  // this shape (and the admin UI rendering it) stays identical either way.
+  salesChannel: "terragolds.com" | "shopify";
   customerNote: string;
   shippingCarrier: string;
   trackingNumber: string;
