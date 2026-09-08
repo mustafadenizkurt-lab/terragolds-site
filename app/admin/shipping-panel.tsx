@@ -67,6 +67,7 @@ async function readResponse(response: Response) {
     orders?: AdminShippingOrder[];
     trackingSettings?: ShippingTrackingSettings;
     error?: string;
+    warning?: string;
   };
   if (!response.ok) throw new Error(body.error || "İşlem tamamlanamadı.");
   return body;
@@ -86,6 +87,7 @@ export default function ShippingPanel({
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState("");
   const [error, setError] = useState("");
+  const [warning, setWarning] = useState("");
 
   const loadOrders = async () => {
     setLoading(true);
@@ -172,8 +174,9 @@ export default function ShippingPanel({
   ) => {
     setSavingId(order.id);
     setError("");
+    setWarning("");
     try {
-      await readResponse(
+      const body = await readResponse(
         await fetch("/api/admin/shipping", {
           method: "PATCH",
           headers: { "content-type": "application/json" },
@@ -185,6 +188,7 @@ export default function ShippingPanel({
           }),
         }),
       );
+      if (body.warning) setWarning(body.warning);
       await loadOrders();
       await onChanged();
     } catch (saveError) {
@@ -248,6 +252,7 @@ export default function ShippingPanel({
       </nav>
 
       {error && <div className="admin-alert error"><span>!</span><p>{error}</p></div>}
+      {warning && <div className="admin-alert warning"><span>!</span><p>{warning}</p></div>}
 
       {loading ? (
         <div className="admin-loading"><span /><p>Kargo kayıtları hazırlanıyor…</p></div>

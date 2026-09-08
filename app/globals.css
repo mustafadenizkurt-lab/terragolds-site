@@ -7545,6 +7545,14 @@ footer {
   background: #fff5f1;
   color: #7d3327;
 }
+.admin-alert.warning {
+  border-color: #d1ad61;
+  background: #fffaf0;
+  color: #7a5f1e;
+}
+.admin-alert.warning > span {
+  background: #d1ad61;
+}
 .admin-alert > span {
   width: 24px;
   height: 24px;
