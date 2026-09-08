@@ -1,27 +1,11 @@
-import { getShopifyAccessToken, SHOPIFY_SHOP_DOMAIN } from "./auth";
-
-const SHOPIFY_API_VERSION = "2026-07";
-const SITE_ORIGIN = "https://www.terragolds.com";
-
-// Shopify rejects `files.originalSource` unless it's a well-formed, absolute
-// URL. Product images in D1 aren't always that: some are relative paths
-// from our own media API (no domain), and some are absolute URLs copied
-// from the supplier feed containing a literal space or an un-encoded
-// Turkish character (e.g. "İ") in the path - all three read fine in a
-// browser (which encodes on the fly) but are invalid as a raw URI string.
-function toAbsoluteImageUrl(image: string): string | null {
-  if (!image) return null;
-  const absolute = /^https?:\/\//i.test(image)
-    ? image
-    : `${SITE_ORIGIN}${image.startsWith("/") ? "" : "/"}${image}`;
-  try {
-    // Percent-encodes spaces/non-ASCII characters; idempotent on a URL
-    // that's already properly encoded, since encodeURI leaves "%" alone.
-    return encodeURI(absolute);
-  } catch {
-    return null;
-  }
-}
+import { getShopifyAccessToken } from "./auth";
+import {
+  ensureShopifyColumns,
+  getPrimaryLocationId,
+  shopifyGraphQL,
+  toAbsoluteImageUrl,
+} from "./client";
+import { ensureOrdersPaidWebhookRegistered } from "./webhooks";
 
 type PendingProduct = {
   id: number;
@@ -33,96 +17,30 @@ type PendingProduct = {
   category: string;
 };
 
-type ShopifyGraphQLResponse<T> = {
-  data?: T;
-  errors?: { message: string }[];
-};
-
-async function ensureShopifyColumns(db: D1Database) {
-  const columns = await db
-    .prepare("PRAGMA table_info(products)")
-    .all<{ name: string }>();
-  const names = new Set(columns.results.map((column) => column.name));
-  if (!names.has("shopify_product_id")) {
-    await db
-      .prepare("ALTER TABLE products ADD COLUMN shopify_product_id TEXT")
-      .run();
-  }
-  if (!names.has("shopify_synced_at")) {
-    await db
-      .prepare("ALTER TABLE products ADD COLUMN shopify_synced_at TEXT")
-      .run();
-  }
-}
-
-async function shopifyGraphQL<T>(
-  accessToken: string,
-  query: string,
-  variables: Record<string, unknown>,
-): Promise<T> {
-  const response = await fetch(
-    `https://${SHOPIFY_SHOP_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`,
-    {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "X-Shopify-Access-Token": accessToken,
-      },
-      body: JSON.stringify({ query, variables }),
-    },
-  );
-  if (!response.ok) {
-    throw new Error(
-      `Shopify API isteği başarısız (${response.status}): ${await response.text()}`,
-    );
-  }
-  const body = (await response.json()) as ShopifyGraphQLResponse<T>;
-  if (body.errors?.length) {
-    throw new Error(
-      `Shopify GraphQL hatası: ${body.errors.map((error) => error.message).join(", ")}`,
-    );
-  }
-  if (!body.data) {
-    throw new Error("Shopify yanıtında veri bulunamadı.");
-  }
-  return body.data;
-}
-
-// Sonuçları cron çalıştırmaları arasında önbelleğe almıyoruz - tek bir
-// sorgu maliyeti ihmal edilebilir düzeyde, bu da ilk lokasyonun silinip
-// yenisinin eklendiği bir senaryoda bile eski bir ID'ye takılı kalmayı
-// önler.
-async function getPrimaryLocationId(accessToken: string): Promise<string> {
-  const data = await shopifyGraphQL<{
-    locations: { edges: { node: { id: string } }[] };
-  }>(
-    accessToken,
-    `query { locations(first: 1) { edges { node { id } } } }`,
-    {},
-  );
-  const locationId = data.locations.edges[0]?.node.id;
-  if (!locationId) {
-    throw new Error("Shopify mağazasında hiç lokasyon (depo) bulunamadı.");
-  }
-  return locationId;
-}
-
 async function createShopifyProduct(
   accessToken: string,
   locationId: string,
   product: PendingProduct,
-): Promise<string> {
+): Promise<{ productId: string; inventoryItemId: string | null }> {
   const imageUrl = toAbsoluteImageUrl(product.image);
   const data = await shopifyGraphQL<{
     productSet: {
-      product: { id: string } | null;
+      product: {
+        id: string;
+        variants: { nodes: { inventoryItem: { id: string } }[] };
+      } | null;
       userErrors: { field: string[]; message: string }[];
     };
   }>(
     accessToken,
     `mutation productSet($input: ProductSetInput!) {
       productSet(synchronous: true, input: $input) {
-        product { id }
+        product {
+          id
+          variants(first: 1) {
+            nodes { inventoryItem { id } }
+          }
+        }
         userErrors { field message }
       }
     }`,
@@ -166,7 +84,11 @@ async function createShopifyProduct(
         "Shopify ürünü oluşturulamadı.",
     );
   }
-  return productId;
+  return {
+    productId,
+    inventoryItemId:
+      data.productSet.product?.variants.nodes[0]?.inventoryItem.id ?? null,
+  };
 }
 
 export type ShopifySyncResult = {
@@ -200,11 +122,15 @@ export async function syncProductsToShopify(
     return row?.c ?? 0;
   };
 
+  const accessToken = await getShopifyAccessToken();
+  // Idempotent and cheap - also self-heals if someone deletes the webhook
+  // subscription from the Shopify admin side.
+  await ensureOrdersPaidWebhookRegistered(accessToken);
+
   if (pending.results.length === 0) {
     return { created: 0, failed: 0, remaining: 0, errors: [] };
   }
 
-  const accessToken = await getShopifyAccessToken();
   const locationId = await getPrimaryLocationId(accessToken);
 
   let created = 0;
@@ -212,16 +138,17 @@ export async function syncProductsToShopify(
   const errors: string[] = [];
   for (const product of pending.results) {
     try {
-      const shopifyId = await createShopifyProduct(
+      const { productId, inventoryItemId } = await createShopifyProduct(
         accessToken,
         locationId,
         product,
       );
       await db
         .prepare(
-          "UPDATE products SET shopify_product_id = ?, shopify_synced_at = CURRENT_TIMESTAMP WHERE id = ?",
+          `UPDATE products SET shopify_product_id = ?, shopify_inventory_item_id = ?,
+           shopify_synced_at = CURRENT_TIMESTAMP WHERE id = ?`,
         )
-        .bind(shopifyId, product.id)
+        .bind(productId, inventoryItemId, product.id)
         .run();
       created += 1;
     } catch (error) {
