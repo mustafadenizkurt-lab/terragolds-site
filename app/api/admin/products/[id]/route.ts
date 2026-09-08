@@ -2,6 +2,7 @@ import { getAuthorizedAdmin, unauthorizedAdminResponse } from "../../../../../li
 import { parseProductInput } from "../../../../../lib/product-input";
 import { resolveProductSlug } from "../../../../../lib/product-slugs";
 import { ensureSeedData, getD1 } from "../../../../../lib/store-db";
+import { pushInventoryToShopify } from "../../../../../lib/shopify/inventory";
 
 export const dynamic = "force-dynamic";
 
@@ -64,6 +65,13 @@ export async function PUT(request: Request, context: RouteContext) {
 
     if (!result.meta.changes) {
       return Response.json({ error: "Ürün bulunamadı." }, { status: 404 });
+    }
+    // D1 is the source of truth for stock - push this product's new count
+    // to Shopify (a no-op if it isn't synced there yet).
+    try {
+      await pushInventoryToShopify(db, id);
+    } catch {
+      // Self-heals on the next stock change or scheduled sync.
     }
     return Response.json({ ok: true });
   } catch (error) {

@@ -5,6 +5,7 @@ import { matchesFilters, type ImportFilters } from "../xml-import-filters";
 import { resolveProductSlug } from "../product-slugs";
 import { rewriteProductDescription } from "../product-description-rewrite";
 import { getOptionalEnv } from "../runtime-env";
+import { pushInventoryToShopify } from "../shopify/inventory";
 
 export type SupplierMapping = {
   externalId?: string;
@@ -101,6 +102,13 @@ export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<
           `UPDATE products SET name = ?, stone = ?, category = ?, price = ?, cost = ?, stock = ?, image = ?, description = ?, xml_sync_status = 'synced', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
         ).bind(product.name, product.stone, product.category, product.price, product.cost, product.stock, product.image, product.description, matchedId).run();
         updated += 1;
+        // D1 is the source of truth for stock - push this product's new
+        // count to Shopify (a no-op if it isn't synced there yet).
+        try {
+          await pushInventoryToShopify(db, matchedId);
+        } catch {
+          // Self-heals on the next stock change or scheduled sync.
+        }
       } else {
         const description = await uniqueDescriptionForNewProduct(product);
         const created = await db.prepare(
