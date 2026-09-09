@@ -41,6 +41,9 @@ export default function ShopifySyncPanel({
   const [headerFooterBusy, setHeaderFooterBusy] = useState(false);
   const [headerFooterError, setHeaderFooterError] = useState("");
   const [headerFooterApplied, setHeaderFooterApplied] = useState(false);
+  const [collectionPageBusy, setCollectionPageBusy] = useState(false);
+  const [collectionPageError, setCollectionPageError] = useState("");
+  const [collectionPageApplied, setCollectionPageApplied] = useState(false);
 
   const sync = async () => {
     setBusy(true);
@@ -191,6 +194,30 @@ export default function ShopifySyncPanel({
       );
     } finally {
       setHeaderFooterBusy(false);
+    }
+  };
+
+  const applyCollectionPage = async () => {
+    setCollectionPageBusy(true);
+    setCollectionPageError("");
+    setCollectionPageApplied(false);
+    try {
+      const response = await fetch("/api/admin/shopify/theme/apply-collection-page", {
+        method: "POST",
+        cache: "no-store",
+      });
+      const body = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(body.error ?? "İşlem tamamlanamadı.");
+      setCollectionPageApplied(true);
+      onNotice("Kategori sayfası düzeni güncellendi.");
+    } catch (collectionPageFail) {
+      setCollectionPageError(
+        collectionPageFail instanceof Error
+          ? collectionPageFail.message
+          : "Kategori sayfası güncellenemedi.",
+      );
+    } finally {
+      setCollectionPageBusy(false);
     }
   };
 
@@ -428,6 +455,36 @@ export default function ShopifySyncPanel({
         <div className="admin-bulk-toolbar">
           <strong>Header/footer güncellendi</strong>
           <span>Ana sayfada kontrol edebilirsin</span>
+        </div>
+      )}
+
+      <div className="admin-panel-heading" style={{ marginTop: 32 }}>
+        <div>
+          <h2>Kategori sayfası düzeni</h2>
+          <p>
+            8 kategorinin (Kolye, Yüzük, Küpe, Bileklik, Halhal, Vintage,
+            Porselen, Koleksiyon) her birine kısa bir açıklama ekler ve ürün
+            grid&apos;indeki boşlukları biraz artırır.
+          </p>
+        </div>
+        <button
+          className="admin-primary-button"
+          type="button"
+          disabled={collectionPageBusy}
+          onClick={() => void applyCollectionPage()}
+        >
+          {collectionPageBusy ? "Uygulanıyor…" : "Kategori sayfasını güncelle"}
+        </button>
+      </div>
+      {collectionPageError && (
+        <div className="admin-inline-error" role="alert">
+          {collectionPageError}
+        </div>
+      )}
+      {collectionPageApplied && (
+        <div className="admin-bulk-toolbar">
+          <strong>Kategori sayfası güncellendi</strong>
+          <span>Bir kategori sayfasında kontrol edebilirsin</span>
         </div>
       )}
     </div>

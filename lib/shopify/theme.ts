@@ -400,3 +400,44 @@ export async function applyHeaderFooterLayout(
     JSON.stringify(footerData, null, 2),
   );
 }
+
+type CollectionTemplate = {
+  sections: Record<string, { type?: string; settings?: Record<string, unknown> }>;
+};
+
+// Also backfills real descriptions onto the 8 category collections (they
+// were created with only a title) so the collection page heading area
+// isn't just a bare title, and widens the product grid's gaps a bit for
+// more breathing room between cards.
+export async function applyCollectionPageLayout(
+  accessToken: string,
+  themeId: string,
+): Promise<void> {
+  await ensureCategoryCollections(accessToken);
+
+  const raw = await getThemeFile(accessToken, themeId, "templates/collection.json");
+  if (!raw) {
+    throw new Error("templates/collection.json okunamadı.");
+  }
+  const data = JSON.parse(
+    raw.replace(/^\s*\/\*[\s\S]*?\*\/\s*/, ""),
+  ) as CollectionTemplate;
+
+  const main = Object.values(data.sections).find(
+    (section) => section.type === "main-collection",
+  );
+  if (!main?.settings) {
+    throw new Error("Ürün grid bölümü bulunamadı.");
+  }
+  Object.assign(main.settings, {
+    columns_gap_horizontal: 24,
+    columns_gap_vertical: 32,
+  });
+
+  await upsertThemeFile(
+    accessToken,
+    themeId,
+    "templates/collection.json",
+    JSON.stringify(data, null, 2),
+  );
+}
