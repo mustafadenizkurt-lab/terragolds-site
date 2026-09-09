@@ -35,6 +35,9 @@ export default function ShopifySyncPanel({
   const [homepageBusy, setHomepageBusy] = useState(false);
   const [homepageError, setHomepageError] = useState("");
   const [homepageApplied, setHomepageApplied] = useState(false);
+  const [productPageBusy, setProductPageBusy] = useState(false);
+  const [productPageError, setProductPageError] = useState("");
+  const [productPageApplied, setProductPageApplied] = useState(false);
 
   const sync = async () => {
     setBusy(true);
@@ -137,6 +140,30 @@ export default function ShopifySyncPanel({
       );
     } finally {
       setHomepageBusy(false);
+    }
+  };
+
+  const applyProductPage = async () => {
+    setProductPageBusy(true);
+    setProductPageError("");
+    setProductPageApplied(false);
+    try {
+      const response = await fetch("/api/admin/shopify/theme/apply-product-page", {
+        method: "POST",
+        cache: "no-store",
+      });
+      const body = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(body.error ?? "İşlem tamamlanamadı.");
+      setProductPageApplied(true);
+      onNotice("Ürün sayfası düzeni güncellendi.");
+    } catch (productPageFail) {
+      setProductPageError(
+        productPageFail instanceof Error
+          ? productPageFail.message
+          : "Ürün sayfası güncellenemedi.",
+      );
+    } finally {
+      setProductPageBusy(false);
     }
   };
 
@@ -311,6 +338,38 @@ export default function ShopifySyncPanel({
         <div className="admin-bulk-toolbar">
           <strong>Ana sayfa güncellendi</strong>
           <span>Vitrinde kontrol edebilirsin</span>
+        </div>
+      )}
+
+      <div className="admin-panel-heading" style={{ marginTop: 32 }}>
+        <div>
+          <h2>Ürün sayfası düzeni</h2>
+          <p>
+            Ürün galerisini tek büyük görsel + alt küçük resim şeridi olacak
+            şekilde sadeleştirir, boş duran bilgi akordiyonunu Kargo &amp;
+            Teslimat / İade &amp; Değişim / Ürün Bakımı içerikleriyle
+            doldurur ve &quot;You may also like&quot; başlığını Türkçeye
+            çevirir.
+          </p>
+        </div>
+        <button
+          className="admin-primary-button"
+          type="button"
+          disabled={productPageBusy}
+          onClick={() => void applyProductPage()}
+        >
+          {productPageBusy ? "Uygulanıyor…" : "Ürün sayfasını güncelle"}
+        </button>
+      </div>
+      {productPageError && (
+        <div className="admin-inline-error" role="alert">
+          {productPageError}
+        </div>
+      )}
+      {productPageApplied && (
+        <div className="admin-bulk-toolbar">
+          <strong>Ürün sayfası güncellendi</strong>
+          <span>Bir ürün sayfasında kontrol edebilirsin</span>
         </div>
       )}
     </div>
