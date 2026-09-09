@@ -32,6 +32,9 @@ export default function ShopifySyncPanel({
   const [themeBusy, setThemeBusy] = useState(false);
   const [themeError, setThemeError] = useState("");
   const [themeApplied, setThemeApplied] = useState(false);
+  const [homepageBusy, setHomepageBusy] = useState(false);
+  const [homepageError, setHomepageError] = useState("");
+  const [homepageApplied, setHomepageApplied] = useState(false);
 
   const sync = async () => {
     setBusy(true);
@@ -110,6 +113,30 @@ export default function ShopifySyncPanel({
       );
     } finally {
       setThemeBusy(false);
+    }
+  };
+
+  const applyHomepage = async () => {
+    setHomepageBusy(true);
+    setHomepageError("");
+    setHomepageApplied(false);
+    try {
+      const response = await fetch("/api/admin/shopify/theme/apply-homepage", {
+        method: "POST",
+        cache: "no-store",
+      });
+      const body = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(body.error ?? "İşlem tamamlanamadı.");
+      setHomepageApplied(true);
+      onNotice("Ana sayfaya kategori bölümleri eklendi.");
+    } catch (homepageFail) {
+      setHomepageError(
+        homepageFail instanceof Error
+          ? homepageFail.message
+          : "Ana sayfa düzeni güncellenemedi.",
+      );
+    } finally {
+      setHomepageBusy(false);
     }
   };
 
@@ -252,6 +279,37 @@ export default function ShopifySyncPanel({
       {themeApplied && (
         <div className="admin-bulk-toolbar">
           <strong>Tema güncellendi</strong>
+          <span>Vitrinde kontrol edebilirsin</span>
+        </div>
+      )}
+
+      <div className="admin-panel-heading" style={{ marginTop: 32 }}>
+        <div>
+          <h2>Ana sayfa kategorileri</h2>
+          <p>
+            Kolye, Yüzük, Küpe, Bileklik, Halhal, Vintage, Porselen ve
+            Koleksiyon için otomatik koleksiyonlar oluşturur (yoksa) ve ana
+            sayfaya hero&apos;dan hemen sonra her biri için bir ürün vitrini
+            bölümü ekler. Var olan &quot;Tüm Ürünler&quot; bölümüne dokunmaz.
+          </p>
+        </div>
+        <button
+          className="admin-primary-button"
+          type="button"
+          disabled={homepageBusy}
+          onClick={() => void applyHomepage()}
+        >
+          {homepageBusy ? "Uygulanıyor…" : "Kategorileri ekle"}
+        </button>
+      </div>
+      {homepageError && (
+        <div className="admin-inline-error" role="alert">
+          {homepageError}
+        </div>
+      )}
+      {homepageApplied && (
+        <div className="admin-bulk-toolbar">
+          <strong>Ana sayfa güncellendi</strong>
           <span>Vitrinde kontrol edebilirsin</span>
         </div>
       )}

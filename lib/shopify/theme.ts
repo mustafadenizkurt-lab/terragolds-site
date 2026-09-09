@@ -1,4 +1,5 @@
 import { shopifyGraphQL } from "./client";
+import { categoryCollectionDefinitions, ensureCategoryCollections } from "./collections";
 
 // Themes API - lets a script read/write an Online Store 2.0 theme's JSON
 // config and Liquid section files directly, the same mechanism the Shopify
@@ -129,4 +130,84 @@ export async function upsertThemeFile(
         .join(", "),
     );
   }
+}
+
+const SECTION_ID_CHARS =
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+function randomSectionSuffix(): string {
+  let result = "";
+  for (let i = 0; i < 6; i++) {
+    result += SECTION_ID_CHARS[Math.floor(Math.random() * SECTION_ID_CHARS.length)];
+  }
+  return result;
+}
+
+type HomepageTemplate = {
+  sections: Record<string, unknown>;
+  order: string[];
+};
+
+// Adds one product-list section per category collection to the homepage,
+// right after the hero, by cloning the existing "tum-urunler" product-list
+// section (proven-safe pattern already live on the theme) and swapping its
+// collection setting - everything else (layout, product-card sub-blocks,
+// the {{ closest.collection.title }} header) is reused as-is.
+export async function applyHomepageLayout(
+  accessToken: string,
+  themeId: string,
+): Promise<void> {
+  const handlesByTitle = await ensureCategoryCollections(accessToken);
+
+  const raw = await getThemeFile(accessToken, themeId, "templates/index.json");
+  if (!raw) {
+    throw new Error("templates/index.json okunamadı.");
+  }
+  const json = raw.replace(/^\s*\/\*[\s\S]*?\*\/\s*/, "");
+  const data = JSON.parse(json) as HomepageTemplate;
+
+  const templateSectionId = Object.keys(data.sections).find(
+    (id) =>
+      (data.sections[id] as { type?: string; settings?: { collection?: string } })
+        .type === "product-list",
+  );
+  const template = templateSectionId ? data.sections[templateSectionId] : undefined;
+  if (!template) {
+    throw new Error("Ürün listesi şablon bölümü bulunamadı.");
+  }
+
+  const existingIds = new Set(Object.keys(data.sections));
+  const newSectionIds: string[] = [];
+
+  for (const definition of categoryCollectionDefinitions) {
+    const handle = handlesByTitle[definition.title];
+    if (!handle) continue;
+
+    let sectionId = `product_list_${randomSectionSuffix()}`;
+    while (existingIds.has(sectionId)) {
+      sectionId = `product_list_${randomSectionSuffix()}`;
+    }
+    existingIds.add(sectionId);
+
+    const cloned = JSON.parse(JSON.stringify(template)) as {
+      settings: { collection?: string };
+    };
+    cloned.settings.collection = handle;
+
+    data.sections[sectionId] = cloned;
+    newSectionIds.push(sectionId);
+  }
+
+  const heroIndex = data.order.findIndex(
+    (id) => (data.sections[id] as { type?: string }).type === "hero",
+  );
+  const insertAt = heroIndex >= 0 ? heroIndex + 1 : 0;
+  data.order.splice(insertAt, 0, ...newSectionIds);
+
+  await upsertThemeFile(
+    accessToken,
+    themeId,
+    "templates/index.json",
+    JSON.stringify(data, null, 2),
+  );
 }
