@@ -2,6 +2,7 @@ import { getAuthorizedAdmin, unauthorizedAdminResponse } from "../../../../../..
 import { getShopifyAccessToken } from "../../../../../../lib/shopify/auth";
 import { getMainThemeId, getThemeFile } from "../../../../../../lib/shopify/theme";
 import { getD1 } from "../../../../../../lib/store-db";
+import { shopifyGraphQL } from "../../../../../../lib/shopify/client";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,17 @@ async function ensureDebugTable(db: D1Database) {
     .run();
 }
 
+async function upsertDebug(db: D1Database, key: string, content: string) {
+  await db
+    .prepare(
+      `INSERT INTO shopify_theme_debug (key, content, updated_at)
+       VALUES (?, ?, CURRENT_TIMESTAMP)
+       ON CONFLICT(key) DO UPDATE SET content = excluded.content, updated_at = CURRENT_TIMESTAMP`,
+    )
+    .bind(key, content)
+    .run();
+}
+
 export async function GET(request: Request) {
   if (!(await getAuthorizedAdmin(request))) return unauthorizedAdminResponse();
   try {
@@ -37,36 +49,39 @@ export async function GET(request: Request) {
       "config/settings_schema.json",
     );
 
+    // Products with real stock are showing "Unavailable" on the storefront -
+    // a location not enabled to fulfill online orders is the classic cause,
+    // so dump the shop's locations (and the Online Store publication's own
+    // catalog/location settings) to check that theory.
+    const locations = await shopifyGraphQL<{
+      locations: {
+        nodes: {
+          id: string;
+          name: string;
+          fulfillsOnlineOrders: boolean;
+          isActive: boolean;
+        }[];
+      };
+    }>(
+      accessToken,
+      `query { locations(first: 25) { nodes { id name fulfillsOnlineOrders isActive } } }`,
+      {},
+    );
+
     const db = getD1();
     await ensureDebugTable(db);
-    await db.batch([
-      db
-        .prepare(
-          `INSERT INTO shopify_theme_debug (key, content, updated_at)
-           VALUES (?, ?, CURRENT_TIMESTAMP)
-           ON CONFLICT(key) DO UPDATE SET content = excluded.content, updated_at = CURRENT_TIMESTAMP`,
-        )
-        .bind("themeId", themeId),
-      db
-        .prepare(
-          `INSERT INTO shopify_theme_debug (key, content, updated_at)
-           VALUES (?, ?, CURRENT_TIMESTAMP)
-           ON CONFLICT(key) DO UPDATE SET content = excluded.content, updated_at = CURRENT_TIMESTAMP`,
-        )
-        .bind("settingsData", settingsData ?? ""),
-      db
-        .prepare(
-          `INSERT INTO shopify_theme_debug (key, content, updated_at)
-           VALUES (?, ?, CURRENT_TIMESTAMP)
-           ON CONFLICT(key) DO UPDATE SET content = excluded.content, updated_at = CURRENT_TIMESTAMP`,
-        )
-        .bind("settingsSchema", settingsSchema ?? ""),
+    await Promise.all([
+      upsertDebug(db, "themeId", themeId),
+      upsertDebug(db, "settingsData", settingsData ?? ""),
+      upsertDebug(db, "settingsSchema", settingsSchema ?? ""),
+      upsertDebug(db, "locations", JSON.stringify(locations.locations.nodes)),
     ]);
 
     return Response.json({
       themeId,
       settingsDataLength: settingsData?.length ?? 0,
       settingsSchemaLength: settingsSchema?.length ?? 0,
+      locations: locations.locations.nodes,
     });
   } catch (error) {
     return Response.json(
