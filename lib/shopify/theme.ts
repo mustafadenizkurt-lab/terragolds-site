@@ -216,3 +216,112 @@ export async function applyHomepageLayout(
     JSON.stringify(data, null, 2),
   );
 }
+
+type AccordionRowContent = { heading: string; body: string };
+
+// Horizon's default "disclosures" block pulls from a per-product Shopify
+// metafield (shopify.disclosure) that isn't populated for this catalog -
+// it silently renders nothing. Swapping it for an "accordion" block (with
+// static "_accordion-row" children, each holding a "text" block) gives the
+// same collapsible-info UI with content we control directly in the theme,
+// no per-product data entry required.
+const PRODUCT_ACCORDION_ROWS: AccordionRowContent[] = [
+  {
+    heading: "Kargo & Teslimat",
+    body: "<p>Siparişiniz özenle paketlenir ve kargoya verilir. Gönderi takip bilgisi e-posta adresinize iletilir.</p>",
+  },
+  {
+    heading: "İade & Değişim",
+    body: "<p>Yasal iade süreniz içinde, ürün kullanılmamış ve orijinal ambalajında olmak kaydıyla iade veya değişim yapılabilir. Detaylar için Teslimat &amp; İade sayfamızı inceleyebilirsiniz.</p>",
+  },
+  {
+    heading: "Ürün Bakımı",
+    body: "<p>Parfüm, nem ve kimyasallardan uzak tutun; kullanmadığınızda kadife bir kutuda saklayın. Uzun ömürlü kullanım için yumuşak, kuru bir bezle temizleyin.</p>",
+  },
+];
+
+type ProductTemplate = {
+  sections: Record<string, { type?: string; blocks?: Record<string, unknown>; block_order?: string[]; settings?: Record<string, unknown> }>;
+  order: string[];
+};
+
+export async function applyProductPageLayout(
+  accessToken: string,
+  themeId: string,
+): Promise<void> {
+  const raw = await getThemeFile(accessToken, themeId, "templates/product.json");
+  if (!raw) {
+    throw new Error("templates/product.json okunamadı.");
+  }
+  const json = raw.replace(/^\s*\/\*[\s\S]*?\*\/\s*/, "");
+  const data = JSON.parse(json) as ProductTemplate;
+
+  const main = data.sections.main;
+  if (!main?.blocks) {
+    throw new Error("Ürün sayfası ana bölümü bulunamadı.");
+  }
+
+  const mediaGallery = main.blocks["media-gallery"] as
+    | { settings?: Record<string, unknown> }
+    | undefined;
+  if (mediaGallery?.settings) {
+    Object.assign(mediaGallery.settings, {
+      media_columns: "one",
+      thumbnail_position: "bottom",
+    });
+  }
+
+  const rowIds: string[] = [];
+  const accordionBlocks: Record<string, unknown> = {};
+  PRODUCT_ACCORDION_ROWS.forEach((row, index) => {
+    const rowId = `accordion_row_${index}`;
+    accordionBlocks[rowId] = {
+      type: "_accordion-row",
+      settings: {
+        heading: row.heading,
+        open_by_default: false,
+        icon: "none",
+        width: 20,
+      },
+      blocks: {
+        text_1: {
+          type: "text",
+          settings: { text: row.body, width: "100%" },
+        },
+      },
+      block_order: ["text_1"],
+    };
+    rowIds.push(rowId);
+  });
+
+  delete main.blocks["disclosures_g9mWze"];
+  main.blocks["product_accordion"] = {
+    type: "accordion",
+    settings: { icon: "caret", dividers: true },
+    blocks: accordionBlocks,
+    block_order: rowIds,
+  };
+  main.block_order = (main.block_order ?? []).filter(
+    (id) => id !== "disclosures_g9mWze" && id !== "product_accordion",
+  );
+  main.block_order.push("product_accordion");
+
+  const recommendations = Object.values(data.sections).find(
+    (section) => section.type === "product-recommendations",
+  );
+  if (recommendations?.blocks) {
+    const header = Object.values(recommendations.blocks).find(
+      (block) => (block as { name?: string }).name === "t:names.header",
+    ) as { settings?: Record<string, unknown> } | undefined;
+    if (header?.settings) {
+      header.settings.text = "<h3>Bunlar da hoşunuza gidebilir</h3>";
+    }
+  }
+
+  await upsertThemeFile(
+    accessToken,
+    themeId,
+    "templates/product.json",
+    JSON.stringify(data, null, 2),
+  );
+}
