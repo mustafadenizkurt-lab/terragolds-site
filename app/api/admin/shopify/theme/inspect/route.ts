@@ -68,6 +68,59 @@ export async function GET(request: Request) {
       {},
     );
 
+    // Ruled out the location theory above (both fulfill online orders) -
+    // check the actual variant/inventory state of a known in-stock product
+    // instead: availableForSale, inventory policy, and per-location levels.
+    const productCheck = await shopifyGraphQL<{
+      product: {
+        id: string;
+        status: string;
+        variants: {
+          nodes: {
+            id: string;
+            availableForSale: boolean;
+            inventoryPolicy: string;
+            inventoryQuantity: number;
+            inventoryItem: {
+              tracked: boolean;
+              inventoryLevels: {
+                nodes: {
+                  location: { name: string };
+                  quantities: { name: string; quantity: number }[];
+                }[];
+              };
+            };
+          }[];
+        };
+      } | null;
+    }>(
+      accessToken,
+      `query product($id: ID!) {
+        product(id: $id) {
+          id
+          status
+          variants(first: 5) {
+            nodes {
+              id
+              availableForSale
+              inventoryPolicy
+              inventoryQuantity
+              inventoryItem {
+                tracked
+                inventoryLevels(first: 10) {
+                  nodes {
+                    location { name }
+                    quantities(names: ["available"]) { name quantity }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }`,
+      { id: "gid://shopify/Product/10253992263920" },
+    );
+
     const db = getD1();
     await ensureDebugTable(db);
     await Promise.all([
@@ -75,6 +128,7 @@ export async function GET(request: Request) {
       upsertDebug(db, "settingsData", settingsData ?? ""),
       upsertDebug(db, "settingsSchema", settingsSchema ?? ""),
       upsertDebug(db, "locations", JSON.stringify(locations.locations.nodes)),
+      upsertDebug(db, "productCheck", JSON.stringify(productCheck.product)),
     ]);
 
     return Response.json({
@@ -82,6 +136,7 @@ export async function GET(request: Request) {
       settingsDataLength: settingsData?.length ?? 0,
       settingsSchemaLength: settingsSchema?.length ?? 0,
       locations: locations.locations.nodes,
+      productCheck: productCheck.product,
     });
   } catch (error) {
     return Response.json(
