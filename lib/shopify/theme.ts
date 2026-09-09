@@ -70,7 +70,10 @@ export async function applyBrandTheme(
   if (!raw) {
     throw new Error("settings_data.json okunamadı.");
   }
-  const data = JSON.parse(raw) as {
+  // Shopify prefixes this file with an auto-generated /* ... */ comment
+  // block, which plain JSON.parse can't handle - strip it before parsing.
+  const json = raw.replace(/^\s*\/\*[\s\S]*?\*\/\s*/, "");
+  const data = JSON.parse(json) as {
     current: Record<string, unknown>;
     presets?: Record<string, unknown>;
   };
