@@ -2,7 +2,10 @@ import { getAuthorizedAdmin, unauthorizedAdminResponse } from "../../../../../..
 import { getShopifyAccessToken } from "../../../../../../lib/shopify/auth";
 import { getMainThemeId, getThemeFile } from "../../../../../../lib/shopify/theme";
 import { getD1 } from "../../../../../../lib/store-db";
-import { shopifyGraphQL } from "../../../../../../lib/shopify/client";
+import {
+  getOnlineStorePublicationId,
+  shopifyGraphQL,
+} from "../../../../../../lib/shopify/client";
 
 export const dynamic = "force-dynamic";
 
@@ -75,6 +78,14 @@ export async function GET(request: Request) {
       product: {
         id: string;
         status: string;
+        publishedOnPublication: boolean;
+        resourcePublicationsV2: {
+          nodes: {
+            publication: { name: string };
+            isPublished: boolean;
+            publishDate: string | null;
+          }[];
+        };
         variants: {
           nodes: {
             id: string;
@@ -95,10 +106,18 @@ export async function GET(request: Request) {
       } | null;
     }>(
       accessToken,
-      `query product($id: ID!) {
+      `query product($id: ID!, $publicationId: ID!) {
         product(id: $id) {
           id
           status
+          publishedOnPublication(publicationId: $publicationId)
+          resourcePublicationsV2(first: 10) {
+            nodes {
+              publication { name }
+              isPublished
+              publishDate
+            }
+          }
           variants(first: 5) {
             nodes {
               id
@@ -118,7 +137,10 @@ export async function GET(request: Request) {
           }
         }
       }`,
-      { id: "gid://shopify/Product/10253992263920" },
+      {
+        id: "gid://shopify/Product/10253992263920",
+        publicationId: await getOnlineStorePublicationId(accessToken),
+      },
     );
 
     const db = getD1();
