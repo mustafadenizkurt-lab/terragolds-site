@@ -5,6 +5,7 @@ import {
 } from "../../../../../lib/payment-signatures";
 import { getD1 } from "../../../../../lib/store-db";
 import { pushInventoryToShopify } from "../../../../../lib/shopify/inventory";
+import { ensureShopifyOrdersTable } from "../../../../../lib/shopify/orders";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +49,7 @@ export async function POST(request: Request) {
 
   const db = getD1();
   await ensureProcessedOrdersTable(db);
+  await ensureShopifyOrdersTable(db);
 
   // Atomic idempotency claim: Shopify retries webhook deliveries on
   // timeout/failure, and the same order can legitimately fire this webhook
@@ -63,6 +65,18 @@ export async function POST(request: Request) {
   if (claim.meta.changes === 0) {
     return Response.json({ ok: true, duplicate: true });
   }
+
+  // orders/create may have imported this order while it was still
+  // "pending" (payment not finished yet) - now that it's paid, reflect
+  // that in shopify_orders too so it surfaces in the admin's "Hazırlanacak"
+  // (ready to ship) tab. A no-op if the row doesn't exist yet (orders/paid
+  // arriving before orders/create, or the table not created yet).
+  await db
+    .prepare(
+      "UPDATE shopify_orders SET status = 'paid', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = 'pending'",
+    )
+    .bind(String(payload.id))
+    .run();
 
   const affectedProductIds = new Set<number>();
   for (const item of payload.line_items ?? []) {
