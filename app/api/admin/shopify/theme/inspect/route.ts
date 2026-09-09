@@ -37,19 +37,19 @@ export async function GET(request: Request) {
   try {
     const accessToken = await getShopifyAccessToken();
     const themeId = await getMainThemeId(accessToken);
-    const productTemplate = await getThemeFile(
+    const productInformationSection = await getThemeFile(
       accessToken,
       themeId,
-      "templates/product.json",
+      "sections/product-information.liquid",
     );
 
     const db = getD1();
     await ensureDebugTable(db);
-    await upsertDebug(db, "productTemplate", productTemplate ?? "");
+    await upsertDebug(db, "productInformationSection", productInformationSection ?? "");
 
     return Response.json({
       themeId,
-      productTemplateLength: productTemplate?.length ?? 0,
+      productInformationSectionLength: productInformationSection?.length ?? 0,
     });
   } catch (error) {
     return Response.json(
