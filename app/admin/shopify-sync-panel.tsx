@@ -405,9 +405,9 @@ export default function ShopifySyncPanel({
           <h2>Header &amp; footer</h2>
           <p>
             Logoyu ortalar, tek pazar için gereksiz ülke/dil seçicilerini
-            kaldırır, ana sayfada hero üzerinde şeffaf header kullanır ve
-            footer&apos;da hiç kurulmamış Facebook/Twitter/YouTube
-            ikonlarını kaldırır (Instagram ve TikTok kalır).
+            kaldırır ve footer&apos;da hiç kurulmamış
+            Facebook/Twitter/YouTube ikonlarını kaldırır (Instagram ve
+            TikTok kalır).
           </p>
         </div>
         <button
