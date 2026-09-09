@@ -177,11 +177,16 @@ export async function applyHomepageLayout(
   }
 
   const existingIds = new Set(Object.keys(data.sections));
+  const existingCollectionHandles = new Set(
+    Object.values(data.sections)
+      .filter((section) => (section as { type?: string }).type === "product-list")
+      .map((section) => (section as { settings: { collection?: string } }).settings.collection),
+  );
   const newSectionIds: string[] = [];
 
   for (const definition of categoryCollectionDefinitions) {
     const handle = handlesByTitle[definition.title];
-    if (!handle) continue;
+    if (!handle || existingCollectionHandles.has(handle)) continue;
 
     let sectionId = `product_list_${randomSectionSuffix()}`;
     while (existingIds.has(sectionId)) {

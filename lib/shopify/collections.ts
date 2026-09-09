@@ -1,4 +1,4 @@
-import { shopifyGraphQL } from "./client";
+import { getOnlineStorePublicationId, shopifyGraphQL } from "./client";
 
 type CollectionRule = {
   column:
@@ -133,15 +133,49 @@ async function createCollection(
   return data.collectionCreate.collection;
 }
 
+// A collection isn't visible to theme sections until it's explicitly
+// published to the Online Store sales channel - same requirement as
+// products (see getOnlineStorePublicationId). Publishing an
+// already-published collection is a harmless no-op.
+async function publishCollectionToOnlineStore(
+  accessToken: string,
+  publicationId: string,
+  collectionId: string,
+): Promise<void> {
+  const data = await shopifyGraphQL<{
+    publishablePublish: {
+      userErrors: { field: string[]; message: string }[];
+    };
+  }>(
+    accessToken,
+    `mutation publishablePublish($id: ID!, $input: [PublicationInput!]!) {
+      publishablePublish(id: $id, input: $input) {
+        userErrors { field message }
+      }
+    }`,
+    { id: collectionId, input: [{ publicationId }] },
+  );
+  if (data.publishablePublish.userErrors.length) {
+    throw new Error(
+      data.publishablePublish.userErrors
+        .map((error) => error.message)
+        .join(", "),
+    );
+  }
+}
+
 // Idempotent: reuses an existing collection with the same title instead of
-// creating a duplicate on a retry.
+// creating a duplicate on a retry, and (re-)publishes it every time in case
+// an earlier run created it without publishing.
 export async function ensureCategoryCollections(
   accessToken: string,
 ): Promise<Record<string, string>> {
+  const publicationId = await getOnlineStorePublicationId(accessToken);
   const handlesByTitle: Record<string, string> = {};
   for (const definition of categoryCollectionDefinitions) {
     const existing = await findCollectionByTitle(accessToken, definition.title);
     const collection = existing ?? (await createCollection(accessToken, definition));
+    await publishCollectionToOnlineStore(accessToken, publicationId, collection.id);
     handlesByTitle[definition.title] = collection.handle;
   }
   return handlesByTitle;
