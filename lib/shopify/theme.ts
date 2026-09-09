@@ -325,3 +325,76 @@ export async function applyProductPageLayout(
     JSON.stringify(data, null, 2),
   );
 }
+
+type SectionGroup = {
+  sections: Record<string, { type?: string; settings?: Record<string, unknown>; blocks?: Record<string, { type?: string; settings?: Record<string, unknown> }> }>;
+};
+
+// Header: centers the logo (Apple/Mejuri-style, instead of the default
+// left-aligned lockup), drops the country/language switchers (this store
+// only ever sells in one market - see the earlier Markets investigation -
+// so they were just dead UI), and lets the header float transparently over
+// the homepage hero instead of sitting in a solid white bar above it.
+// Footer: the social-links block ships with Facebook/Twitter/YouTube
+// pointed at the bare platform homepages (facebook.com, x.com,
+// youtube.com) - never actually set up - while Instagram/TikTok point at
+// real handles. Clearing the three unset ones hides those icons instead
+// of linking visitors to a generic homepage.
+export async function applyHeaderFooterLayout(
+  accessToken: string,
+  themeId: string,
+): Promise<void> {
+  const headerRaw = await getThemeFile(accessToken, themeId, "sections/header-group.json");
+  if (!headerRaw) {
+    throw new Error("sections/header-group.json okunamadı.");
+  }
+  const headerData = JSON.parse(
+    headerRaw.replace(/^\s*\/\*[\s\S]*?\*\/\s*/, ""),
+  ) as SectionGroup;
+  const headerSection = Object.values(headerData.sections).find(
+    (section) => section.type === "header",
+  );
+  if (!headerSection?.settings) {
+    throw new Error("Header bölümü bulunamadı.");
+  }
+  Object.assign(headerSection.settings, {
+    logo_position: "center",
+    show_country: false,
+    show_language: false,
+    enable_transparent_header_home: true,
+    home_inverse_logo: true,
+  });
+  await upsertThemeFile(
+    accessToken,
+    themeId,
+    "sections/header-group.json",
+    JSON.stringify(headerData, null, 2),
+  );
+
+  const footerRaw = await getThemeFile(accessToken, themeId, "sections/footer-group.json");
+  if (!footerRaw) {
+    throw new Error("sections/footer-group.json okunamadı.");
+  }
+  const footerData = JSON.parse(
+    footerRaw.replace(/^\s*\/\*[\s\S]*?\*\/\s*/, ""),
+  ) as SectionGroup;
+  const utilitiesSection = Object.values(footerData.sections).find(
+    (section) => section.type === "footer-utilities",
+  );
+  const socialLinksBlock = utilitiesSection?.blocks
+    ? Object.values(utilitiesSection.blocks).find((block) => block.type === "social-links")
+    : undefined;
+  if (socialLinksBlock?.settings) {
+    Object.assign(socialLinksBlock.settings, {
+      facebook_url: "",
+      twitter_url: "",
+      youtube_url: "",
+    });
+  }
+  await upsertThemeFile(
+    accessToken,
+    themeId,
+    "sections/footer-group.json",
+    JSON.stringify(footerData, null, 2),
+  );
+}

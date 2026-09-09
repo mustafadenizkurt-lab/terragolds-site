@@ -38,6 +38,9 @@ export default function ShopifySyncPanel({
   const [productPageBusy, setProductPageBusy] = useState(false);
   const [productPageError, setProductPageError] = useState("");
   const [productPageApplied, setProductPageApplied] = useState(false);
+  const [headerFooterBusy, setHeaderFooterBusy] = useState(false);
+  const [headerFooterError, setHeaderFooterError] = useState("");
+  const [headerFooterApplied, setHeaderFooterApplied] = useState(false);
 
   const sync = async () => {
     setBusy(true);
@@ -164,6 +167,30 @@ export default function ShopifySyncPanel({
       );
     } finally {
       setProductPageBusy(false);
+    }
+  };
+
+  const applyHeaderFooter = async () => {
+    setHeaderFooterBusy(true);
+    setHeaderFooterError("");
+    setHeaderFooterApplied(false);
+    try {
+      const response = await fetch("/api/admin/shopify/theme/apply-header-footer", {
+        method: "POST",
+        cache: "no-store",
+      });
+      const body = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(body.error ?? "İşlem tamamlanamadı.");
+      setHeaderFooterApplied(true);
+      onNotice("Header ve footer düzeni güncellendi.");
+    } catch (headerFooterFail) {
+      setHeaderFooterError(
+        headerFooterFail instanceof Error
+          ? headerFooterFail.message
+          : "Header/footer güncellenemedi.",
+      );
+    } finally {
+      setHeaderFooterBusy(false);
     }
   };
 
@@ -370,6 +397,37 @@ export default function ShopifySyncPanel({
         <div className="admin-bulk-toolbar">
           <strong>Ürün sayfası güncellendi</strong>
           <span>Bir ürün sayfasında kontrol edebilirsin</span>
+        </div>
+      )}
+
+      <div className="admin-panel-heading" style={{ marginTop: 32 }}>
+        <div>
+          <h2>Header &amp; footer</h2>
+          <p>
+            Logoyu ortalar, tek pazar için gereksiz ülke/dil seçicilerini
+            kaldırır, ana sayfada hero üzerinde şeffaf header kullanır ve
+            footer&apos;da hiç kurulmamış Facebook/Twitter/YouTube
+            ikonlarını kaldırır (Instagram ve TikTok kalır).
+          </p>
+        </div>
+        <button
+          className="admin-primary-button"
+          type="button"
+          disabled={headerFooterBusy}
+          onClick={() => void applyHeaderFooter()}
+        >
+          {headerFooterBusy ? "Uygulanıyor…" : "Header/footer güncelle"}
+        </button>
+      </div>
+      {headerFooterError && (
+        <div className="admin-inline-error" role="alert">
+          {headerFooterError}
+        </div>
+      )}
+      {headerFooterApplied && (
+        <div className="admin-bulk-toolbar">
+          <strong>Header/footer güncellendi</strong>
+          <span>Ana sayfada kontrol edebilirsin</span>
         </div>
       )}
     </div>
