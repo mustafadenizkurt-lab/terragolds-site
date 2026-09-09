@@ -331,10 +331,12 @@ type SectionGroup = {
 };
 
 // Header: centers the logo (Apple/Mejuri-style, instead of the default
-// left-aligned lockup), drops the country/language switchers (this store
-// only ever sells in one market - see the earlier Markets investigation -
-// so they were just dead UI), and lets the header float transparently over
-// the homepage hero instead of sitting in a solid white bar above it.
+// left-aligned lockup) and drops the country/language switchers (this
+// store only ever sells in one market - see the earlier Markets
+// investigation - so they were just dead UI). A transparent header over
+// the homepage hero was tried and reverted - the hero image already has
+// its own baked-in branding text/icons, so overlaying the real header on
+// top of it just duplicated and cluttered that area.
 // Footer: the social-links block ships with Facebook/Twitter/YouTube
 // pointed at the bare platform homepages (facebook.com, x.com,
 // youtube.com) - never actually set up - while Instagram/TikTok point at
@@ -361,8 +363,8 @@ export async function applyHeaderFooterLayout(
     logo_position: "center",
     show_country: false,
     show_language: false,
-    enable_transparent_header_home: true,
-    home_inverse_logo: true,
+    enable_transparent_header_home: false,
+    home_inverse_logo: false,
   });
   await upsertThemeFile(
     accessToken,
