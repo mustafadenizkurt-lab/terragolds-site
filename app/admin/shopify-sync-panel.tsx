@@ -29,6 +29,9 @@ export default function ShopifySyncPanel({
   const [publishError, setPublishError] = useState("");
   const [lastPublishResult, setLastPublishResult] =
     useState<PublishResult | null>(null);
+  const [themeBusy, setThemeBusy] = useState(false);
+  const [themeError, setThemeError] = useState("");
+  const [themeApplied, setThemeApplied] = useState(false);
 
   const sync = async () => {
     setBusy(true);
@@ -83,6 +86,30 @@ export default function ShopifySyncPanel({
       );
     } finally {
       setPublishBusy(false);
+    }
+  };
+
+  const applyTheme = async () => {
+    setThemeBusy(true);
+    setThemeError("");
+    setThemeApplied(false);
+    try {
+      const response = await fetch("/api/admin/shopify/theme/apply-brand", {
+        method: "POST",
+        cache: "no-store",
+      });
+      const body = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(body.error ?? "İşlem tamamlanamadı.");
+      setThemeApplied(true);
+      onNotice("Shopify tema renk/tipografi ayarları güncellendi.");
+    } catch (themeFail) {
+      setThemeError(
+        themeFail instanceof Error
+          ? themeFail.message
+          : "Tema güncellenemedi.",
+      );
+    } finally {
+      setThemeBusy(false);
     }
   };
 
@@ -195,6 +222,37 @@ export default function ShopifySyncPanel({
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      <div className="admin-panel-heading" style={{ marginTop: 32 }}>
+        <div>
+          <h2>Tema tasarımı</h2>
+          <p>
+            Horizon temasının renk paletini (beyaz/siyah zemin, mat altın
+            aksan) ve başlık tipografisini premium/minimalist bir görünüme
+            günceller. Sadece renk ve font ayarlarına dokunur, ürün/sayfa
+            içeriğini değiştirmez.
+          </p>
+        </div>
+        <button
+          className="admin-primary-button"
+          type="button"
+          disabled={themeBusy}
+          onClick={() => void applyTheme()}
+        >
+          {themeBusy ? "Uygulanıyor…" : "Temayı uygula"}
+        </button>
+      </div>
+      {themeError && (
+        <div className="admin-inline-error" role="alert">
+          {themeError}
+        </div>
+      )}
+      {themeApplied && (
+        <div className="admin-bulk-toolbar">
+          <strong>Tema güncellendi</strong>
+          <span>Vitrinde kontrol edebilirsin</span>
         </div>
       )}
     </div>
