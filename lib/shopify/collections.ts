@@ -12,6 +12,7 @@ type CollectionRule = {
 
 export type CategoryCollectionDefinition = {
   title: string;
+  description: string;
   rules: CollectionRule[];
 };
 
@@ -22,6 +23,8 @@ export type CategoryCollectionDefinition = {
 export const categoryCollectionDefinitions: CategoryCollectionDefinition[] = [
   {
     title: "Kolye",
+    description:
+      "El işçiliğiyle üretilen, günlük kullanımdan özel anlara uzanan zamansız kolye tasarımları.",
     rules: [
       { column: "TYPE", relation: "EQUALS", condition: "Kolye" },
       { column: "TYPE", relation: "EQUALS", condition: "Erkek Kolye" },
@@ -29,6 +32,7 @@ export const categoryCollectionDefinitions: CategoryCollectionDefinition[] = [
   },
   {
     title: "Yüzük",
+    description: "Her tarza uygun, ince işçilikli yüzük koleksiyonu.",
     rules: [
       {
         column: "TYPE",
@@ -40,6 +44,7 @@ export const categoryCollectionDefinitions: CategoryCollectionDefinition[] = [
   },
   {
     title: "Küpe",
+    description: "Zarif ve şık küpe modelleriyle stilinizi tamamlayın.",
     rules: [
       { column: "TYPE", relation: "EQUALS", condition: "Küpe" },
       { column: "TYPE", relation: "EQUALS", condition: "Erkek Küpe" },
@@ -47,6 +52,8 @@ export const categoryCollectionDefinitions: CategoryCollectionDefinition[] = [
   },
   {
     title: "Bileklik",
+    description:
+      "Katmanlamaya uygun, günlük şıklık için özenle tasarlanmış bileklikler.",
     rules: [
       { column: "TYPE", relation: "EQUALS", condition: "Bayan Bileklik" },
       { column: "TYPE", relation: "EQUALS", condition: "Erkek Bileklik" },
@@ -55,20 +62,26 @@ export const categoryCollectionDefinitions: CategoryCollectionDefinition[] = [
   },
   {
     title: "Halhal",
+    description: "Yazın vazgeçilmezi, zarif ve hafif halhal tasarımları.",
     rules: [{ column: "TYPE", relation: "EQUALS", condition: "Hal Hal" }],
   },
   {
     title: "Vintage",
+    description:
+      "Zamanın izini taşıyan, özenle seçilmiş antika ve vintage parçalar.",
     rules: [
       { column: "TYPE", relation: "EQUALS", condition: "Antika ~ Vintage" },
     ],
   },
   {
     title: "Porselen",
+    description: "El yapımı porselen objelerle evinize zarafet katın.",
     rules: [{ column: "TITLE", relation: "CONTAINS", condition: "Porselen" }],
   },
   {
     title: "Koleksiyon",
+    description:
+      "Sınırlı sayıda üretilen, koleksiyonluk özel tasarım parçalar.",
     rules: [
       { column: "TITLE", relation: "CONTAINS", condition: "Heykel" },
       { column: "TITLE", relation: "CONTAINS", condition: "Figür" },
@@ -117,6 +130,7 @@ async function createCollection(
     {
       input: {
         title: definition.title,
+        descriptionHtml: `<p>${definition.description}</p>`,
         ruleSet: {
           appliedDisjunctively: true,
           rules: definition.rules,
@@ -131,6 +145,34 @@ async function createCollection(
     );
   }
   return data.collectionCreate.collection;
+}
+
+// Backfills the description on a collection created before descriptions
+// were added here - a no-op (Shopify just writes the same value) once the
+// collection already has it.
+async function updateCollectionDescription(
+  accessToken: string,
+  collectionId: string,
+  description: string,
+): Promise<void> {
+  const data = await shopifyGraphQL<{
+    collectionUpdate: {
+      userErrors: { field: string[]; message: string }[];
+    };
+  }>(
+    accessToken,
+    `mutation collectionUpdate($input: CollectionInput!) {
+      collectionUpdate(input: $input) {
+        userErrors { field message }
+      }
+    }`,
+    { input: { id: collectionId, descriptionHtml: `<p>${description}</p>` } },
+  );
+  if (data.collectionUpdate.userErrors.length) {
+    throw new Error(
+      data.collectionUpdate.userErrors.map((error) => error.message).join(", "),
+    );
+  }
 }
 
 // A collection isn't visible to theme sections until it's explicitly
@@ -175,6 +217,9 @@ export async function ensureCategoryCollections(
   for (const definition of categoryCollectionDefinitions) {
     const existing = await findCollectionByTitle(accessToken, definition.title);
     const collection = existing ?? (await createCollection(accessToken, definition));
+    if (existing) {
+      await updateCollectionDescription(accessToken, collection.id, definition.description);
+    }
     await publishCollectionToOnlineStore(accessToken, publicationId, collection.id);
     handlesByTitle[definition.title] = collection.handle;
   }
