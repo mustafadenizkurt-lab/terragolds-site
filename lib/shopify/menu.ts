@@ -11,9 +11,11 @@ type MenuItem = {
   items: MenuItem[];
 };
 
-async function getMainMenu(accessToken: string): Promise<{ id: string; items: MenuItem[] }> {
+async function getMainMenu(
+  accessToken: string,
+): Promise<{ id: string; title: string; items: MenuItem[] }> {
   const data = await shopifyGraphQL<{
-    menus: { nodes: { id: string; handle: string; items: MenuItem[] }[] };
+    menus: { nodes: { id: string; handle: string; title: string; items: MenuItem[] }[] };
   }>(
     accessToken,
     `query {
@@ -21,6 +23,7 @@ async function getMainMenu(accessToken: string): Promise<{ id: string; items: Me
         nodes {
           id
           handle
+          title
           items { id title type url resourceId items { id title type url resourceId } }
         }
       }
@@ -82,12 +85,12 @@ export async function applyMainMenu(accessToken: string): Promise<void> {
     menuUpdate: { userErrors: { field: string[]; message: string }[] };
   }>(
     accessToken,
-    `mutation menuUpdate($id: ID!, $items: [MenuItemUpdateInput!]!) {
-      menuUpdate(id: $id, items: $items) {
+    `mutation menuUpdate($id: ID!, $title: String!, $items: [MenuItemUpdateInput!]!) {
+      menuUpdate(id: $id, title: $title, items: $items) {
         userErrors { field message }
       }
     }`,
-    { id: menu.id, items },
+    { id: menu.id, title: menu.title, items },
   );
   if (data.menuUpdate.userErrors.length) {
     throw new Error(data.menuUpdate.userErrors.map((error) => error.message).join(", "));
