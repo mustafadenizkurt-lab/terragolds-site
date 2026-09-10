@@ -14,6 +14,14 @@ export type SupplierMapping = {
   category?: string;
   brand?: string;
   price?: string;
+  /**
+   * Optional path to a supplier-suggested consumer/retail price (e.g. a
+   * feed's "son_kullanici" field). When mapped and present, this is used
+   * directly as the sell price instead of `price` (wholesale cost) run
+   * through calculatePrice() - the supplier's own recommendation, not our
+   * markup formula. `price` is still read and stored as `cost` either way.
+   */
+  retailPrice?: string;
   stock?: string;
   image?: string;
   description?: string;
@@ -154,6 +162,12 @@ async function uniqueDescriptionForNewProduct(product: {
 function mapRecord(record: XmlRecord, mapping: SupplierMapping, markup: number) {
   const rawPrice = readMappedValue(record, mapping.price);
   const cost = rawPrice ? Number(rawPrice.replace(",", ".")) : NaN;
+  const hasCost = Number.isFinite(cost) && cost > 0;
+
+  const rawRetailPrice = readMappedValue(record, mapping.retailPrice);
+  const retailPrice = rawRetailPrice ? Number(rawRetailPrice.replace(",", ".")) : NaN;
+  const hasRetailPrice = Number.isFinite(retailPrice) && retailPrice > 0;
+
   return {
     externalId: readMappedValue(record, mapping.externalId),
     name: readMappedValue(record, mapping.name),
@@ -163,8 +177,12 @@ function mapRecord(record: XmlRecord, mapping: SupplierMapping, markup: number) 
     // cost must be a positive finite number: an empty/unmapped price string
     // coerces to 0 via Number(""), which would otherwise pass Number.isFinite
     // and silently zero out the product's price.
-    price: Number.isFinite(cost) && cost > 0 ? calculatePrice(cost, markup) : null,
-    cost: Number.isFinite(cost) && cost > 0 ? Math.max(0, Math.round(cost)) : 0,
+    price: hasRetailPrice
+      ? Math.max(0, Math.round(retailPrice))
+      : hasCost
+        ? calculatePrice(cost, markup)
+        : null,
+    cost: hasCost ? Math.max(0, Math.round(cost)) : 0,
     stock: Math.max(0, Number.parseInt(readMappedValue(record, mapping.stock) || "0", 10) || 0),
     image: readMappedValue(record, mapping.image),
     description: readMappedValue(record, mapping.description),

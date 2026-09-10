@@ -191,7 +191,11 @@ export default function XmlSuppliersPanel({
         <label className="admin-field"><span>Tedarikçi adı</span><input value={draft.name} onChange={event => setDraft({ ...draft, name: event.target.value })} required /></label>
         <label className="admin-field"><span>XML URL</span><input type="url" value={draft.feedUrl} onChange={event => setDraft({ ...draft, feedUrl: event.target.value })} required /></label>
         <label className="admin-field"><span>Varsayılan kâr marjı (%)</span><input type="number" min="0" max="500" value={draft.defaultMarkupPercent} onChange={event => setDraft({ ...draft, defaultMarkupPercent: Number(event.target.value) })} /></label>
-        <label className="admin-field full"><span>Alan eşleme (JSON)</span><textarea rows={3} value={draft.fieldMapping} onChange={event => setDraft({ ...draft, fieldMapping: event.target.value })} placeholder='{"externalId":"id","name":"name","price":"price","stock":"stock","image":"image","category":"category","brand":"brand"}' /></label>
+        <label className="admin-field full"><span>Alan eşleme (JSON)</span><textarea rows={3} value={draft.fieldMapping} onChange={event => setDraft({ ...draft, fieldMapping: event.target.value })} placeholder='{"externalId":"id","name":"name","price":"price","retailPrice":"fiyat.son_kullanici","stock":"stock","image":"image","category":"category","brand":"brand"}' /></label>
+        <p style={{ fontSize: "0.8rem", opacity: 0.7, gridColumn: "1 / -1", margin: 0 }}>
+          &quot;retailPrice&quot; opsiyoneldir: tedarikçi feed&apos;i tüketici/perakende fiyatı da veriyorsa (ör. &quot;fiyat.son_kullanici&quot;),
+          o alan doğrudan satış fiyatı olarak kullanılır ve kâr marjı bu üründe uygulanmaz - &quot;price&quot; yine maliyet olarak kaydedilir.
+        </p>
         <label className="admin-field"><span>Kategori filtresi (virgülle ayrılmış, boş = hepsi)</span><input value={draft.filterCategories} onChange={event => setDraft({ ...draft, filterCategories: event.target.value })} placeholder="Erkek Yüzük, Bileklik" /></label>
         <label className="admin-field"><span>Marka filtresi (virgülle ayrılmış, boş = hepsi)</span><input value={draft.filterBrands} onChange={event => setDraft({ ...draft, filterBrands: event.target.value })} /></label>
         <label className="admin-field"><span>Minimum fiyat (TL)</span><input type="number" min="0" value={draft.filterMinPrice} onChange={event => setDraft({ ...draft, filterMinPrice: event.target.value })} placeholder="ör. 100" /></label>
