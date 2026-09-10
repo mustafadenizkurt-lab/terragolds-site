@@ -4,7 +4,7 @@ import { getD1 } from "../../../../../../lib/store-db";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(
+async function handle(
   request: Request,
   context: { params: Promise<Record<string, string | string[]>> },
 ) {
@@ -33,3 +33,9 @@ export async function POST(
     );
   }
 }
+
+export const POST = handle;
+// GET too: lets this be triggered by just navigating to the URL in a
+// browser tab (address bar), the same way the theme/xml debug-inspect
+// endpoints this session already are - no UI click involved.
+export const GET = handle;
