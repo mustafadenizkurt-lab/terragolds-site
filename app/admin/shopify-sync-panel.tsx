@@ -44,6 +44,9 @@ export default function ShopifySyncPanel({
   const [collectionPageBusy, setCollectionPageBusy] = useState(false);
   const [collectionPageError, setCollectionPageError] = useState("");
   const [collectionPageApplied, setCollectionPageApplied] = useState(false);
+  const [menuBusy, setMenuBusy] = useState(false);
+  const [menuError, setMenuError] = useState("");
+  const [menuApplied, setMenuApplied] = useState(false);
 
   const sync = async () => {
     setBusy(true);
@@ -218,6 +221,28 @@ export default function ShopifySyncPanel({
       );
     } finally {
       setCollectionPageBusy(false);
+    }
+  };
+
+  const applyMenu = async () => {
+    setMenuBusy(true);
+    setMenuError("");
+    setMenuApplied(false);
+    try {
+      const response = await fetch("/api/admin/shopify/theme/apply-menu", {
+        method: "POST",
+        cache: "no-store",
+      });
+      const body = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(body.error ?? "İşlem tamamlanamadı.");
+      setMenuApplied(true);
+      onNotice("Ana menü güncellendi.");
+    } catch (menuFail) {
+      setMenuError(
+        menuFail instanceof Error ? menuFail.message : "Menü güncellenemedi.",
+      );
+    } finally {
+      setMenuBusy(false);
     }
   };
 
@@ -485,6 +510,36 @@ export default function ShopifySyncPanel({
         <div className="admin-bulk-toolbar">
           <strong>Kategori sayfası güncellendi</strong>
           <span>Bir kategori sayfasında kontrol edebilirsin</span>
+        </div>
+      )}
+
+      <div className="admin-panel-heading" style={{ marginTop: 32 }}>
+        <div>
+          <h2>Ana menü</h2>
+          <p>
+            Menüyü Türkçeleştirir (Ana Sayfa / Tüm Ürünler / İletişim) ve 8
+            kategoriye giden bir &quot;Koleksiyonlar&quot; alt menüsü ekler.
+            Var olan linkler korunur, sadece başlıklar ve yeni öğe eklenir.
+          </p>
+        </div>
+        <button
+          className="admin-primary-button"
+          type="button"
+          disabled={menuBusy}
+          onClick={() => void applyMenu()}
+        >
+          {menuBusy ? "Uygulanıyor…" : "Menüyü güncelle"}
+        </button>
+      </div>
+      {menuError && (
+        <div className="admin-inline-error" role="alert">
+          {menuError}
+        </div>
+      )}
+      {menuApplied && (
+        <div className="admin-bulk-toolbar">
+          <strong>Menü güncellendi</strong>
+          <span>Hamburger menüde kontrol edebilirsin</span>
         </div>
       )}
     </div>
