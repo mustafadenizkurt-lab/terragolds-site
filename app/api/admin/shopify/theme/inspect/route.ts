@@ -1,6 +1,6 @@
 import { getAuthorizedAdmin, unauthorizedAdminResponse } from "../../../../../../lib/admin-auth";
 import { getShopifyAccessToken } from "../../../../../../lib/shopify/auth";
-import { getMainThemeId, getThemeFile } from "../../../../../../lib/shopify/theme";
+import { shopifyGraphQL } from "../../../../../../lib/shopify/client";
 import { getD1 } from "../../../../../../lib/store-db";
 
 export const dynamic = "force-dynamic";
@@ -36,17 +36,42 @@ export async function GET(request: Request) {
   if (!(await getAuthorizedAdmin(request))) return unauthorizedAdminResponse();
   try {
     const accessToken = await getShopifyAccessToken();
-    const themeId = await getMainThemeId(accessToken);
-    const collectionTemplate = await getThemeFile(accessToken, themeId, "templates/collection.json");
+    const data = await shopifyGraphQL<{
+      menus: { nodes: unknown[] };
+    }>(
+      accessToken,
+      `query {
+        menus(first: 10) {
+          nodes {
+            id
+            handle
+            title
+            items {
+              id
+              title
+              type
+              url
+              resourceId
+              items {
+                id
+                title
+                type
+                url
+                resourceId
+              }
+            }
+          }
+        }
+      }`,
+      {},
+    );
+    const menus = JSON.stringify(data.menus.nodes, null, 2);
 
     const db = getD1();
     await ensureDebugTable(db);
-    await upsertDebug(db, "collectionTemplate", collectionTemplate ?? "");
+    await upsertDebug(db, "menus", menus);
 
-    return Response.json({
-      themeId,
-      collectionTemplateLength: collectionTemplate?.length ?? 0,
-    });
+    return Response.json({ menusLength: menus.length });
   } catch (error) {
     return Response.json(
       {
