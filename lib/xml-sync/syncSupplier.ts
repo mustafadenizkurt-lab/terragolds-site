@@ -168,7 +168,7 @@ async function uniqueDescriptionForNewProduct(product: {
   }
 }
 
-function mapRecord(record: XmlRecord, mapping: SupplierMapping, markup: number) {
+export function mapRecord(record: XmlRecord, mapping: SupplierMapping, markup: number) {
   const rawPrice = readMappedValue(record, mapping.price);
   const cost = rawPrice ? Number(rawPrice.replace(",", ".")) : NaN;
   const hasCost = Number.isFinite(cost) && cost > 0;
@@ -196,4 +196,42 @@ function mapRecord(record: XmlRecord, mapping: SupplierMapping, markup: number) 
     image: readMappedValue(record, mapping.image),
     description: readMappedValue(record, mapping.description),
   };
+}
+
+export type RepriceResult = { updated: number; skipped: number; total: number };
+
+// Re-prices every product linked to this supplier by xml_external_id,
+// regardless of xml_sync_status - unlike syncSupplier(), which only ever
+// touches xml_sync_status = 'synced' rows to protect hand-managed
+// ('manual') ones from having their name/description/image/stock silently
+// overwritten. This only ever writes price and cost, so a "manual" row's
+// other hand-edited fields are left untouched even as its price catches up
+// to a field-mapping change (e.g. adding retailPrice).
+export async function repriceSupplierProducts(
+  db: D1Database,
+  supplier: Supplier,
+): Promise<RepriceResult> {
+  const mapping = JSON.parse(supplier.fieldMapping || "{}") as SupplierMapping;
+  const records = parseFeed(await fetchFeed(supplier.feedUrl));
+  let updated = 0;
+  let skipped = 0;
+  for (const record of records) {
+    const product = mapRecord(record, mapping, supplier.defaultMarkupPercent);
+    if (!product.externalId || product.price === null) {
+      skipped += 1;
+      continue;
+    }
+    const result = await db
+      .prepare(
+        `UPDATE products SET price = ?, cost = ?, updated_at = CURRENT_TIMESTAMP WHERE xml_supplier_id = ? AND xml_external_id = ?`,
+      )
+      .bind(product.price, product.cost, supplier.id, product.externalId)
+      .run();
+    if (result.meta.changes > 0) {
+      updated += 1;
+    } else {
+      skipped += 1;
+    }
+  }
+  return { updated, skipped, total: records.length };
 }
