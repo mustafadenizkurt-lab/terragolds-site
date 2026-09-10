@@ -31,6 +31,7 @@ import * as adminXmlSuppliers from "../app/api/admin/xml-suppliers/route";
 import * as adminXmlSupplierLogs from "../app/api/admin/xml-suppliers/logs/route";
 import * as adminXmlSupplierSync from "../app/api/admin/xml-suppliers/sync/route";
 import * as adminXmlSupplierById from "../app/api/admin/xml-suppliers/[id]/route";
+import * as adminXmlSupplierReprice from "../app/api/admin/xml-suppliers/[id]/reprice/route";
 import * as authEmailVerificationSend from "../app/api/auth/email-verification/send/route";
 import * as authEmailVerificationVerify from "../app/api/auth/email-verification/verify/route";
 import * as authForgotPassword from "../app/api/auth/forgot-password/route";
@@ -123,6 +124,11 @@ const dynamicRoutes: {
   module: RouteModule;
   params(match: RegExpMatchArray): Record<string, string | string[]>;
 }[] = [
+  {
+    pattern: /^\/api\/admin\/xml-suppliers\/([^/]+)\/reprice$/,
+    module: adminXmlSupplierReprice,
+    params: (match) => ({ id: decodeURIComponent(match[1] ?? "") }),
+  },
   {
     pattern: /^\/api\/admin\/xml-suppliers\/([^/]+)$/,
     module: adminXmlSupplierById,
