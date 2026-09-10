@@ -57,7 +57,16 @@ export async function applyMainMenu(accessToken: string): Promise<void> {
     items.push({ id: home.id, title: "Ana Sayfa", type: home.type, url: home.url });
   }
   if (catalog) {
-    items.push({ id: catalog.id, title: "Tüm Ürünler", type: catalog.type, url: catalog.url });
+    // Shopify's built-in /collections/all catalog page has a fixed,
+    // un-editable English title ("Products") - pointing this item at our
+    // own "tum-urunler" collection instead (already used on the homepage)
+    // keeps the Turkish title consistent across the site.
+    items.push({
+      id: catalog.id,
+      title: "Tüm Ürünler",
+      type: "HTTP",
+      url: "/collections/tum-urunler",
+    });
   }
 
   items.push({
