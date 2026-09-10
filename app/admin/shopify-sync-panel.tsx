@@ -47,6 +47,9 @@ export default function ShopifySyncPanel({
   const [menuBusy, setMenuBusy] = useState(false);
   const [menuError, setMenuError] = useState("");
   const [menuApplied, setMenuApplied] = useState(false);
+  const [turkishBusy, setTurkishBusy] = useState(false);
+  const [turkishError, setTurkishError] = useState("");
+  const [turkishApplied, setTurkishApplied] = useState(false);
 
   const sync = async () => {
     setBusy(true);
@@ -243,6 +246,30 @@ export default function ShopifySyncPanel({
       );
     } finally {
       setMenuBusy(false);
+    }
+  };
+
+  const enableTurkish = async () => {
+    setTurkishBusy(true);
+    setTurkishError("");
+    setTurkishApplied(false);
+    try {
+      const response = await fetch("/api/admin/shopify/theme/enable-turkish", {
+        method: "POST",
+        cache: "no-store",
+      });
+      const body = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(body.error ?? "İşlem tamamlanamadı.");
+      setTurkishApplied(true);
+      onNotice("Türkçe mağaza dili olarak eklendi ve yayınlandı.");
+    } catch (turkishFail) {
+      setTurkishError(
+        turkishFail instanceof Error
+          ? turkishFail.message
+          : "Türkçe dil eklenemedi.",
+      );
+    } finally {
+      setTurkishBusy(false);
     }
   };
 
@@ -541,6 +568,36 @@ export default function ShopifySyncPanel({
         <div className="admin-bulk-toolbar">
           <strong>Menü güncellendi</strong>
           <span>Hamburger menüde kontrol edebilirsin</span>
+        </div>
+      )}
+
+      <div className="admin-panel-heading" style={{ marginTop: 32 }}>
+        <div>
+          <h2>Türkçe mağaza dili</h2>
+          <p>
+            Türkçeyi mağazaya ikinci dil olarak ekler ve yayınlar
+            (İngilizce ana dil olarak kalır). Yayınlanınca header&apos;daki
+            dil seçici otomatik iki seçenekli hale gelir.
+          </p>
+        </div>
+        <button
+          className="admin-primary-button"
+          type="button"
+          disabled={turkishBusy}
+          onClick={() => void enableTurkish()}
+        >
+          {turkishBusy ? "Ekleniyor…" : "Türkçeyi ekle"}
+        </button>
+      </div>
+      {turkishError && (
+        <div className="admin-inline-error" role="alert">
+          {turkishError}
+        </div>
+      )}
+      {turkishApplied && (
+        <div className="admin-bulk-toolbar">
+          <strong>Türkçe eklendi</strong>
+          <span>Dil seçicide kontrol edebilirsin</span>
         </div>
       )}
     </div>
