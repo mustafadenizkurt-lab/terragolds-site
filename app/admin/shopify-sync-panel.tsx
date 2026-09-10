@@ -456,10 +456,11 @@ export default function ShopifySyncPanel({
         <div>
           <h2>Header &amp; footer</h2>
           <p>
-            Logoyu ortalar, tek pazar için gereksiz ülke/dil seçicilerini
-            kaldırır ve footer&apos;da hiç kurulmamış
-            Facebook/Twitter/YouTube ikonlarını kaldırır (Instagram ve
-            TikTok kalır).
+            Logoyu ortalar, tek pazar için gereksiz ülke seçiciyi kaldırır,
+            dil seçiciyi açık bırakır (Ayarlar &gt; Diller&apos;e ikinci
+            dil eklendiğinde otomatik görünür) ve footer&apos;da hiç
+            kurulmamış Facebook/Twitter/YouTube ikonlarını kaldırır
+            (Instagram ve TikTok kalır).
           </p>
         </div>
         <button
