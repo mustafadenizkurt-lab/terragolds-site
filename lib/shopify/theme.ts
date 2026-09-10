@@ -271,6 +271,46 @@ export async function applyProductPageLayout(
     });
   }
 
+  const productDetails = main.blocks["product-details"] as
+    | { blocks?: Record<string, { type?: string; name?: string; settings?: Record<string, unknown> }>; block_order?: string[] }
+    | undefined;
+  const descriptionBlock = productDetails?.blocks
+    ? Object.values(productDetails.blocks).find(
+        (block) => block.name === "t:names.product_description",
+      )
+    : undefined;
+  if (descriptionBlock?.settings) {
+    // Supplier descriptions are one run-on paragraph with "-" marking each
+    // point ("...üretilmiştir.-Zincir uzunluğu 45 cm dir.-...") - splitting
+    // on it into a bullet list reads far better than the wall of text.
+    descriptionBlock.settings.text =
+      "{%- assign description_parts = closest.product.description | strip_html | split: '-' -%}" +
+      "<ul class=\"product-description-list\">" +
+      "{%- for part in description_parts -%}" +
+      "{%- assign trimmed_part = part | strip -%}" +
+      "{%- unless trimmed_part == blank -%}<li>{{ trimmed_part }}</li>{%- endunless -%}" +
+      "{%- endfor -%}" +
+      "</ul>";
+  }
+
+  if (productDetails?.blocks && !productDetails.blocks["product_sku"]) {
+    productDetails.blocks["product_sku"] = {
+      type: "text",
+      settings: {
+        text:
+          "{%- assign sku = closest.product.selected_or_first_available_variant.sku -%}" +
+          "{%- unless sku == blank -%}<p class=\"product-sku\">Ürün Kodu: {{ sku }}</p>{%- endunless -%}",
+        width: "100%",
+      },
+    };
+    const variantPickerIndex = (productDetails.block_order ?? []).indexOf("variant_picker_R3rGDr");
+    if (productDetails.block_order && variantPickerIndex >= 0) {
+      productDetails.block_order.splice(variantPickerIndex, 0, "product_sku");
+    } else {
+      (productDetails.block_order ?? (productDetails.block_order = [])).push("product_sku");
+    }
+  }
+
   const rowIds: string[] = [];
   const accordionBlocks: Record<string, unknown> = {};
   PRODUCT_ACCORDION_ROWS.forEach((row, index) => {
