@@ -89,6 +89,11 @@ export async function ensureShopifyColumns(db: D1Database) {
       .prepare("ALTER TABLE products ADD COLUMN shopify_published_at TEXT")
       .run();
   }
+  if (!names.has("shopify_price_synced")) {
+    await db
+      .prepare("ALTER TABLE products ADD COLUMN shopify_price_synced INTEGER")
+      .run();
+  }
 }
 
 // A product's `status: ACTIVE` alone doesn't make it appear on the Online

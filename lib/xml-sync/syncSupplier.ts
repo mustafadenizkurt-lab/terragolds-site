@@ -6,6 +6,7 @@ import { resolveProductSlug } from "../product-slugs";
 import { rewriteProductDescription } from "../product-description-rewrite";
 import { getOptionalEnv } from "../runtime-env";
 import { pushInventoryToShopify } from "../shopify/inventory";
+import { pushPriceToShopify } from "../shopify/price";
 
 export type SupplierMapping = {
   externalId?: string;
@@ -94,8 +95,8 @@ export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<
         continue;
       }
       const existing = await db.prepare(
-        "SELECT id, xml_sync_status AS xmlSyncStatus, stock AS stock FROM products WHERE xml_supplier_id = ? AND xml_external_id = ? LIMIT 1",
-      ).bind(supplier.id, product.externalId).first<{ id: number; xmlSyncStatus: string; stock: number }>();
+        "SELECT id, xml_sync_status AS xmlSyncStatus, stock AS stock, price AS price FROM products WHERE xml_supplier_id = ? AND xml_external_id = ? LIMIT 1",
+      ).bind(supplier.id, product.externalId).first<{ id: number; xmlSyncStatus: string; stock: number; price: number }>();
       // Match only on an exact (supplier, external id) link, never by name:
       // products without that link may be sourced independently of this
       // feed (e.g. added by hand from a different supplier) and coincidentally
@@ -132,6 +133,18 @@ export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<
             await pushInventoryToShopify(db, matchedId);
           } catch {
             // Self-heals on the next stock change or scheduled sync.
+          }
+        }
+        // Same reasoning as the stock push above, guarded the same way:
+        // only fire this per-product Shopify call when the price actually
+        // changed for THIS product, never unconditionally for every matched
+        // row in the run.
+        if (existing.price !== product.price) {
+          try {
+            await pushPriceToShopify(db, matchedId);
+          } catch {
+            // Self-heals on the next price change, scheduled sync, or a
+            // manual "fiyatları güncelle" backfill run.
           }
         }
       } else {

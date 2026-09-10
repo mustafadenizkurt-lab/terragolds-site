@@ -16,6 +16,13 @@ type PublishResult = {
   errors: string[];
 };
 
+type PricePushResult = {
+  pushed: number;
+  failed: number;
+  remaining: number;
+  errors: string[];
+};
+
 export default function ShopifySyncPanel({
   onNotice,
 }: {
@@ -29,6 +36,9 @@ export default function ShopifySyncPanel({
   const [publishError, setPublishError] = useState("");
   const [lastPublishResult, setLastPublishResult] =
     useState<PublishResult | null>(null);
+  const [priceBusy, setPriceBusy] = useState(false);
+  const [priceError, setPriceError] = useState("");
+  const [lastPriceResult, setLastPriceResult] = useState<PricePushResult | null>(null);
   const [themeBusy, setThemeBusy] = useState(false);
   const [themeError, setThemeError] = useState("");
   const [themeApplied, setThemeApplied] = useState(false);
@@ -104,6 +114,35 @@ export default function ShopifySyncPanel({
       );
     } finally {
       setPublishBusy(false);
+    }
+  };
+
+  const pushPrices = async () => {
+    setPriceBusy(true);
+    setPriceError("");
+    try {
+      const response = await fetch("/api/admin/shopify/push-prices", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ batchSize: 100 }),
+        cache: "no-store",
+      });
+      const body = (await response.json()) as PricePushResult & {
+        error?: string;
+      };
+      if (!response.ok) throw new Error(body.error ?? "İşlem tamamlanamadı.");
+      setLastPriceResult(body);
+      onNotice(
+        `Shopify fiyat: ${body.pushed} ürün güncellendi, ${body.failed} hata, ${body.remaining} ürün sırada.`,
+      );
+    } catch (priceFail) {
+      setPriceError(
+        priceFail instanceof Error
+          ? priceFail.message
+          : "Shopify fiyat güncellemesi başarısız.",
+      );
+    } finally {
+      setPriceBusy(false);
     }
   };
 
@@ -376,6 +415,56 @@ export default function ShopifySyncPanel({
             </thead>
             <tbody>
               {lastPublishResult.errors.map((message, index) => (
+                <tr key={index}>
+                  <td>{message}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <div className="admin-panel-heading" style={{ marginTop: 32 }}>
+        <div>
+          <h2>Fiyatları güncelle</h2>
+          <p>
+            D1&apos;de fiyatı değişen ama Shopify&apos;a henüz yansımamış
+            ürünleri günceller (örn. bir tedarikçinin tüm ürünlerini yeniden
+            fiyatlandırdıktan sonra). Bir seferde 100 ürün işler, sırada
+            kalan varsa tekrar tıklayın.
+          </p>
+        </div>
+        <button
+          className="admin-primary-button"
+          type="button"
+          disabled={priceBusy}
+          onClick={() => void pushPrices()}
+        >
+          {priceBusy ? "Güncelleniyor…" : "Fiyatları güncelle"}
+        </button>
+      </div>
+      {priceError && (
+        <div className="admin-inline-error" role="alert">
+          {priceError}
+        </div>
+      )}
+      {lastPriceResult && (
+        <div className="admin-bulk-toolbar">
+          <strong>{lastPriceResult.pushed} ürünün fiyatı güncellendi</strong>
+          <span>{lastPriceResult.failed} hata</span>
+          <span>{lastPriceResult.remaining} ürün sırada</span>
+        </div>
+      )}
+      {lastPriceResult && lastPriceResult.errors.length > 0 && (
+        <div className="admin-supplier-table-wrap">
+          <table className="admin-supplier-table">
+            <thead>
+              <tr>
+                <th>Hata</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lastPriceResult.errors.map((message, index) => (
                 <tr key={index}>
                   <td>{message}</td>
                 </tr>
