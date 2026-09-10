@@ -86,8 +86,8 @@ export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<
         continue;
       }
       const existing = await db.prepare(
-        "SELECT id, xml_sync_status AS xmlSyncStatus FROM products WHERE xml_supplier_id = ? AND xml_external_id = ? LIMIT 1",
-      ).bind(supplier.id, product.externalId).first<{ id: number; xmlSyncStatus: string }>();
+        "SELECT id, xml_sync_status AS xmlSyncStatus, stock AS stock FROM products WHERE xml_supplier_id = ? AND xml_external_id = ? LIMIT 1",
+      ).bind(supplier.id, product.externalId).first<{ id: number; xmlSyncStatus: string; stock: number }>();
       // Match only on an exact (supplier, external id) link, never by name:
       // products without that link may be sourced independently of this
       // feed (e.g. added by hand from a different supplier) and coincidentally
@@ -111,11 +111,20 @@ export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<
         ).bind(product.name, product.stone, product.category, product.price, product.cost, product.stock, product.image, product.description, matchedId).run();
         updated += 1;
         // D1 is the source of truth for stock - push this product's new
-        // count to Shopify (a no-op if it isn't synced there yet).
-        try {
-          await pushInventoryToShopify(db, matchedId);
-        } catch {
-          // Self-heals on the next stock change or scheduled sync.
+        // count to Shopify (a no-op if it isn't synced there yet). Only
+        // when stock actually changed: this call costs at least one
+        // Shopify API round-trip, and a feed update that only touches
+        // price (e.g. a markup/mapping change across a whole supplier)
+        // would otherwise fire it for every single matched product -
+        // thousands of sequential Shopify calls in one sync run, enough
+        // to blow past the request's execution time/subrequest limit and
+        // leave the run stuck instead of completing or failing cleanly.
+        if (existing.stock !== product.stock) {
+          try {
+            await pushInventoryToShopify(db, matchedId);
+          } catch {
+            // Self-heals on the next stock change or scheduled sync.
+          }
         }
       } else {
         const description = await uniqueDescriptionForNewProduct(product);
