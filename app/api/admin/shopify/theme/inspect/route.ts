@@ -1,6 +1,7 @@
 import { getAuthorizedAdmin, unauthorizedAdminResponse } from "../../../../../../lib/admin-auth";
 import { getShopifyAccessToken } from "../../../../../../lib/shopify/auth";
 import { shopifyGraphQL } from "../../../../../../lib/shopify/client";
+import { getMainThemeId, getThemeFile } from "../../../../../../lib/shopify/theme";
 import { getD1 } from "../../../../../../lib/store-db";
 
 export const dynamic = "force-dynamic";
@@ -36,42 +37,35 @@ export async function GET(request: Request) {
   if (!(await getAuthorizedAdmin(request))) return unauthorizedAdminResponse();
   try {
     const accessToken = await getShopifyAccessToken();
-    const data = await shopifyGraphQL<{
-      menus: { nodes: unknown[] };
+
+    const shopData = await shopifyGraphQL<{
+      shopLocales: { locale: string; primary: boolean; published: boolean }[];
     }>(
       accessToken,
       `query {
-        menus(first: 10) {
-          nodes {
-            id
-            handle
-            title
-            items {
-              id
-              title
-              type
-              url
-              resourceId
-              items {
-                id
-                title
-                type
-                url
-                resourceId
-              }
-            }
-          }
-        }
+        shopLocales { locale primary published }
       }`,
       {},
     );
-    const menus = JSON.stringify(data.menus.nodes, null, 2);
+
+    const themeId = await getMainThemeId(accessToken);
+    const trLocale = await getThemeFile(accessToken, themeId, "locales/tr.json");
+    const trDefaultLocale = await getThemeFile(accessToken, themeId, "locales/tr.default.json");
+    const enDefaultLocale = await getThemeFile(accessToken, themeId, "locales/en.default.json");
+
+    const result = {
+      shopLocales: shopData.shopLocales,
+      hasTrLocale: trLocale !== null,
+      hasTrDefaultLocale: trDefaultLocale !== null,
+      enDefaultSnippet: enDefaultLocale?.slice(0, 800) ?? null,
+    };
+    const dump = JSON.stringify(result, null, 2);
 
     const db = getD1();
     await ensureDebugTable(db);
-    await upsertDebug(db, "menus", menus);
+    await upsertDebug(db, "localeInfo", dump);
 
-    return Response.json({ menusLength: menus.length });
+    return Response.json(result);
   } catch (error) {
     return Response.json(
       {
