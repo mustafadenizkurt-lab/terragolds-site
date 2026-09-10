@@ -7,6 +7,7 @@ import {
   publishExistingProductsToShopify,
   syncProductsToShopify,
 } from "../lib/shopify/sync";
+import { pushPendingShopifyPrices } from "../lib/shopify/price";
 
 interface Env {
   ASSETS: Fetcher;
@@ -98,6 +99,11 @@ const worker = {
     ctx.waitUntil(
       publishExistingProductsToShopify(env.DB, 200).catch(() => {}),
     );
+    // Catches up any product whose D1 price has drifted from what's live on
+    // Shopify (e.g. after a bulk supplier reprice, which deliberately
+    // doesn't push per-row - see pushPendingShopifyPrices's own comment).
+    // Self-limiting the same way as the publish backfill above.
+    ctx.waitUntil(pushPendingShopifyPrices(env.DB, 200).catch(() => {}));
   },
 };
 

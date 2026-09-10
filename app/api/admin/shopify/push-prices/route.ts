@@ -10,7 +10,7 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as {
     batchSize?: number;
   };
-  const batchSize = Math.min(100, Math.max(1, Number(body.batchSize) || 25));
+  const batchSize = Math.min(200, Math.max(1, Number(body.batchSize) || 100));
   try {
     const result = await pushPendingShopifyPrices(db, batchSize);
     return Response.json(result);
