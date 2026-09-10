@@ -331,9 +331,13 @@ type SectionGroup = {
 };
 
 // Header: centers the logo (Apple/Mejuri-style, instead of the default
-// left-aligned lockup) and drops the country/language switchers (this
-// store only ever sells in one market - see the earlier Markets
-// investigation - so they were just dead UI). A transparent header over
+// left-aligned lockup) and drops the country switcher (this store only
+// ever sells in one market - see the earlier Markets investigation - so
+// it was dead UI). Keeps/re-enables the language switcher: it's Horizon's
+// built-in localization_form-based dropdown over
+// `localization.available_languages`, already mobile-responsive, so it
+// just needs a second shop language published (Settings > Languages) to
+// show more than one option - no custom Liquid needed. A transparent header over
 // the homepage hero was tried and reverted - the hero image already has
 // its own baked-in branding text/icons, so overlaying the real header on
 // top of it just duplicated and cluttered that area.
@@ -362,7 +366,7 @@ export async function applyHeaderFooterLayout(
   Object.assign(headerSection.settings, {
     logo_position: "center",
     show_country: false,
-    show_language: false,
+    show_language: true,
     enable_transparent_header_home: false,
     home_inverse_logo: false,
   });
