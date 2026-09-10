@@ -101,7 +101,7 @@ export default function XmlSuppliersPanel({
 
   const read = async (url: string, options?: RequestInit) => {
     const response = await fetch(url, { ...options, cache: "no-store" });
-    const body = await response.json() as { error?: string; suppliers?: Supplier[]; logs?: SyncLog[]; results?: { result?: { imported: number; updated: number } }[] };
+    const body = await response.json() as { error?: string; suppliers?: Supplier[]; logs?: SyncLog[]; results?: { result?: { imported: number; updated: number } }[]; updated?: number; skipped?: number };
     if (!response.ok) throw new Error(body.error ?? "İşlem tamamlanamadı.");
     return body;
   };
@@ -165,6 +165,16 @@ export default function XmlSuppliersPanel({
     finally { setBusy(false); }
   };
 
+  const reprice = async (supplierId: number) => {
+    setBusy(true); setError("");
+    try {
+      const body = await read(`/api/admin/xml-suppliers/${supplierId}/reprice`, { method: "POST" });
+      await load();
+      onNotice(`${body.updated ?? 0} ürünün fiyatı güncellendi (${body.skipped ?? 0} atlandı).`);
+    } catch (repriceError) { setError(repriceError instanceof Error ? repriceError.message : "Fiyat güncellemesi başarısız."); }
+    finally { setBusy(false); }
+  };
+
   const editSupplier = (supplier: Supplier) => {
     setEditingId(supplier.id);
     setDraft(supplierToDraft(supplier));
@@ -201,7 +211,7 @@ export default function XmlSuppliersPanel({
         <label className="admin-field"><span>Minimum fiyat (TL)</span><input type="number" min="0" value={draft.filterMinPrice} onChange={event => setDraft({ ...draft, filterMinPrice: event.target.value })} placeholder="ör. 100" /></label>
         <div className="admin-supplier-source-toggle"><label><input type="checkbox" checked={draft.filterExcludeZeroStock} onChange={event => setDraft({ ...draft, filterExcludeZeroStock: event.target.checked })} /> Stoku 0 olan ürünleri alma</label></div>
       </div><button className="admin-secondary-button" type="submit" disabled={busy}>{editingId ? "Tedarikçiyi güncelle" : "Tedarikçi ekle"}</button></form>
-      <div className="admin-supplier-table-wrap"><table className="admin-supplier-table"><thead><tr><th>Tedarikçi</th><th>URL</th><th>Marj</th><th>Durum</th><th /></tr></thead><tbody>{suppliers.map(supplier => <tr key={supplier.id}><td>{supplier.name}</td><td className="admin-supplier-image-cell">{supplier.feedUrl}</td><td>%{supplier.defaultMarkupPercent}</td><td>{supplier.active ? "Aktif" : "Pasif"}</td><td><button type="button" onClick={() => editSupplier(supplier)}>Düzenle</button> <button type="button" onClick={() => void sync(supplier.id)} disabled={busy}>Senkronla</button></td></tr>)}</tbody></table></div>
+      <div className="admin-supplier-table-wrap"><table className="admin-supplier-table"><thead><tr><th>Tedarikçi</th><th>URL</th><th>Marj</th><th>Durum</th><th /></tr></thead><tbody>{suppliers.map(supplier => <tr key={supplier.id}><td>{supplier.name}</td><td className="admin-supplier-image-cell">{supplier.feedUrl}</td><td>%{supplier.defaultMarkupPercent}</td><td>{supplier.active ? "Aktif" : "Pasif"}</td><td><button type="button" onClick={() => editSupplier(supplier)}>Düzenle</button> <button type="button" onClick={() => void sync(supplier.id)} disabled={busy}>Senkronla</button> <button type="button" onClick={() => void reprice(supplier.id)} disabled={busy} title="Manuel işaretli ürünler dahil, tüm ürünlerin fiyat/maliyetini feed'e göre günceller (isim/açıklama/görsel/stok değişmez)">Tüm fiyatları güncelle</button></td></tr>)}</tbody></table></div>
     </>}
     {tab === "pricing" && <div className="admin-supplier-step"><h3>Aktif fiyatlandırma kuralları</h3><p>Her tedarikçinin varsayılan marjı XML maliyetine uygulanır. Değişiklik için tedarikçiyi düzenleyin.</p>{suppliers.map(supplier => <div className="admin-bulk-toolbar" key={supplier.id}><strong>{supplier.name}</strong><span>XML maliyeti + %{supplier.defaultMarkupPercent} = mağaza fiyatı</span><button type="button" onClick={() => onEditSupplier ? onEditSupplier(supplier.id) : editSupplier(supplier)}>Kuralı düzenle</button></div>)}</div>}
     {tab === "logs" && <div className="admin-supplier-table-wrap"><table className="admin-supplier-table"><thead><tr><th>Tedarikçi</th><th>Tarih</th><th>Durum</th><th>Yeni</th><th>Güncellenen</th><th>Atlanan</th></tr></thead><tbody>{logs.map(log => <tr key={log.id}><td>{log.supplierName ?? "Silinmiş tedarikçi"}</td><td>{new Date(log.startedAt).toLocaleString("tr-TR")}</td><td>{log.status === "success" ? "Başarılı" : log.status === "failed" ? "Hatalı" : "Çalışıyor"}</td><td>{log.importedCount}</td><td>{log.updatedCount}</td><td>{log.skippedCount}</td></tr>)}</tbody></table>{!logs.length && <p className="admin-empty">Henüz senkron geçmişi yok.</p>}</div>}
