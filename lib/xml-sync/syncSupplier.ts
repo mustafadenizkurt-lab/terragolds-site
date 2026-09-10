@@ -40,6 +40,7 @@ export type SyncResult = {
   imported: number;
   updated: number;
   skipped: number;
+  discontinued: number;
   logId?: number;
 };
 
@@ -70,8 +71,15 @@ export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<
     let imported = 0;
     let updated = 0;
     let skipped = 0;
+    // Every external id seen in this feed run, regardless of whether the
+    // record ends up skipped for missing data or filtered out below - both
+    // of those still mean the supplier is still offering the item, just not
+    // in a state we import/update it in right now. Only an id absent from
+    // the feed entirely means the supplier has actually discontinued it.
+    const seenExternalIds = new Set<string>();
     for (const record of records) {
       const product = mapRecord(record, mapping, supplier.defaultMarkupPercent);
+      if (product.externalId) seenExternalIds.add(product.externalId);
       if (!product.externalId || !product.name || product.price === null) {
         skipped += 1;
         continue;
@@ -138,18 +146,51 @@ export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<
         imported += 1;
       }
     }
+    const discontinued = await markDiscontinuedProducts(db, supplier.id, seenExternalIds);
+
     const completedAt = new Date().toISOString();
     await db.prepare(
-      "UPDATE xml_sync_logs SET status = 'success', completed_at = ?, imported_count = ?, updated_count = ?, skipped_count = ? WHERE id = ?",
-    ).bind(completedAt, imported, updated, skipped, log?.id ?? 0).run();
+      "UPDATE xml_sync_logs SET status = 'success', completed_at = ?, imported_count = ?, updated_count = ?, skipped_count = ?, details = ? WHERE id = ?",
+    ).bind(completedAt, imported, updated, skipped, JSON.stringify({ discontinued }), log?.id ?? 0).run();
     await db.prepare("UPDATE xml_suppliers SET last_synced_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").bind(completedAt, supplier.id).run();
-    return { imported, updated, skipped, logId: log?.id };
+    return { imported, updated, skipped, discontinued, logId: log?.id };
   } catch (error) {
     await db.prepare(
       "UPDATE xml_sync_logs SET status = 'failed', completed_at = ?, error_message = ? WHERE id = ?",
     ).bind(new Date().toISOString(), error instanceof Error ? error.message : "XML senkronu başarısız.", log?.id ?? 0).run();
     throw error;
   }
+}
+
+// Products this supplier previously synced in but that no longer appear
+// anywhere in its feed are out of stock at the source - set their stock to
+// 0 so they stop being sellable here too. Only 'synced' rows are touched
+// (never 'manual', for the same hand-managed-products reason as the main
+// loop above), and only ones the feed run hasn't already zeroed via a
+// normal price/stock update. Done as a small per-row loop rather than one
+// giant SQL NOT IN (...) because a supplier feed can have thousands of
+// external ids, which would blow past D1's per-statement parameter limit.
+async function markDiscontinuedProducts(
+  db: D1Database,
+  supplierId: number,
+  seenExternalIds: Set<string>,
+): Promise<number> {
+  const rows = await db
+    .prepare(
+      "SELECT id, xml_external_id AS xmlExternalId FROM products WHERE xml_supplier_id = ? AND xml_sync_status = 'synced' AND xml_external_id IS NOT NULL AND stock > 0",
+    )
+    .bind(supplierId)
+    .all<{ id: number; xmlExternalId: string }>();
+  let discontinued = 0;
+  for (const row of rows.results) {
+    if (seenExternalIds.has(row.xmlExternalId)) continue;
+    await db
+      .prepare("UPDATE products SET stock = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+      .bind(row.id)
+      .run();
+    discontinued += 1;
+  }
+  return discontinued;
 }
 
 async function uniqueDescriptionForNewProduct(product: {
