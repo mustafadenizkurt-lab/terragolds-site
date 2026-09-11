@@ -50,7 +50,7 @@ export async function GET(request: Request) {
                   shipping_district, shipping_city, shipping_postcode,
                   subtotal_amount, discount_amount, shipping_amount,
                   discount_code, total_amount, currency, payment_provider, customer_note,
-                  gift_wrap, gift_message,
+                  gift_wrap, gift_message, is_cod,
                   shipping_carrier, tracking_number, shipped_at,
                   delivered_at, created_at
            FROM orders
@@ -86,6 +86,7 @@ export async function GET(request: Request) {
           customer_note: string;
           gift_wrap: number;
           gift_message: string;
+          is_cod: number;
           shipping_carrier: string;
           tracking_number: string;
           shipped_at: string | null;
@@ -186,6 +187,7 @@ export async function GET(request: Request) {
         customerNote: order.customer_note,
         giftWrap: Boolean(order.gift_wrap),
         giftMessage: order.gift_message,
+        isCod: Boolean(order.is_cod),
         shippingCarrier: order.shipping_carrier,
         trackingNumber: order.tracking_number,
         trackingUrl: createShippingTrackingUrl({
@@ -247,6 +249,7 @@ export async function GET(request: Request) {
           customerNote: order.customer_note,
           giftWrap: false,
           giftMessage: "",
+          isCod: false,
           shippingCarrier: order.shipping_carrier,
           trackingNumber: order.tracking_number,
           trackingUrl: createShippingTrackingUrl({

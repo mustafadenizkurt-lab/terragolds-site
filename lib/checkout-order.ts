@@ -23,6 +23,15 @@ export async function ensureOrderCheckoutColumns(db: D1Database) {
       .prepare("ALTER TABLE orders ADD COLUMN gift_message TEXT NOT NULL DEFAULT ''")
       .run();
   }
+  if (!names.has("is_cod")) {
+    // orders.payment_provider has a DB-level CHECK constraint limited to
+    // the three real gateway ids, so a cash-on-delivery order stores one
+    // of those as a technical placeholder (see createCheckoutOrder) and
+    // this column is the actual, authoritative "is this COD" flag.
+    await db
+      .prepare("ALTER TABLE orders ADD COLUMN is_cod INTEGER NOT NULL DEFAULT 0")
+      .run();
+  }
 }
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -61,7 +70,9 @@ export async function createCheckoutOrder(
   request: Request,
   body: Record<string, unknown>,
   provider: PaymentProviderId,
+  options?: { isCod?: boolean },
 ) {
+  const isCod = options?.isCod ?? false;
   const firstName = stringField(body, "firstName", 80);
   const lastName = stringField(body, "lastName", 80);
   const email = stringField(body, "email", 190).toLowerCase();
@@ -140,9 +151,9 @@ export async function createCheckoutOrder(
              payment_provider, shopier_random_nr, customer_note,
              referred_by_partner_id, commission_rate_snapshot, commission_amount,
              gift_wrap, gift_message, loyalty_points_redeemed, loyalty_discount_amount,
-             updated_at)
+             is_cod, updated_at)
            VALUES (?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, 'Turkey',
-                   ?, ?, ?, ?, ?, ?, 'TRY', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+                   ?, ?, ?, ?, ?, ?, 'TRY', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
         )
         .bind(
           orderId,
@@ -171,6 +182,7 @@ export async function createCheckoutOrder(
           giftMessage,
           loyaltyPointsRedeemed,
           loyaltyDiscountAmount,
+          isCod ? 1 : 0,
         ),
       ...orderItems.map((item) =>
         db

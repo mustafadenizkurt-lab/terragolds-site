@@ -1968,13 +1968,14 @@ export default function AdminClient({
                 onNotice={flash}
                 shippingFee={settings.shippingFee}
                 freeShippingThreshold={settings.freeShippingThreshold}
+                codEnabled={settings.codEnabled}
                 onShippingChange={(next) =>
                   setSettings((current) => ({ ...current, ...next }))
                 }
                 onSaveShipping={(event) =>
                   void saveSettings(
                     event,
-                    "Kargo ücreti ve ücretsiz kargo limiti kaydedildi.",
+                    "Kargo ve kapıda ödeme ayarları kaydedildi.",
                   )
                 }
                 shippingSaving={saving}

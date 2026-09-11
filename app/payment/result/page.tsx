@@ -17,13 +17,17 @@ export default async function PaymentResultPage({
 }) {
   const params = await searchParams;
   const status =
-    params.status === "success" || params.status === "pending"
+    params.status === "success" ||
+    params.status === "pending" ||
+    params.status === "cod"
       ? params.status
       : "failed";
   const orderId = String(params.orderId ?? "").slice(0, 80);
 
   const [order, settings] = await Promise.all([
-    status === "success" && orderId ? readPaymentOrder(orderId) : null,
+    (status === "success" || status === "cod") && orderId
+      ? readPaymentOrder(orderId)
+      : null,
     readSettings(),
   ]);
 

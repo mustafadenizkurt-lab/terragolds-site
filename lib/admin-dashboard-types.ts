@@ -92,6 +92,10 @@ export type AdminShippingOrder = {
   customerNote: string;
   giftWrap: boolean;
   giftMessage: string;
+  // The authoritative "is this a cash-on-delivery order" flag - paymentProvider
+  // stores a real gateway id as a technical placeholder for these orders (a DB
+  // CHECK constraint limits it to actual gateways), so it can't be trusted for this.
+  isCod: boolean;
   shippingCarrier: string;
   trackingNumber: string;
   trackingUrl: string;

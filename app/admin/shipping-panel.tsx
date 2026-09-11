@@ -296,6 +296,11 @@ export default function ShippingPanel({
                           🎁 Hediye
                         </small>
                       )}
+                      {order.isCod && (
+                        <small className="admin-order-channel-badge cod">
+                          💵 Kapıda Ödeme
+                        </small>
+                      )}
                     </strong>
                     <small>
                       {order.id} ·{" "}
@@ -410,7 +415,9 @@ export default function ShippingPanel({
                   </div>
                   <small className="admin-payment-provider">
                     Ödeme yöntemi:{" "}
-                    {order.paymentProvider.toLocaleUpperCase("tr-TR")}
+                    {order.isCod
+                      ? "Kapıda Ödeme"
+                      : order.paymentProvider.toLocaleUpperCase("tr-TR")}
                   </small>
                 </section>
 

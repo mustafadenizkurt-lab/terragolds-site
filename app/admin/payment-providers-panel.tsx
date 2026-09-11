@@ -33,6 +33,7 @@ export default function PaymentProvidersPanel({
   onShippingChange,
   onSaveShipping,
   shippingSaving,
+  codEnabled,
 }: {
   onNotice: (message: string) => void;
   shippingFee: string;
@@ -40,9 +41,11 @@ export default function PaymentProvidersPanel({
   onShippingChange: (next: {
     shippingFee?: string;
     freeShippingThreshold?: string;
+    codEnabled?: string;
   }) => void;
   onSaveShipping: (event: React.FormEvent<HTMLFormElement>) => void;
   shippingSaving: boolean;
+  codEnabled: string;
 }) {
   const [providers, setProviders] = useState<PaymentProviderSummary[]>([]);
   const [selectedId, setSelectedId] = useState<PaymentProviderId | null>(null);
@@ -269,6 +272,31 @@ export default function PaymentProvidersPanel({
       {!loading && (
         <form className="admin-shipping-settings" onSubmit={onSaveShipping}>
           <div>
+            <p className="admin-kicker">Kapıda ödeme</p>
+            <h2>Nakit/kart ile kapıda ödeme</h2>
+            <p>
+              Etkinleştirirseniz müşteriler checkout&apos;ta bu seçeneği görür.
+              Sipariş oluşturulduğunda otomatik olarak kargoya hazır sayılır;
+              tutar teslimatta kurye tarafından tahsil edilir.
+            </p>
+          </div>
+          <label className="admin-check">
+            <input
+              type="checkbox"
+              checked={codEnabled === "true"}
+              onChange={(event) =>
+                onShippingChange({
+                  codEnabled: event.target.checked ? "true" : "false",
+                })
+              }
+            />
+            <span>
+              <strong>Kapıda ödemeyi etkinleştir</strong>
+              <small>Ödeme ekranında kart yönteminin yanında gösterilir.</small>
+            </span>
+          </label>
+
+          <div>
             <p className="admin-kicker">Teslimat ücretleri</p>
             <h2>Kargo ayarları</h2>
             <p>
@@ -315,7 +343,7 @@ export default function PaymentProvidersPanel({
             type="submit"
             disabled={shippingSaving}
           >
-            {shippingSaving ? "Kaydediliyor…" : "Kargo ayarlarını kaydet"}
+            {shippingSaving ? "Kaydediliyor…" : "Ayarları kaydet"}
           </button>
         </form>
       )}

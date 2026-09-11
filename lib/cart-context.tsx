@@ -10,7 +10,10 @@ import {
 } from "react";
 import { getDiscountedPrice, type Product } from "./store-data";
 import { trackAddToCart } from "./analytics";
-import type { PaymentProviderId, PaymentProviderSummary } from "./payment-types";
+import type {
+  CheckoutPaymentMethod,
+  PaymentProviderSummary,
+} from "./payment-types";
 
 export type CartEntry = {
   productId: number;
@@ -34,8 +37,8 @@ export type CartQuote = {
 
 export type PublicPaymentMethod = Omit<
   PaymentProviderSummary,
-  "credentialHint" | "fields"
->;
+  "credentialHint" | "fields" | "id"
+> & { id: CheckoutPaymentMethod };
 
 type CartToast = {
   id: number;
@@ -168,7 +171,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     [],
   );
   const [selectedPaymentProvider, setSelectedPaymentProvider] =
-    useState<PaymentProviderId | null>(null);
+    useState<CheckoutPaymentMethod | null>(null);
   const [authUser, setAuthUser] = useState<HeaderUser | null>(null);
   const [addCooldownSeconds, setAddCooldownSeconds] = useState(0);
   const [toast, setToast] = useState<CartToast | null>(null);
@@ -571,7 +574,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (!selectedPaymentProvider) {
         throw new Error("Geçerli bir ödeme yöntemi seçin.");
       }
-      const response = await fetch("/api/checkout/payment", {
+      const endpoint =
+        selectedPaymentProvider === "cod"
+          ? "/api/checkout/cod"
+          : "/api/checkout/payment";
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -954,9 +961,46 @@ export function CartProvider({ children }: { children: ReactNode }) {
               ödeme yöntemini seçin.
             </p>
             <form onSubmit={submitCheckout}>
-              <fieldset className="checkout-payment-methods single">
+              <fieldset
+                className={
+                  paymentMethods.length > 1
+                    ? "checkout-payment-methods"
+                    : "checkout-payment-methods single"
+                }
+              >
                 <legend>Ödeme yöntemi</legend>
-                {paymentMethods.length > 0 ? (
+                {paymentMethods.length > 1 ? (
+                  paymentMethods.map((method) => (
+                    <label
+                      className={
+                        selectedPaymentProvider === method.id ? "selected" : undefined
+                      }
+                      key={method.id}
+                    >
+                      <input
+                        type="radio"
+                        name="paymentProvider"
+                        value={method.id}
+                        checked={selectedPaymentProvider === method.id}
+                        onChange={() => setSelectedPaymentProvider(method.id)}
+                      />
+                      <span className={`checkout-provider-mark ${method.id}`}>
+                        {method.id === "cod" ? "₺" : method.name.slice(0, 1)}
+                      </span>
+                      <span>
+                        <strong>{method.name}</strong>
+                        <small>
+                          {method.id === "cod"
+                            ? "Teslimatta nakit veya kartla ödeyin"
+                            : method.testMode
+                              ? "Test ortamı"
+                              : "Güvenli ödeme sayfası"}
+                        </small>
+                      </span>
+                      <i aria-hidden="true" />
+                    </label>
+                  ))
+                ) : paymentMethods.length === 1 ? (
                   <div className="checkout-provider-fixed">
                     <span
                       className={`checkout-provider-mark ${paymentMethods[0].id}`}

@@ -11,7 +11,7 @@ export default function PaymentResultClient({
   orderAmount,
   whatsapp,
 }: {
-  status: "success" | "failed" | "pending";
+  status: "success" | "failed" | "pending" | "cod";
   orderId: string;
   orderAmount: number | null;
   whatsapp: string;
@@ -19,7 +19,7 @@ export default function PaymentResultClient({
   const cart = useCart();
 
   useEffect(() => {
-    if (status !== "success") return;
+    if (status !== "success" && status !== "cod") return;
     cart.clearCart();
     if (orderId && orderAmount !== null) {
       trackPurchase({ id: orderId, value: orderAmount });
@@ -41,6 +41,13 @@ export default function PaymentResultClient({
       detail:
         "Ödeme bildirimi kısa süre içinde işlenecek. Sayfayı yenilemek yerine Siparişlerim bölümünden durumu kontrol edebilirsiniz.",
       icon: "…",
+    },
+    cod: {
+      eyebrow: "Sipariş alındı",
+      title: "Siparişiniz kapıda ödeme ile hazırlanıyor.",
+      detail:
+        "Tutarı, kargo elinize ulaştığında nakit veya kartla teslimat görevlisine ödeyeceksiniz. Siparişinizin durumunu hesabınızdaki Siparişlerim bölümünden takip edebilirsiniz.",
+      icon: "₺",
     },
     failed: {
       eyebrow: "Ödeme tamamlanamadı",

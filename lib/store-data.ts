@@ -55,6 +55,8 @@ export type StoreSettings = {
   freeShippingThreshold: string;
   gaMeasurementId: string;
   metaPixelId: string;
+  /** "true" or "false" - whether checkout offers cash-on-delivery alongside card payment. */
+  codEnabled: string;
 };
 
 type DemoProduct = Omit<
@@ -636,6 +638,7 @@ export const defaultSettings: StoreSettings = {
   freeShippingThreshold: "1000",
   gaMeasurementId: "",
   metaPixelId: "",
+  codEnabled: "false",
 };
 
 export const settingsKeys = Object.keys(

@@ -6698,6 +6698,10 @@ footer {
   background: #fbf0e0;
   color: #a8720e;
 }
+.admin-order-channel-badge.cod {
+  background: #e7f6ea;
+  color: #1f7a3f;
+}
 .admin-order-channel-badge {
   display: inline-block;
   margin-left: 7px;
@@ -9341,6 +9345,10 @@ footer {
   color: #6d43b5;
   font-family: Arial, sans-serif;
   font-size: 10px;
+}
+.checkout-provider-mark.cod {
+  background: #eaf6ec;
+  color: #1f7a3f;
 }
 .checkout-payment-methods label > span:nth-of-type(2),
 .checkout-provider-fixed > span:nth-of-type(2) {
