@@ -47,7 +47,7 @@ export async function GET(request: Request) {
             (SELECT COUNT(*) FROM users customer WHERE customer.referred_by = partner.id) AS customerCount,
             COUNT(orders.id) AS orderCount,
             COALESCE(SUM(CASE WHEN orders.status IN (${eligibleStatusList}) THEN orders.total_amount ELSE 0 END), 0) AS revenue,
-            COALESCE(SUM(CASE WHEN orders.status IN (${eligibleStatusList}) THEN orders.commission_amount ELSE 0 END), 0) AS commissionTotal
+            COALESCE(SUM(CASE WHEN orders.status IN (${eligibleStatusList}) AND orders.commission_status = 'earned' THEN orders.commission_amount ELSE 0 END), 0) AS commissionTotal
           FROM users partner
           LEFT JOIN orders ON orders.referred_by_partner_id = partner.id
           WHERE partner.role = 'partner'

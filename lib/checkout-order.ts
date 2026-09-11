@@ -84,10 +84,11 @@ export async function createCheckoutOrder(
   const orderItems = quote.items;
   const totalAmount = quote.totalAmount;
 
-  const partnerAttribution = await resolveCheckoutPartner(db, request, customer?.id ?? null);
-  const commissionAmount = partnerAttribution
-    ? Math.round((totalAmount * partnerAttribution.commissionRate) / 100)
-    : 0;
+  const partnerAttribution = await resolveCheckoutPartner(db, request, customer?.id ?? null, email);
+  const commissionAmount =
+    partnerAttribution && !partnerAttribution.isSelfReferral
+      ? Math.round((totalAmount * partnerAttribution.commissionRate) / 100)
+      : 0;
 
   const orderId = createOrderId();
   const randomNr = createRandomNr();

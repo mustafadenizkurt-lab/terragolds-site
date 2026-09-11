@@ -28,7 +28,7 @@ export async function GET(request: Request) {
         `SELECT
             COUNT(*) AS orderCount,
             COALESCE(SUM(CASE WHEN status IN (${eligibleStatusList}) THEN total_amount ELSE 0 END), 0) AS revenue,
-            COALESCE(SUM(CASE WHEN status IN (${eligibleStatusList}) THEN commission_amount ELSE 0 END), 0) AS commissionTotal
+            COALESCE(SUM(CASE WHEN status IN (${eligibleStatusList}) AND commission_status = 'earned' THEN commission_amount ELSE 0 END), 0) AS commissionTotal
           FROM orders
           WHERE referred_by_partner_id = ?`,
       )

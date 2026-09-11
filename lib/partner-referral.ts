@@ -46,6 +46,16 @@ export async function ensurePartnerColumns(db: D1Database) {
       )
       .run();
   }
+  if (!orderNames.has("commission_status")) {
+    // SQLite backfills a static ALTER TABLE ... DEFAULT onto every existing
+    // row too, so every order placed before this column existed correctly
+    // starts out 'earned' rather than NULL.
+    await db
+      .prepare(
+        "ALTER TABLE orders ADD COLUMN commission_status TEXT NOT NULL DEFAULT 'earned'",
+      )
+      .run();
+  }
 }
 
 // Orders count a partner's commission only once payment has actually gone
@@ -110,7 +120,27 @@ export async function attributeNewCustomerReferral(
 export type CheckoutPartnerAttribution = {
   partnerId: number;
   commissionRate: number;
+  // True when the order being placed is the partner's own purchase (their
+  // account id matches the logged-in customer, or the order's email matches
+  // their partner account's email). referred_by_partner_id/commission_rate_
+  // snapshot are still recorded for transparency, but the caller must treat
+  // commission_amount as 0 - a partner never earns commission on themselves.
+  isSelfReferral: boolean;
 };
+
+function toAttribution(
+  partner: { id: number; commissionRate: number | null; email: string },
+  customerId: number | null,
+  orderEmail: string,
+): CheckoutPartnerAttribution {
+  return {
+    partnerId: partner.id,
+    commissionRate: partner.commissionRate ?? 0,
+    isSelfReferral:
+      partner.id === customerId ||
+      partner.email.trim().toLowerCase() === orderEmail.trim().toLowerCase(),
+  };
+}
 
 // Resolves which partner (if any) this specific order should be attributed
 // to: a fresh ?ref= cookie wins first (covers guest checkout and a
@@ -122,6 +152,7 @@ export async function resolveCheckoutPartner(
   db: D1Database,
   request: Request,
   customerId: number | null,
+  orderEmail: string,
 ): Promise<CheckoutPartnerAttribution | null> {
   await ensurePartnerColumns(db);
 
@@ -129,27 +160,44 @@ export async function resolveCheckoutPartner(
   if (refCode) {
     const partner = await db
       .prepare(
-        "SELECT id, commission_rate AS commissionRate FROM users WHERE role = 'partner' AND referral_code = ? LIMIT 1",
+        "SELECT id, commission_rate AS commissionRate, email FROM users WHERE role = 'partner' AND referral_code = ? LIMIT 1",
       )
       .bind(refCode)
-      .first<{ id: number; commissionRate: number | null }>();
-    if (partner) {
-      return { partnerId: partner.id, commissionRate: partner.commissionRate ?? 0 };
-    }
+      .first<{ id: number; commissionRate: number | null; email: string }>();
+    if (partner) return toAttribution(partner, customerId, orderEmail);
   }
 
   if (customerId) {
     const row = await db
       .prepare(
-        `SELECT partner.id AS id, partner.commission_rate AS commissionRate
+        `SELECT partner.id AS id, partner.commission_rate AS commissionRate, partner.email AS email
          FROM users customer
          JOIN users partner ON partner.id = customer.referred_by AND partner.role = 'partner'
          WHERE customer.id = ?`,
       )
       .bind(customerId)
-      .first<{ id: number; commissionRate: number | null }>();
-    if (row) return { partnerId: row.id, commissionRate: row.commissionRate ?? 0 };
+      .first<{ id: number; commissionRate: number | null; email: string }>();
+    if (row) return toAttribution(row, customerId, orderEmail);
   }
 
   return null;
+}
+
+// Called when a refund is confirmed for an order (see return-requests'
+// PATCH route) - flips its commission from 'earned' to 'reversed' so a
+// partner's total no longer includes it, without deleting or zeroing the
+// original row (kept for audit trail). A no-op (0 rows changed) if orderId
+// doesn't match a real order or was never 'earned' to begin with, so this
+// is always safe to call speculatively.
+export async function reverseCommissionForOrder(
+  db: D1Database,
+  orderId: string,
+): Promise<void> {
+  await ensurePartnerColumns(db);
+  await db
+    .prepare(
+      "UPDATE orders SET commission_status = 'reversed', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND commission_status = 'earned'",
+    )
+    .bind(orderId)
+    .run();
 }

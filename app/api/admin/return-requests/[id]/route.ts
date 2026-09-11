@@ -3,6 +3,7 @@ import {
   unauthorizedAdminResponse,
 } from "../../../../../lib/admin-auth";
 import { isSameOriginRequest } from "../../../../../lib/customer-auth";
+import { reverseCommissionForOrder } from "../../../../../lib/partner-referral";
 import { getD1 } from "../../../../../lib/store-db";
 import { readReturnRequests } from "../route";
 
@@ -39,7 +40,8 @@ export async function PATCH(
     }
     const adminNote = String(body.adminNote ?? "").trim().slice(0, 600);
 
-    const result = await getD1()
+    const db = getD1();
+    const result = await db
       .prepare(
         `UPDATE return_requests
          SET status = ?, admin_note = ?, updated_at = CURRENT_TIMESTAMP
@@ -50,6 +52,26 @@ export async function PATCH(
     if (!result.meta.changes) {
       return Response.json({ error: "İade talebi bulunamadı." }, { status: 404 });
     }
+
+    // A completed return means the refund actually went through - claw back
+    // any commission already earned on that order. order_number is free
+    // text the customer typed on the return form (no real FK to orders), so
+    // this is a best-effort, always-safe no-op if it doesn't match a real
+    // order id.
+    if (status === "completed") {
+      const returnRequest = await db
+        .prepare("SELECT order_number AS orderNumber FROM return_requests WHERE id = ?")
+        .bind(id)
+        .first<{ orderNumber: string }>();
+      if (returnRequest?.orderNumber) {
+        try {
+          await reverseCommissionForOrder(db, returnRequest.orderNumber.trim());
+        } catch {
+          // Never block the return-request update itself over this.
+        }
+      }
+    }
+
     return Response.json({ returnRequests: await readReturnRequests() });
   } catch (error) {
     return Response.json(
