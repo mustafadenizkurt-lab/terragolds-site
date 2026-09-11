@@ -1,5 +1,6 @@
 import { getCustomerFromRequest } from "./customer-auth";
 import { calculateCartQuote } from "./cart-pricing";
+import { computeRedemptionDiscount, ensureLoyaltyColumns, reserveRedemption } from "./loyalty";
 import type { PaymentProviderId } from "./payment-types";
 import { resolveCheckoutPartner } from "./partner-referral";
 import { getD1 } from "./store-db";
@@ -95,9 +96,28 @@ export async function createCheckoutOrder(
 
   const db = getD1();
   await ensureOrderCheckoutColumns(db);
-  const quote = await calculateCartQuote(body.items, discountCode);
+  await ensureLoyaltyColumns(db);
+  const requestedPoints = Math.max(0, Math.floor(Number(body.redeemPoints) || 0));
+  const quote = await calculateCartQuote(
+    body.items,
+    discountCode,
+    requestedPoints,
+    customer?.id ?? null,
+  );
   const orderItems = quote.items;
-  const totalAmount = quote.totalAmount;
+
+  // Reserve (atomically deduct) exactly what the quote decided is
+  // redeemable - see reserveRedemption's own comment for why this can't
+  // just trust the quote's read-only balance check. If a same-account race
+  // shrank what's actually available, the customer pays the (tiny) gap
+  // rather than the order silently costing us the shortfall.
+  const loyaltyPointsRedeemed =
+    customer?.id && quote.loyaltyPointsRedeemed > 0
+      ? await reserveRedemption(db, customer.id, quote.loyaltyPointsRedeemed)
+      : 0;
+  const loyaltyDiscountAmount = computeRedemptionDiscount(loyaltyPointsRedeemed);
+  const totalAmount =
+    quote.totalAmount + (quote.loyaltyDiscountAmount - loyaltyDiscountAmount);
 
   const partnerAttribution = await resolveCheckoutPartner(db, request, customer?.id ?? null, email);
   const commissionAmount =
@@ -107,64 +127,78 @@ export async function createCheckoutOrder(
 
   const orderId = createOrderId();
   const randomNr = createRandomNr();
-  await db.batch([
-    db
-      .prepare(
-        `INSERT INTO orders
-          (id, user_id, status, customer_first_name, customer_last_name,
-           customer_email, customer_phone, shipping_address,
-           shipping_district, shipping_city, shipping_postcode,
-           shipping_country, subtotal_amount, discount_amount, vat_amount,
-           shipping_amount, discount_code, total_amount, currency,
-           payment_provider, shopier_random_nr, customer_note,
-           referred_by_partner_id, commission_rate_snapshot, commission_amount,
-           gift_wrap, gift_message,
-           updated_at)
-         VALUES (?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, 'Turkey',
-                 ?, ?, ?, ?, ?, ?, 'TRY', ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
-      )
-      .bind(
-        orderId,
-        customer?.id ?? null,
-        firstName,
-        lastName,
-        email,
-        phone,
-        address,
-        district,
-        city,
-        postcode,
-        quote.subtotalAmount,
-        quote.discountAmount,
-        quote.vatAmount,
-        quote.shippingAmount,
-        quote.discountCode,
-        totalAmount,
-        provider,
-        randomNr,
-        note,
-        partnerAttribution?.partnerId ?? null,
-        partnerAttribution?.commissionRate ?? null,
-        commissionAmount,
-        giftWrap ? 1 : 0,
-        giftMessage,
-      ),
-    ...orderItems.map((item) =>
+  try {
+    await db.batch([
       db
         .prepare(
-          `INSERT INTO order_items
-            (order_id, product_id, product_name, unit_price, quantity)
-           VALUES (?, ?, ?, ?, ?)`,
+          `INSERT INTO orders
+            (id, user_id, status, customer_first_name, customer_last_name,
+             customer_email, customer_phone, shipping_address,
+             shipping_district, shipping_city, shipping_postcode,
+             shipping_country, subtotal_amount, discount_amount, vat_amount,
+             shipping_amount, discount_code, total_amount, currency,
+             payment_provider, shopier_random_nr, customer_note,
+             referred_by_partner_id, commission_rate_snapshot, commission_amount,
+             gift_wrap, gift_message, loyalty_points_redeemed, loyalty_discount_amount,
+             updated_at)
+           VALUES (?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, 'Turkey',
+                   ?, ?, ?, ?, ?, ?, 'TRY', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
         )
         .bind(
           orderId,
-          item.product.id,
-          item.product.name,
-          item.unitPrice,
-          item.quantity,
+          customer?.id ?? null,
+          firstName,
+          lastName,
+          email,
+          phone,
+          address,
+          district,
+          city,
+          postcode,
+          quote.subtotalAmount,
+          quote.discountAmount,
+          quote.vatAmount,
+          quote.shippingAmount,
+          quote.discountCode,
+          totalAmount,
+          provider,
+          randomNr,
+          note,
+          partnerAttribution?.partnerId ?? null,
+          partnerAttribution?.commissionRate ?? null,
+          commissionAmount,
+          giftWrap ? 1 : 0,
+          giftMessage,
+          loyaltyPointsRedeemed,
+          loyaltyDiscountAmount,
         ),
-    ),
-  ]);
+      ...orderItems.map((item) =>
+        db
+          .prepare(
+            `INSERT INTO order_items
+              (order_id, product_id, product_name, unit_price, quantity)
+             VALUES (?, ?, ?, ?, ?)`,
+          )
+          .bind(
+            orderId,
+            item.product.id,
+            item.product.name,
+            item.unitPrice,
+            item.quantity,
+          ),
+      ),
+    ]);
+  } catch (error) {
+    // The order was never created - give back whatever points we just
+    // reserved from the customer's balance rather than losing them.
+    if (customer?.id && loyaltyPointsRedeemed > 0) {
+      await db
+        .prepare("UPDATE users SET loyalty_points = loyalty_points + ? WHERE id = ?")
+        .bind(loyaltyPointsRedeemed, customer.id)
+        .run();
+    }
+    throw error;
+  }
 
   return {
     id: orderId,
@@ -175,6 +209,8 @@ export async function createCheckoutOrder(
     vatAmount: quote.vatAmount,
     shippingAmount: quote.shippingAmount,
     discountCode: quote.discountCode,
+    loyaltyPointsRedeemed,
+    loyaltyDiscountAmount,
     currency: "TRY" as const,
     customer,
     customerInput: {

@@ -28,6 +28,8 @@ export type CartQuote = {
   totalAmount: number;
   discountCode: string | null;
   discountDescription: string;
+  loyaltyPointsRedeemed: number;
+  loyaltyDiscountAmount: number;
 };
 
 export type PublicPaymentMethod = Omit<
@@ -46,7 +48,13 @@ type HeaderUser = {
   firstName: string;
   lastName: string;
   email: string;
+  loyaltyPoints?: number;
 };
+
+// Display-only mirror of lib/loyalty.ts's REDEEM_KURUS_PER_POINT (10 kuruş
+// per point) - kept as a plain number here rather than importing that
+// server module into this client bundle just for one constant.
+const POINT_VALUE_TL = 0.1;
 
 const money = new Intl.NumberFormat("tr-TR", {
   style: "currency",
@@ -148,6 +156,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [checkoutError, setCheckoutError] = useState("");
   const [checkoutEmail, setCheckoutEmail] = useState("");
   const [giftWrap, setGiftWrap] = useState(false);
+  const [redeemPointsInput, setRedeemPointsInput] = useState("");
   const [cartQuote, setCartQuote] = useState<CartQuote | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [quoteError, setQuoteError] = useState("");
@@ -251,6 +260,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       body: JSON.stringify({
         items: cart,
         discountCode: appliedDiscountCode || undefined,
+        redeemPoints: Number(redeemPointsInput) || undefined,
       }),
       signal: controller.signal,
     })
@@ -299,7 +309,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       });
 
     return () => controller.abort();
-  }, [cart, appliedDiscountCode]);
+  }, [cart, appliedDiscountCode, redeemPointsInput]);
 
   useEffect(() => {
     if (addCooldownSeconds <= 0) return;
@@ -505,6 +515,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setCheckoutEmail(authUser?.email ?? "");
     setCheckoutError("");
     setGiftWrap(false);
+    setRedeemPointsInput("");
     setCheckoutOpen(true);
   };
 
@@ -1019,6 +1030,33 @@ export function CartProvider({ children }: { children: ReactNode }) {
                 Posta kodu
                 <input name="postcode" autoComplete="postal-code" />
               </label>
+              {Boolean(authUser?.loyaltyPoints) && (
+                <label className="checkout-note-field">
+                  <span>
+                    Puanlarınızı kullanın{" "}
+                    <em>
+                      {authUser?.loyaltyPoints} puanınız var (~
+                      {money.format(((authUser?.loyaltyPoints ?? 0) * POINT_VALUE_TL))}{" "}
+                      değerinde)
+                    </em>
+                  </span>
+                  <input
+                    name="redeemPoints"
+                    type="number"
+                    min={0}
+                    max={authUser?.loyaltyPoints ?? 0}
+                    value={redeemPointsInput}
+                    onChange={(event) => setRedeemPointsInput(event.target.value)}
+                    placeholder="Kullanmak istediğiniz puan"
+                  />
+                  {cartQuote && cartQuote.loyaltyPointsRedeemed > 0 && (
+                    <small className="checkout-field-note">
+                      {cartQuote.loyaltyPointsRedeemed} puan kullanılıyor (-
+                      {money.format(cartQuote.loyaltyDiscountAmount / 100)}).
+                    </small>
+                  )}
+                </label>
+              )}
               <label className="checkout-gift-wrap">
                 <input
                   name="giftWrap"

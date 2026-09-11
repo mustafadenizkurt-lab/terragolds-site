@@ -17,6 +17,7 @@ type Profile = {
   phone: string;
   emailVerifiedAt: string | null;
   createdAt: string;
+  loyaltyPoints?: number;
 };
 
 type Order = {
@@ -522,6 +523,11 @@ export default function ProfileClient({
                 <span>Favoriler</span>
                 <strong>{favorites.length}</strong>
                 <small>Kaydedilen ürün</small>
+              </article>
+              <article>
+                <span>Puanlarım</span>
+                <strong>{profile.loyaltyPoints ?? 0}</strong>
+                <small>Sonraki siparişte indirim olarak kullanılır</small>
               </article>
             </div>
 

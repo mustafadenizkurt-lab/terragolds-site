@@ -3,6 +3,7 @@ import {
   unauthorizedAdminResponse,
 } from "../../../../../lib/admin-auth";
 import { isSameOriginRequest } from "../../../../../lib/customer-auth";
+import { reverseEarnedPoints } from "../../../../../lib/loyalty";
 import { reverseCommissionForOrder } from "../../../../../lib/partner-referral";
 import { getD1 } from "../../../../../lib/store-db";
 import { readReturnRequests } from "../route";
@@ -64,10 +65,16 @@ export async function PATCH(
         .bind(id)
         .first<{ orderNumber: string }>();
       if (returnRequest?.orderNumber) {
+        const orderId = returnRequest.orderNumber.trim();
         try {
-          await reverseCommissionForOrder(db, returnRequest.orderNumber.trim());
+          await reverseCommissionForOrder(db, orderId);
         } catch {
           // Never block the return-request update itself over this.
+        }
+        try {
+          await reverseEarnedPoints(db, orderId);
+        } catch {
+          // Same - a loyalty bookkeeping hiccup shouldn't block the return update.
         }
       }
     }

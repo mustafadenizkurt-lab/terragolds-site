@@ -1,4 +1,5 @@
 import type { PaymentProviderId } from "./payment-types";
+import { computePointsEarned, ensureLoyaltyColumns, refundRedeemedPoints } from "./loyalty";
 import { getD1 } from "./store-db";
 import { pushInventoryToShopify } from "./shopify/inventory";
 
@@ -10,13 +11,14 @@ type OrderPaymentRow = {
   payment_id: string | null;
   shopier_random_nr: string;
   total_amount: number;
+  user_id: number | null;
 };
 
 export async function readPaymentOrder(orderId: string) {
   return getD1()
     .prepare(
       `SELECT id, status, payment_provider, payment_reference, payment_id,
-              shopier_random_nr, total_amount
+              shopier_random_nr, total_amount, user_id
        FROM orders WHERE id = ?`,
     )
     .bind(orderId)
@@ -43,7 +45,8 @@ export async function markOrderFailed(
   provider: PaymentProviderId,
   paymentId: string,
 ) {
-  await getD1()
+  const db = getD1();
+  await db
     .prepare(
       `UPDATE orders
        SET status = 'failed', payment_id = ?, updated_at = CURRENT_TIMESTAMP
@@ -51,6 +54,13 @@ export async function markOrderFailed(
     )
     .bind(paymentId || null, orderId, provider)
     .run();
+  // The order never paid, so any loyalty points it reserved at checkout
+  // were never actually earned back yet - give them back to the customer.
+  try {
+    await refundRedeemedPoints(db, orderId);
+  } catch {
+    // Never let a loyalty bookkeeping hiccup mask the payment failure itself.
+  }
 }
 
 export async function markOrderPaid(input: {
@@ -59,6 +69,7 @@ export async function markOrderPaid(input: {
   paymentId: string;
 }) {
   const db = getD1();
+  await ensureLoyaltyColumns(db);
   const order = await readPaymentOrder(input.orderId);
   if (!order || order.payment_provider !== input.provider) {
     throw new Error("Sipariş bulunamadı.");
@@ -72,6 +83,11 @@ export async function markOrderPaid(input: {
   if (order.status === "cancelled") {
     throw new Error("Sipariş durumu ödemeye uygun değil.");
   }
+
+  // Guest orders (no account) have nothing to credit. Based on
+  // total_amount, which is already net of any loyalty discount this same
+  // order redeemed - can't earn points on points you just spent.
+  const pointsEarned = order.user_id ? computePointsEarned(order.total_amount) : 0;
 
   const items = await db
     .prepare(
@@ -115,6 +131,30 @@ export async function markOrderPaid(input: {
          )`,
       )
       .bind(input.orderId, input.provider),
+    // Must stay before the status-changing statement below - both this
+    // and the stock/discount updates above rely on seeing the order still
+    // in ('pending', 'failed') to guard against ever running twice.
+    ...(order.user_id && pointsEarned > 0
+      ? [
+          db
+            .prepare(
+              `UPDATE users SET loyalty_points = loyalty_points + ?
+               WHERE id = ? AND EXISTS (
+                 SELECT 1 FROM orders
+                 WHERE id = ? AND payment_provider = ?
+                   AND status IN ('pending', 'failed')
+               )`,
+            )
+            .bind(pointsEarned, order.user_id, input.orderId, input.provider),
+          db
+            .prepare(
+              `UPDATE orders SET loyalty_points_earned = ?, loyalty_status = 'earned'
+               WHERE id = ? AND payment_provider = ?
+                 AND status IN ('pending', 'failed')`,
+            )
+            .bind(pointsEarned, input.orderId, input.provider),
+        ]
+      : []),
     db
       .prepare(
         `UPDATE orders

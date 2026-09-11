@@ -4,6 +4,7 @@ import {
   isSameOriginRequest,
 } from "../../../../lib/customer-auth";
 import { normalizeCustomerName } from "../../../../lib/customer-name";
+import { getLoyaltyBalance } from "../../../../lib/loyalty";
 import { getD1 } from "../../../../lib/store-db";
 
 export const dynamic = "force-dynamic";
@@ -11,8 +12,9 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   const user = await getCustomerFromRequest(request);
   if (!user) return customerUnauthorizedResponse();
+  const loyaltyPoints = await getLoyaltyBalance(getD1(), user.id);
   return Response.json(
-    { user },
+    { user: { ...user, loyaltyPoints } },
     { headers: { "cache-control": "no-store" } },
   );
 }
@@ -45,7 +47,8 @@ export async function PUT(request: Request) {
     .bind(firstName, lastName, phone, user.id)
     .run();
 
+  const loyaltyPoints = await getLoyaltyBalance(getD1(), user.id);
   return Response.json({
-    user: { ...user, firstName, lastName, phone },
+    user: { ...user, firstName, lastName, phone, loyaltyPoints },
   });
 }

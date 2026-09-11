@@ -1,6 +1,7 @@
 import { getDiscountedPrice } from "./store-data";
 import { getD1, readSettings } from "./store-db";
 import { VAT_RATE } from "./xml-sync/calculatePrice";
+import { computeRedemptionDiscount, getLoyaltyBalance, REDEEM_KURUS_PER_POINT } from "./loyalty";
 
 export type CartInputItem = {
   productId: number;
@@ -98,6 +99,8 @@ export function parseTlToKurus(value: unknown) {
 export async function calculateCartQuote(
   itemsInput: unknown,
   discountCodeInput?: unknown,
+  redeemPointsInput?: unknown,
+  customerId?: number | null,
 ) {
   const items = normalizeCartItems(itemsInput);
   const db = getD1();
@@ -177,12 +180,32 @@ export async function calculateCartQuote(
         : Math.min(subtotalAmount, discount.discount_value);
   }
 
+  // Capped by both the customer's real balance and the remaining subtotal
+  // (can't redeem past a 0 subtotal) - this only decides how many points
+  // WOULD be used; the actual balance deduction happens atomically in
+  // createCheckoutOrder via reserveRedemption, right before the order is
+  // written, so two simultaneous checkouts can never double-spend the same
+  // points (a read here alone couldn't guarantee that).
+  let loyaltyPointsRedeemed = 0;
+  const requestedPoints = Math.max(0, Math.floor(Number(redeemPointsInput) || 0));
+  if (requestedPoints > 0 && customerId) {
+    const balance = await getLoyaltyBalance(db, customerId);
+    const maxBySubtotal = Math.floor(
+      Math.max(0, subtotalAmount - discountAmount) / REDEEM_KURUS_PER_POINT,
+    );
+    loyaltyPointsRedeemed = Math.min(requestedPoints, balance, maxBySubtotal);
+  }
+  const loyaltyDiscountAmount = computeRedemptionDiscount(loyaltyPointsRedeemed);
+
   const settings = await readSettings();
   const shippingFee = parseTlToKurus(settings.shippingFee);
   const freeShippingThreshold = parseTlToKurus(
     settings.freeShippingThreshold,
   );
-  const discountedSubtotal = Math.max(0, subtotalAmount - discountAmount);
+  const discountedSubtotal = Math.max(
+    0,
+    subtotalAmount - discountAmount - loyaltyDiscountAmount,
+  );
   const freeShipping =
     freeShippingThreshold > 0 &&
     discountedSubtotal >= freeShippingThreshold;
@@ -210,5 +233,7 @@ export async function calculateCartQuote(
     totalAmount,
     discountCode: discount?.code ?? null,
     discountDescription: discount?.description ?? "",
+    loyaltyPointsRedeemed,
+    loyaltyDiscountAmount,
   };
 }

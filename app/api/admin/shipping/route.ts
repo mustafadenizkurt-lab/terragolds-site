@@ -10,6 +10,7 @@ import {
 import { getShippingTrackingSettings } from "../../../../lib/shipping-tracking-settings";
 import { getD1 } from "../../../../lib/store-db";
 import { ensureOrderCheckoutColumns } from "../../../../lib/checkout-order";
+import { reverseEarnedPoints } from "../../../../lib/loyalty";
 import { ensureShopifyOrdersTable } from "../../../../lib/shopify/orders";
 import { fulfillShopifyOrder } from "../../../../lib/shopify/fulfillment";
 
@@ -370,6 +371,17 @@ export async function PATCH(request: Request) {
 
     if (!result.meta.changes) {
       return Response.json({ error: "Sipariş bulunamadı." }, { status: 404 });
+    }
+
+    // Cancelling an order that had already earned loyalty points claws
+    // them back - a no-op if it never actually reached 'paid' (nothing was
+    // ever earned to reverse).
+    if (table === "orders" && status === "cancelled") {
+      try {
+        await reverseEarnedPoints(db, id);
+      } catch {
+        // Never block the cancellation itself over a loyalty hiccup.
+      }
     }
 
     // Terragolds admin is the only place shipping status is edited - this

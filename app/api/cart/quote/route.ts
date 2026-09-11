@@ -2,7 +2,7 @@ import {
   calculateCartQuote,
   CartUnavailableProductError,
 } from "../../../../lib/cart-pricing";
-import { isSameOriginRequest } from "../../../../lib/customer-auth";
+import { getCustomerFromRequest, isSameOriginRequest } from "../../../../lib/customer-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +13,13 @@ export async function POST(request: Request) {
 
   try {
     const body = (await request.json()) as Record<string, unknown>;
-    const quote = await calculateCartQuote(body.items, body.discountCode);
+    const customer = await getCustomerFromRequest(request);
+    const quote = await calculateCartQuote(
+      body.items,
+      body.discountCode,
+      body.redeemPoints,
+      customer?.id ?? null,
+    );
     return Response.json({
       subtotalAmount: quote.subtotalAmount,
       discountAmount: quote.discountAmount,
@@ -25,6 +31,8 @@ export async function POST(request: Request) {
       totalAmount: quote.totalAmount,
       discountCode: quote.discountCode,
       discountDescription: quote.discountDescription,
+      loyaltyPointsRedeemed: quote.loyaltyPointsRedeemed,
+      loyaltyDiscountAmount: quote.loyaltyDiscountAmount,
     });
   } catch (error) {
     if (error instanceof CartUnavailableProductError) {
