@@ -47,6 +47,7 @@ export async function fetchSupplierXmlText(
     const onAbort = () => controller.abort();
     signal?.addEventListener("abort", onAbort);
     const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const attemptStartedAt = Date.now();
 
     try {
       const response = await fetch(url, {
@@ -83,13 +84,15 @@ export async function fetchSupplierXmlText(
       return new TextDecoder("utf-8").decode(buffer);
     } catch (error) {
       if (error instanceof NonRetryableError) throw error;
+      const elapsedMs = Date.now() - attemptStartedAt;
+      const attemptLabel = `deneme ${attempt + 1}/${retries + 1}`;
       if (error instanceof RetryableError) {
-        lastMessage = error.message;
+        lastMessage = `${error.message} (${attemptLabel}, ${elapsedMs}ms).`;
       } else {
         const isAbort = error instanceof Error && error.name === "AbortError";
         lastMessage = isAbort
-          ? "XML kaynağına bağlanılamadı (zaman aşımı)."
-          : `XML kaynağına bağlanılamadı (${error instanceof Error ? error.message : String(error)}).`;
+          ? `XML kaynağına bağlanılamadı (zaman aşımı, ${attemptLabel}, ${elapsedMs}ms sonra, limit ${timeoutMs}ms).`
+          : `XML kaynağına bağlanılamadı (${attemptLabel}, ${elapsedMs}ms: ${error instanceof Error ? error.message : String(error)}).`;
       }
       if (attempt < retries) {
         await sleep(attempt === 0 ? 500 : 1500);

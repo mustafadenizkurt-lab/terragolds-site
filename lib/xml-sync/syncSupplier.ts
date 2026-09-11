@@ -60,7 +60,49 @@ export async function syncActiveSuppliers(db: D1Database) {
   return results;
 }
 
+// A 'running' row older than this was almost certainly orphaned, not a
+// sync that's genuinely still in progress - every observed real run
+// (success or failure) completes within a couple of minutes. The manual
+// "Senkronla" route awaits syncSupplier() directly (no ctx.waitUntil), so
+// if the admin's browser disconnects mid-request Cloudflare can kill the
+// invocation before its own catch/finally ever runs, leaving the row
+// stuck at 'running' forever. The cron path doesn't have this problem
+// (it's wrapped in ctx.waitUntil), which is why every stuck row observed
+// so far came from a manual trigger.
+const STALE_RUNNING_MINUTES = 10;
+
+async function reclaimStaleRunningLogs(db: D1Database, supplierId: number): Promise<void> {
+  await db
+    .prepare(
+      `UPDATE xml_sync_logs
+       SET status = 'failed', completed_at = ?,
+           error_message = 'Önceki çalıştırma yarıda kesildi (yanıt tamamlanmadan bağlantı koptu) - otomatik olarak temizlendi.'
+       WHERE supplier_id = ? AND status = 'running'
+         AND started_at <= datetime('now', '-' || ? || ' minutes')`,
+    )
+    .bind(new Date().toISOString(), supplierId, STALE_RUNNING_MINUTES)
+    .run();
+}
+
+async function hasActiveRunningLog(db: D1Database, supplierId: number): Promise<boolean> {
+  const row = await db
+    .prepare("SELECT id FROM xml_sync_logs WHERE supplier_id = ? AND status = 'running' LIMIT 1")
+    .bind(supplierId)
+    .first<{ id: number }>();
+  return Boolean(row);
+}
+
 export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<SyncResult> {
+  // Clean up any orphaned row from a previous invocation first, then check
+  // whether a genuinely still-running sync remains - only refuses to start
+  // when one does, so this never blocks a normal run.
+  await reclaimStaleRunningLogs(db, supplier.id);
+  if (await hasActiveRunningLog(db, supplier.id)) {
+    throw new Error(
+      "Bu tedarikçi için başka bir senkron hâlâ çalışıyor, lütfen bitmesini bekleyin.",
+    );
+  }
+
   const startedAt = new Date().toISOString();
   const log = await db.prepare(
     "INSERT INTO xml_sync_logs (supplier_id, status, started_at) VALUES (?, 'running', ? ) RETURNING id",

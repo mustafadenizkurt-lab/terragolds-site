@@ -101,7 +101,7 @@ export default function XmlSuppliersPanel({
 
   const read = async (url: string, options?: RequestInit) => {
     const response = await fetch(url, { ...options, cache: "no-store" });
-    const body = await response.json() as { error?: string; suppliers?: Supplier[]; logs?: SyncLog[]; results?: { result?: { imported: number; updated: number; discontinued: number } }[]; updated?: number; skipped?: number };
+    const body = await response.json() as { error?: string; suppliers?: Supplier[]; logs?: SyncLog[]; results?: { result?: { imported: number; updated: number; discontinued: number }; error?: string }[]; updated?: number; skipped?: number };
     if (!response.ok) throw new Error(body.error ?? "İşlem tamamlanamadı.");
     return body;
   };
@@ -159,9 +159,14 @@ export default function XmlSuppliersPanel({
     setBusy(true); setError("");
     try {
       const body = await read("/api/admin/xml-suppliers/sync", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(supplierId ? { supplierId } : {}) });
-      const totals = (body.results ?? []).reduce((sum, item) => sum + (item.result?.imported ?? 0) + (item.result?.updated ?? 0), 0);
-      const discontinuedTotal = (body.results ?? []).reduce((sum, item) => sum + (item.result?.discontinued ?? 0), 0);
+      const results = body.results ?? [];
+      const totals = results.reduce((sum, item) => sum + (item.result?.imported ?? 0) + (item.result?.updated ?? 0), 0);
+      const discontinuedTotal = results.reduce((sum, item) => sum + (item.result?.discontinued ?? 0), 0);
+      const failures = results.map((item) => item.error).filter((message): message is string => Boolean(message));
       await load();
+      if (failures.length) {
+        setError(failures.join(" "));
+      }
       onNotice(
         discontinuedTotal > 0
           ? `${totals} XML ürünü işlendi (${discontinuedTotal} ürün tedarikçide artık yok, stoğu 0 yapıldı).`
