@@ -6,6 +6,7 @@ import {
 } from "../../../../lib/customer-auth";
 import { normalizeCustomerName } from "../../../../lib/customer-name";
 import { createEmailVerification } from "../../../../lib/email-verification";
+import { attributeNewCustomerReferral } from "../../../../lib/partner-referral";
 import { getD1 } from "../../../../lib/store-db";
 
 export const dynamic = "force-dynamic";
@@ -65,6 +66,11 @@ export async function POST(request: Request) {
       .first<{ id: number }>();
 
     if (!created) throw new Error("Hesap oluşturulamadı.");
+    try {
+      await attributeNewCustomerReferral(db, created.id, request);
+    } catch {
+      // A referral cookie/lookup problem should never block account creation.
+    }
     let verification:
       | {
           sent: boolean;

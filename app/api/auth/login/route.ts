@@ -50,7 +50,7 @@ export async function POST(request: Request) {
 
     const user = await getD1()
       .prepare(
-        `SELECT id, first_name, last_name, email, phone, password_hash, session_version
+        `SELECT id, first_name, last_name, email, phone, password_hash, session_version, role
          FROM users WHERE email = ?`,
       )
       .bind(email)
@@ -62,6 +62,7 @@ export async function POST(request: Request) {
         phone: string;
         password_hash: string;
         session_version: number;
+        role: string;
       }>();
 
     const passwordMatches =
@@ -98,6 +99,7 @@ export async function POST(request: Request) {
           lastName: user.last_name,
           email: user.email,
           phone: user.phone,
+          role: user.role,
         },
       }),
       token,

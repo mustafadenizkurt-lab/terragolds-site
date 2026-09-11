@@ -32,6 +32,9 @@ import * as adminXmlSupplierLogs from "../app/api/admin/xml-suppliers/logs/route
 import * as adminXmlSupplierSync from "../app/api/admin/xml-suppliers/sync/route";
 import * as adminXmlSupplierById from "../app/api/admin/xml-suppliers/[id]/route";
 import * as adminXmlSupplierReprice from "../app/api/admin/xml-suppliers/[id]/reprice/route";
+import * as adminPartners from "../app/api/admin/partners/route";
+import * as adminPartnerById from "../app/api/admin/partners/[id]/route";
+import * as partnerDashboard from "../app/api/partner/dashboard/route";
 import * as authEmailVerificationSend from "../app/api/auth/email-verification/send/route";
 import * as authEmailVerificationVerify from "../app/api/auth/email-verification/verify/route";
 import * as authForgotPassword from "../app/api/auth/forgot-password/route";
@@ -95,6 +98,8 @@ const exactRoutes: Record<string, RouteModule> = {
   "/api/admin/xml-suppliers": adminXmlSuppliers,
   "/api/admin/xml-suppliers/logs": adminXmlSupplierLogs,
   "/api/admin/xml-suppliers/sync": adminXmlSupplierSync,
+  "/api/admin/partners": adminPartners,
+  "/api/partner/dashboard": partnerDashboard,
   "/api/auth/email-verification/send": authEmailVerificationSend,
   "/api/auth/email-verification/verify": authEmailVerificationVerify,
   "/api/auth/forgot-password": authForgotPassword,
@@ -127,6 +132,11 @@ const dynamicRoutes: {
   {
     pattern: /^\/api\/admin\/xml-suppliers\/([^/]+)\/reprice$/,
     module: adminXmlSupplierReprice,
+    params: (match) => ({ id: decodeURIComponent(match[1] ?? "") }),
+  },
+  {
+    pattern: /^\/api\/admin\/partners\/([^/]+)$/,
+    module: adminPartnerById,
     params: (match) => ({ id: decodeURIComponent(match[1] ?? "") }),
   },
   {

@@ -39,6 +39,7 @@ export default function AuthForm({
         requiresCaptcha?: boolean;
         captcha?: { question?: string };
         verification?: { devVerifyUrl?: string };
+        user?: { role?: string };
       };
       if (!response.ok) {
         if (body.requiresCaptcha && body.captcha?.question) {
@@ -65,7 +66,8 @@ export default function AuthForm({
           }`;
         return;
       }
-      window.location.href = safeRequestedPath ?? "/orders";
+      window.location.href =
+        safeRequestedPath ?? (body.user?.role === "partner" ? "/partner" : "/orders");
     } catch (submitError) {
       setError(
         submitError instanceof Error

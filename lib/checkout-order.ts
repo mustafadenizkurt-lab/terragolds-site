@@ -1,6 +1,7 @@
 import { getCustomerFromRequest } from "./customer-auth";
 import { calculateCartQuote } from "./cart-pricing";
 import type { PaymentProviderId } from "./payment-types";
+import { resolveCheckoutPartner } from "./partner-referral";
 import { getD1 } from "./store-db";
 
 async function ensureOrdersVatColumn(db: D1Database) {
@@ -83,6 +84,11 @@ export async function createCheckoutOrder(
   const orderItems = quote.items;
   const totalAmount = quote.totalAmount;
 
+  const partnerAttribution = await resolveCheckoutPartner(db, request, customer?.id ?? null);
+  const commissionAmount = partnerAttribution
+    ? Math.round((totalAmount * partnerAttribution.commissionRate) / 100)
+    : 0;
+
   const orderId = createOrderId();
   const randomNr = createRandomNr();
   await db.batch([
@@ -94,9 +100,11 @@ export async function createCheckoutOrder(
            shipping_district, shipping_city, shipping_postcode,
            shipping_country, subtotal_amount, discount_amount, vat_amount,
            shipping_amount, discount_code, total_amount, currency,
-           payment_provider, shopier_random_nr, customer_note, updated_at)
+           payment_provider, shopier_random_nr, customer_note,
+           referred_by_partner_id, commission_rate_snapshot, commission_amount,
+           updated_at)
          VALUES (?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, 'Turkey',
-                 ?, ?, ?, ?, ?, ?, 'TRY', ?, ?, ?, CURRENT_TIMESTAMP)`,
+                 ?, ?, ?, ?, ?, ?, 'TRY', ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
       )
       .bind(
         orderId,
@@ -118,6 +126,9 @@ export async function createCheckoutOrder(
         provider,
         randomNr,
         note,
+        partnerAttribution?.partnerId ?? null,
+        partnerAttribution?.commissionRate ?? null,
+        commissionAmount,
       ),
     ...orderItems.map((item) =>
       db

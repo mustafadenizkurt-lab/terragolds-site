@@ -12,6 +12,7 @@ import CategoriesPanel from "./categories-panel";
 import ContentManagementPanel from "./content-management-panel";
 import SystemTestCenter from "./system-test-center";
 import CustomersPanel from "./customers-panel";
+import PartnersPanel from "./partners-panel";
 import OperationsPanel from "./operations-panel";
 import ReportsPanel from "./reports-panel";
 import MediaLibraryPanel from "./media-library-panel";
@@ -46,6 +47,7 @@ type AdminView =
   | "shopify"
   | "skuBackfill"
   | "customers"
+  | "partners"
   | "operations"
   | "reports"
   | "media"
@@ -495,6 +497,13 @@ export default function AdminClient({
           </button>
           <button
             type="button"
+            className={view === "partners" ? "active" : ""}
+            onClick={() => setView("partners")}
+          >
+            <span>◈</span> Partnerler
+          </button>
+          <button
+            type="button"
             className={view === "categories" ? "active" : ""}
             onClick={() => setView("categories")}
           >
@@ -654,6 +663,7 @@ export default function AdminClient({
               {view === "tests" && "Sistem test merkezi"}
               {view === "settings" && "Mağaza ayarları"}
               {view === "customers" && "Müşteriler"}
+              {view === "partners" && "Partnerler"}
               {view === "media" && "Medya kütüphanesi"}
               {view === "reports" && "Raporlar"}
               {view === "operations" && "Operasyon uyarıları"}
@@ -1052,6 +1062,7 @@ export default function AdminClient({
             )}
 
             {view === "customers" && <CustomersPanel onNotice={flash} />}
+            {view === "partners" && <PartnersPanel onNotice={flash} />}
 
             {view === "xmlSuppliers" && <XmlSuppliersPanel tab="suppliers" onNotice={flash} initialEditId={editSupplierId} onInitialEditConsumed={() => setEditSupplierId(null)} />}
             {view === "xmlPricing" && <XmlSuppliersPanel tab="pricing" onNotice={flash} onEditSupplier={id => { setEditSupplierId(id); setView("xmlSuppliers"); }} />}

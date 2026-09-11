@@ -115,6 +115,15 @@ export default async function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: toJsonLd(websiteSchema()) }}
         />
+        <script
+          // Captures a partner's ?ref=<code> link into a first-party cookie
+          // (checkout/register read it server-side). Last click wins here on
+          // purpose - only the customer account's own home partner
+          // (users.referred_by, set once at registration) is permanent.
+          dangerouslySetInnerHTML={{
+            __html: `try{var m=/[?&]ref=([^&]+)/.exec(window.location.search);if(m){var v=decodeURIComponent(m[1]).slice(0,32).replace(/[^A-Za-z0-9]/g,"").toUpperCase();if(v)document.cookie="tg_ref="+v+"; path=/; max-age=2592000; SameSite=Lax";}}catch(e){}`,
+          }}
+        />
         {settings && (
           <script
             type="application/ld+json"
