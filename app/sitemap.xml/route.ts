@@ -1,5 +1,6 @@
 import { readProducts } from "../../lib/store-db";
 import { categoryToSlug } from "../../lib/category-slugs";
+import { readPublishedBlogPosts } from "../../lib/blog";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,10 @@ type SitemapUrl = {
 };
 
 export async function GET() {
-  const products = await readProducts();
+  const [products, blogPosts] = await Promise.all([
+    readProducts(),
+    readPublishedBlogPosts(),
+  ]);
   const categories = [...new Set(products.map((product) => product.category))];
   const categoryLastmod = new Map<string, string>();
   for (const product of products) {
@@ -45,6 +49,7 @@ export async function GET() {
     { loc: `${siteUrl}/hakkimizda`, priority: "0.6", frequency: "monthly" },
     { loc: `${siteUrl}/sss`, priority: "0.6", frequency: "monthly" },
     { loc: `${siteUrl}/ozel-uretim`, priority: "0.5", frequency: "monthly" },
+    { loc: `${siteUrl}/blog`, priority: "0.6", frequency: "weekly" },
     {
       loc: `${siteUrl}/guvenli-alisveris`,
       priority: "0.5",
@@ -95,6 +100,15 @@ export async function GET() {
       images: [product.image, product.hoverImage]
         .filter((image): image is string => Boolean(image))
         .map((image) => new URL(image, siteUrl).toString()),
+    })),
+    ...blogPosts.map((post) => ({
+      loc: `${siteUrl}/blog/${post.slug}`,
+      priority: "0.6",
+      frequency: "monthly",
+      lastmod: toLastmod(post.updatedAt),
+      images: post.coverImage
+        ? [new URL(post.coverImage, siteUrl).toString()]
+        : undefined,
     })),
   ];
 

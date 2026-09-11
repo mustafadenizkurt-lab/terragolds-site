@@ -24,6 +24,7 @@ const copy = {
     products: "Ürünler",
     corporate: "Kurumsal",
     about: "Hakkımızda",
+    blog: "Blog",
     contact: "İletişim",
     orderTracking: "Sipariş Takibi",
     support: "Müşteri Hizmetleri",
@@ -51,6 +52,7 @@ const copy = {
     products: "Products",
     corporate: "Company",
     about: "About Us",
+    blog: "Blog",
     contact: "Contact",
     orderTracking: "Track Order",
     support: "Customer Service",
@@ -125,6 +127,7 @@ export default function StoreSiteFooter({
         <nav aria-label={t.corporate}>
           <strong>{t.corporate}</strong>
           <Link href="/hakkimizda">{t.about}</Link>
+          <Link href="/blog">{t.blog}</Link>
           <Link href="/support">{t.contact}</Link>
           <Link href="/orders">{t.orderTracking}</Link>
         </nav>

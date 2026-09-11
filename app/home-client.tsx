@@ -1614,6 +1614,9 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
             <a href="/ozel-uretim" onClick={() => setMenuOpen(false)}>
               Özel Üretim
             </a>
+            <a href="/blog" onClick={() => setMenuOpen(false)}>
+              Blog
+            </a>
           </div>
 
           <div className="mobile-menu-section">
@@ -1650,6 +1653,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
           Outlet
         </button>
         <a href="/ozel-uretim">Özel Üretim</a>
+        <a href="/blog">Blog</a>
       </nav>
 
       <section className="intro section-shell">

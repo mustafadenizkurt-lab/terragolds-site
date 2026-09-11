@@ -159,6 +159,41 @@ export function productSchema(product: ProductSchemaInput) {
   };
 }
 
+export type ArticleSchemaInput = {
+  title: string;
+  description: string;
+  image?: string;
+  slug: string;
+  publishedAt: string;
+  updatedAt?: string;
+};
+
+/** schema.org/Article for a blog post detail page. */
+export function articleSchema(article: ArticleSchemaInput) {
+  const url = `${SITE_URL}/blog/${article.slug}`;
+  return {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: article.title,
+    description: article.description,
+    ...(article.image
+      ? { image: [new URL(article.image, SITE_URL).toString()] }
+      : {}),
+    datePublished: article.publishedAt,
+    dateModified: article.updatedAt || article.publishedAt,
+    author: { "@type": "Organization", name: SITE_NAME },
+    publisher: {
+      "@type": "Organization",
+      name: SITE_NAME,
+      logo: {
+        "@type": "ImageObject",
+        url: `${SITE_URL}/apple-touch-icon.png`,
+      },
+    },
+    mainEntityOfPage: { "@type": "WebPage", "@id": url },
+  };
+}
+
 /** Safely serialize a JSON-LD object for a <script> tag (escapes `<` to prevent premature tag closing / XSS). */
 export function toJsonLd(data: unknown) {
   return JSON.stringify(data).replaceAll("<", "\\u003c");

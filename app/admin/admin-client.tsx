@@ -10,6 +10,7 @@ import ShippingPanel from "./shipping-panel";
 import ShippingTrackingSettingsPanel from "./shipping-tracking-settings";
 import CategoriesPanel from "./categories-panel";
 import ContentManagementPanel from "./content-management-panel";
+import BlogPanel from "./blog-panel";
 import SystemTestCenter from "./system-test-center";
 import CustomersPanel from "./customers-panel";
 import PartnersPanel from "./partners-panel";
@@ -40,6 +41,7 @@ type AdminView =
   | "editor"
   | "categories"
   | "content"
+  | "blog"
   | "supplierImport"
   | "xmlSuppliers"
   | "xmlPricing"
@@ -518,6 +520,13 @@ export default function AdminClient({
           </button>
           <button
             type="button"
+            className={view === "blog" ? "active" : ""}
+            onClick={() => setView("blog")}
+          >
+            <span>✎</span> Blog
+          </button>
+          <button
+            type="button"
             className={view === "media" ? "active" : ""}
             onClick={() => setView("media")}
           >
@@ -650,6 +659,7 @@ export default function AdminClient({
                 (draft.id ? "Ürünü düzenle" : "Yeni ürün")}
               {view === "categories" && "Kategoriler"}
               {view === "content" && "İçerik yönetimi"}
+              {view === "blog" && "Blog"}
               {view === "supplierImport" && "Tedarikçi İçe Aktarma"}
               {view === "xmlSuppliers" && "XML tedarikçileri"}
               {view === "xmlPricing" && "XML fiyatlandırma kuralları"}
@@ -1114,6 +1124,8 @@ export default function AdminClient({
             {view === "content" && (
               <ContentManagementPanel onNotice={flash} />
             )}
+
+            {view === "blog" && <BlogPanel onNotice={flash} />}
 
             {view === "editor" && (
               <form className="admin-form" onSubmit={saveProduct}>

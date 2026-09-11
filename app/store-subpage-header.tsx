@@ -451,6 +451,7 @@ export default function StoreSubpageHeader({
         ))}
         <Link className="sale" href="/#shop">Outlet</Link>
         <Link href="/ozel-uretim">Özel Üretim</Link>
+        <Link href="/blog">Blog</Link>
       </nav>
 
       {menuOpen && (
@@ -537,6 +538,9 @@ export default function StoreSubpageHeader({
             <a href="/ozel-uretim" onClick={() => setMenuOpen(false)}>
               Özel Üretim
             </a>
+            <Link href="/blog" onClick={() => setMenuOpen(false)}>
+              Blog
+            </Link>
           </div>
 
           <div className="mobile-menu-section">
