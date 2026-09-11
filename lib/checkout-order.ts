@@ -4,11 +4,22 @@ import type { PaymentProviderId } from "./payment-types";
 import { resolveCheckoutPartner } from "./partner-referral";
 import { getD1 } from "./store-db";
 
-async function ensureOrdersVatColumn(db: D1Database) {
+export async function ensureOrderCheckoutColumns(db: D1Database) {
   const columns = await db.prepare("PRAGMA table_info(orders)").all<{ name: string }>();
-  if (!columns.results.some((column) => column.name === "vat_amount")) {
+  const names = new Set(columns.results.map((column) => column.name));
+  if (!names.has("vat_amount")) {
     await db
       .prepare("ALTER TABLE orders ADD COLUMN vat_amount INTEGER NOT NULL DEFAULT 0")
+      .run();
+  }
+  if (!names.has("gift_wrap")) {
+    await db
+      .prepare("ALTER TABLE orders ADD COLUMN gift_wrap INTEGER NOT NULL DEFAULT 0")
+      .run();
+  }
+  if (!names.has("gift_message")) {
+    await db
+      .prepare("ALTER TABLE orders ADD COLUMN gift_message TEXT NOT NULL DEFAULT ''")
       .run();
   }
 }
@@ -61,6 +72,10 @@ export async function createCheckoutOrder(
   const note = stringField(body, "note", 500);
   const identityNumber = stringField(body, "identityNumber", 11);
   const discountCode = stringField(body, "discountCode", 40);
+  // An unchecked checkbox is simply absent from FormData (never "false"),
+  // so any truthy value here means it was checked.
+  const giftWrap = Boolean(body.giftWrap);
+  const giftMessage = giftWrap ? stringField(body, "giftMessage", 200) : "";
 
   if (
     !firstName ||
@@ -79,7 +94,7 @@ export async function createCheckoutOrder(
   const customer = await getCustomerFromRequest(request);
 
   const db = getD1();
-  await ensureOrdersVatColumn(db);
+  await ensureOrderCheckoutColumns(db);
   const quote = await calculateCartQuote(body.items, discountCode);
   const orderItems = quote.items;
   const totalAmount = quote.totalAmount;
@@ -103,9 +118,10 @@ export async function createCheckoutOrder(
            shipping_amount, discount_code, total_amount, currency,
            payment_provider, shopier_random_nr, customer_note,
            referred_by_partner_id, commission_rate_snapshot, commission_amount,
+           gift_wrap, gift_message,
            updated_at)
          VALUES (?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, 'Turkey',
-                 ?, ?, ?, ?, ?, ?, 'TRY', ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+                 ?, ?, ?, ?, ?, ?, 'TRY', ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
       )
       .bind(
         orderId,
@@ -130,6 +146,8 @@ export async function createCheckoutOrder(
         partnerAttribution?.partnerId ?? null,
         partnerAttribution?.commissionRate ?? null,
         commissionAmount,
+        giftWrap ? 1 : 0,
+        giftMessage,
       ),
     ...orderItems.map((item) =>
       db

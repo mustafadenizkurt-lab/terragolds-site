@@ -147,6 +147,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
   const [checkoutEmail, setCheckoutEmail] = useState("");
+  const [giftWrap, setGiftWrap] = useState(false);
   const [cartQuote, setCartQuote] = useState<CartQuote | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [quoteError, setQuoteError] = useState("");
@@ -503,6 +504,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setCartOpen(false);
     setCheckoutEmail(authUser?.email ?? "");
     setCheckoutError("");
+    setGiftWrap(false);
     setCheckoutOpen(true);
   };
 
@@ -1017,6 +1019,28 @@ export function CartProvider({ children }: { children: ReactNode }) {
                 Posta kodu
                 <input name="postcode" autoComplete="postal-code" />
               </label>
+              <label className="checkout-gift-wrap">
+                <input
+                  name="giftWrap"
+                  type="checkbox"
+                  checked={giftWrap}
+                  onChange={(event) => setGiftWrap(event.target.checked)}
+                />
+                <span>Hediye paketi istiyorum (ücretsiz)</span>
+              </label>
+              {giftWrap && (
+                <label className="checkout-note-field">
+                  <span>
+                    Hediye mesajı <em>İsteğe bağlı</em>
+                  </span>
+                  <textarea
+                    name="giftMessage"
+                    rows={2}
+                    maxLength={200}
+                    placeholder="Pakete eklenecek kısa bir not yazabilirsiniz."
+                  />
+                </label>
+              )}
               <label className="checkout-note-field">
                 <span>
                   Sipariş açıklaması <em>İsteğe bağlı</em>

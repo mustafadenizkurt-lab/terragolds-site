@@ -291,6 +291,11 @@ export default function ShippingPanel({
                           Shopify
                         </small>
                       )}
+                      {order.giftWrap && (
+                        <small className="admin-order-channel-badge gift">
+                          🎁 Hediye
+                        </small>
+                      )}
                     </strong>
                     <small>
                       {order.id} ·{" "}
@@ -324,6 +329,12 @@ export default function ShippingPanel({
                   <a href={`tel:${order.phone}`}>{order.phone}</a>
                   <a href={`mailto:${order.email}`}>{order.email}</a>
                   <address>{order.address}</address>
+                  {order.giftWrap && (
+                    <blockquote className="admin-gift-wrap-note">
+                      <span>🎁 Hediye paketi istendi</span>
+                      {order.giftMessage || "Ek mesaj yok."}
+                    </blockquote>
+                  )}
                   {order.customerNote && (
                     <blockquote>
                       <span>Müşteri açıklaması</span>

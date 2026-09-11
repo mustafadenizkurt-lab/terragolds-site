@@ -90,6 +90,8 @@ export type AdminShippingOrder = {
   // this shape (and the admin UI rendering it) stays identical either way.
   salesChannel: "terragolds.com" | "shopify";
   customerNote: string;
+  giftWrap: boolean;
+  giftMessage: string;
   shippingCarrier: string;
   trackingNumber: string;
   trackingUrl: string;

@@ -9,6 +9,7 @@ import {
 } from "../../../../lib/shipping-tracking-link";
 import { getShippingTrackingSettings } from "../../../../lib/shipping-tracking-settings";
 import { getD1 } from "../../../../lib/store-db";
+import { ensureOrderCheckoutColumns } from "../../../../lib/checkout-order";
 import { ensureShopifyOrdersTable } from "../../../../lib/shopify/orders";
 import { fulfillShopifyOrder } from "../../../../lib/shopify/fulfillment";
 
@@ -27,6 +28,7 @@ export async function GET(request: Request) {
   try {
     const db = getD1();
     await ensureShopifyOrdersTable(db);
+    await ensureOrderCheckoutColumns(db);
     await db
       .prepare(
         `UPDATE orders
@@ -47,6 +49,7 @@ export async function GET(request: Request) {
                   shipping_district, shipping_city, shipping_postcode,
                   subtotal_amount, discount_amount, shipping_amount,
                   discount_code, total_amount, currency, payment_provider, customer_note,
+                  gift_wrap, gift_message,
                   shipping_carrier, tracking_number, shipped_at,
                   delivered_at, created_at
            FROM orders
@@ -80,6 +83,8 @@ export async function GET(request: Request) {
           currency: string;
           payment_provider: string;
           customer_note: string;
+          gift_wrap: number;
+          gift_message: string;
           shipping_carrier: string;
           tracking_number: string;
           shipped_at: string | null;
@@ -178,6 +183,8 @@ export async function GET(request: Request) {
         paymentProvider: order.payment_provider,
         salesChannel: "terragolds.com",
         customerNote: order.customer_note,
+        giftWrap: Boolean(order.gift_wrap),
+        giftMessage: order.gift_message,
         shippingCarrier: order.shipping_carrier,
         trackingNumber: order.tracking_number,
         trackingUrl: createShippingTrackingUrl({
@@ -237,6 +244,8 @@ export async function GET(request: Request) {
           paymentProvider: "shopify",
           salesChannel: "shopify",
           customerNote: order.customer_note,
+          giftWrap: false,
+          giftMessage: "",
           shippingCarrier: order.shipping_carrier,
           trackingNumber: order.tracking_number,
           trackingUrl: createShippingTrackingUrl({
@@ -302,6 +311,7 @@ export async function PATCH(request: Request) {
 
     const db = getD1();
     await ensureShopifyOrdersTable(db);
+    await ensureOrderCheckoutColumns(db);
 
     let table: "orders" | "shopify_orders" = "orders";
     let current = await db

@@ -6694,6 +6694,10 @@ footer {
   background: #f7e9e5;
   color: #985141;
 }
+.admin-order-channel-badge.gift {
+  background: #fbf0e0;
+  color: #a8720e;
+}
 .admin-order-channel-badge {
   display: inline-block;
   margin-left: 7px;
@@ -15568,6 +15572,22 @@ body::after {
   .image-zoom-navigation {
     bottom: 10px;
   }
+}
+.checkout-gift-wrap {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px;
+  padding: 8px 0;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.checkout-gift-wrap input {
+  width: 20px !important;
+  height: 20px !important;
+  margin: 0;
+  accent-color: #a87519;
+  cursor: pointer;
 }
 .checkout-legal-consent, .account-legal-consent {
   display: flex !important;
