@@ -12,6 +12,7 @@ import { readProducts, readSettings } from "../../../lib/store-db";
 import { breadcrumbSchema, toJsonLd } from "../../../lib/seo/structured-data";
 import QuickAddToCart from "../../quick-add-to-cart";
 import FavoriteHeartButton from "../../favorite-heart-button";
+import CompareToggleButton from "../../compare-toggle-button";
 
 export const dynamic = "force-dynamic";
 
@@ -219,6 +220,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
                       <span className="product-code">#{product.xmlExternalId}</span>
                     )}
                     <Link href={`/products/${product.slug || product.id}`}>{product.name}</Link>
+                    <CompareToggleButton productId={product.id} productName={product.name} />
                     <QuickAddToCart product={product} />
                   </div>
                 </article>

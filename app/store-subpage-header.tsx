@@ -69,6 +69,17 @@ function readStoredFavoriteCount() {
   }
 }
 
+function readStoredCompareCount() {
+  try {
+    const value = JSON.parse(
+      window.localStorage.getItem("terragolds-compare") ?? "[]",
+    ) as unknown;
+    return Array.isArray(value) ? value.length : 0;
+  } catch {
+    return 0;
+  }
+}
+
 export default function StoreSubpageHeader({
   active,
   activeGroupSlug,
@@ -78,6 +89,7 @@ export default function StoreSubpageHeader({
 }) {
   const cart = useCart();
   const [favoriteCount, setFavoriteCount] = useState(0);
+  const [compareCount, setCompareCount] = useState(0);
   const [user, setUser] = useState<HeaderUser | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -106,6 +118,7 @@ export default function StoreSubpageHeader({
   useEffect(() => {
     const refresh = () => {
       setFavoriteCount(readStoredFavoriteCount());
+      setCompareCount(readStoredCompareCount());
     };
     refresh();
     window.addEventListener("storage", refresh);
@@ -426,6 +439,17 @@ export default function StoreSubpageHeader({
           {favoriteCount > 0 && <b>{favoriteCount}</b>}
         </Link>
 
+        {compareCount > 0 && (
+          <Link
+            className="header-favorites"
+            href="/karsilastir"
+            aria-label={`Karşılaştırma listesi: ${compareCount}`}
+          >
+            <em>Karşılaştır</em>
+            <b>{compareCount}</b>
+          </Link>
+        )}
+
         <button
           type="button"
           className="cart-button"
@@ -541,6 +565,11 @@ export default function StoreSubpageHeader({
             <Link href="/blog" onClick={() => setMenuOpen(false)}>
               Blog
             </Link>
+            {compareCount > 0 && (
+              <Link href="/karsilastir" onClick={() => setMenuOpen(false)}>
+                Karşılaştır ({compareCount})
+              </Link>
+            )}
           </div>
 
           <div className="mobile-menu-section">

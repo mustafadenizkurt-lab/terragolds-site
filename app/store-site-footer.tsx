@@ -22,6 +22,7 @@ const copy = {
       "Şıklığın yeni adresi. Özenle seçilmiş takı ve aksesuar koleksiyonları.",
     discover: "Keşfet",
     products: "Ürünler",
+    compare: "Ürün Karşılaştır",
     corporate: "Kurumsal",
     about: "Hakkımızda",
     blog: "Blog",
@@ -50,6 +51,7 @@ const copy = {
       "Curated jewelry and accessory collections delivered across Türkiye.",
     discover: "Discover",
     products: "Products",
+    compare: "Compare Products",
     corporate: "Company",
     about: "About Us",
     blog: "Blog",
@@ -123,6 +125,7 @@ export default function StoreSiteFooter({
         <nav aria-label={t.discover}>
           <strong>{t.discover}</strong>
           <Link href="/#shop">{t.products}</Link>
+          <Link href="/karsilastir">{t.compare}</Link>
         </nav>
         <nav aria-label={t.corporate}>
           <strong>{t.corporate}</strong>
