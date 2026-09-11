@@ -1252,6 +1252,17 @@ body::before {
   font-size: 18px;
   line-height: 1.7;
 }
+.product-size-guide {
+  margin-bottom: 26px;
+}
+.product-size-guide summary {
+  min-height: 52px;
+  font-size: 16px;
+  padding: 0 18px;
+}
+.product-size-guide details p {
+  margin: -6px 18px 18px;
+}
 .product-assurances {
   display: grid;
   grid-template-columns: 1fr 1fr;

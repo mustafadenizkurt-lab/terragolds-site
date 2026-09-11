@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import StoreSubpageHeader from "../../store-subpage-header";
+import SizeGuide from "./size-guide";
 import {
   getDiscountedPrice,
   type Product,
@@ -303,6 +304,8 @@ export default function ProductDetailClient({
           </div>
 
           <p className="product-profile-description">{product.description}</p>
+
+          <SizeGuide category={product.category} productName={product.name} />
 
           <div className="product-assurances">
             <span>
