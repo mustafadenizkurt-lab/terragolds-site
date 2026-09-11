@@ -10,7 +10,25 @@ export const metadata: Metadata = {
 };
 
 export default async function PartnerPage() {
-  const partner = await requireAuthorizedPartner("/partner");
+  const result = await requireAuthorizedPartner("/partner");
+
+  if (result.status === "inactive") {
+    return (
+      <main className="profile-page">
+        <section className="profile-content">
+          <div className="profile-title">
+            <p>İş ortağı paneli</p>
+            <h1>Hoş geldin, {result.displayName}</h1>
+          </div>
+          <div className="admin-inline-error" role="alert" style={{ maxWidth: 720, margin: "0 auto" }}>
+            Hesabınız şu anda pasif durumda. Erişiminizin yeniden açılması için lütfen yönetici ile iletişime geçin.
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  const partner = result.partner;
   return (
     <PartnerClient
       partner={{

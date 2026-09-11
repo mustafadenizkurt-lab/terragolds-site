@@ -56,6 +56,24 @@ export async function ensurePartnerColumns(db: D1Database) {
       )
       .run();
   }
+  if (!userNames.has("is_active")) {
+    await db
+      .prepare("ALTER TABLE users ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1")
+      .run();
+  }
+
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS partner_payouts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        partner_id INTEGER NOT NULL REFERENCES users(id),
+        amount INTEGER NOT NULL,
+        note TEXT NOT NULL DEFAULT '',
+        paid_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        created_by INTEGER REFERENCES users(id)
+      )`,
+    )
+    .run();
 }
 
 // Orders count a partner's commission only once payment has actually gone
@@ -107,7 +125,9 @@ export async function attributeNewCustomerReferral(
   const refCode = readCookieValue(request, REFERRAL_COOKIE);
   if (!refCode) return;
   const partner = await db
-    .prepare("SELECT id FROM users WHERE role = 'partner' AND referral_code = ? LIMIT 1")
+    .prepare(
+      "SELECT id FROM users WHERE role = 'partner' AND is_active = 1 AND referral_code = ? LIMIT 1",
+    )
     .bind(refCode)
     .first<{ id: number }>();
   if (!partner) return;
@@ -160,11 +180,16 @@ export async function resolveCheckoutPartner(
   if (refCode) {
     const partner = await db
       .prepare(
-        "SELECT id, commission_rate AS commissionRate, email FROM users WHERE role = 'partner' AND referral_code = ? LIMIT 1",
+        "SELECT id, commission_rate AS commissionRate, email FROM users WHERE role = 'partner' AND is_active = 1 AND referral_code = ? LIMIT 1",
       )
       .bind(refCode)
       .first<{ id: number; commissionRate: number | null; email: string }>();
     if (partner) return toAttribution(partner, customerId, orderEmail);
+    // An unrecognized or inactive partner's code falls straight through to
+    // the account's home partner below instead of returning null here -
+    // a stale/deactivated ref cookie should behave as if it were never
+    // there, not as "no partner ever", when the account itself still has
+    // a valid one.
   }
 
   if (customerId) {
@@ -172,7 +197,7 @@ export async function resolveCheckoutPartner(
       .prepare(
         `SELECT partner.id AS id, partner.commission_rate AS commissionRate, partner.email AS email
          FROM users customer
-         JOIN users partner ON partner.id = customer.referred_by AND partner.role = 'partner'
+         JOIN users partner ON partner.id = customer.referred_by AND partner.role = 'partner' AND partner.is_active = 1
          WHERE customer.id = ?`,
       )
       .bind(customerId)
@@ -181,6 +206,29 @@ export async function resolveCheckoutPartner(
   }
 
   return null;
+}
+
+export async function recordPartnerPayout(
+  db: D1Database,
+  input: { partnerId: number; amount: number; note: string; createdBy: number },
+): Promise<void> {
+  await ensurePartnerColumns(db);
+  await db
+    .prepare(
+      "INSERT INTO partner_payouts (partner_id, amount, note, created_by) VALUES (?, ?, ?, ?)",
+    )
+    .bind(input.partnerId, input.amount, input.note, input.createdBy)
+    .run();
+}
+
+export async function listPartnerPayouts(db: D1Database, partnerId: number) {
+  await ensurePartnerColumns(db);
+  return db
+    .prepare(
+      "SELECT id, amount, note, paid_at AS paidAt FROM partner_payouts WHERE partner_id = ? ORDER BY paid_at DESC",
+    )
+    .bind(partnerId)
+    .all<{ id: number; amount: number; note: string; paidAt: string }>();
 }
 
 // Called when a refund is confirmed for an order (see return-requests'

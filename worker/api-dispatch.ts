@@ -34,6 +34,7 @@ import * as adminXmlSupplierById from "../app/api/admin/xml-suppliers/[id]/route
 import * as adminXmlSupplierReprice from "../app/api/admin/xml-suppliers/[id]/reprice/route";
 import * as adminPartners from "../app/api/admin/partners/route";
 import * as adminPartnerById from "../app/api/admin/partners/[id]/route";
+import * as adminPartnerPayouts from "../app/api/admin/partners/[id]/payouts/route";
 import * as partnerDashboard from "../app/api/partner/dashboard/route";
 import * as authEmailVerificationSend from "../app/api/auth/email-verification/send/route";
 import * as authEmailVerificationVerify from "../app/api/auth/email-verification/verify/route";
@@ -132,6 +133,11 @@ const dynamicRoutes: {
   {
     pattern: /^\/api\/admin\/xml-suppliers\/([^/]+)\/reprice$/,
     module: adminXmlSupplierReprice,
+    params: (match) => ({ id: decodeURIComponent(match[1] ?? "") }),
+  },
+  {
+    pattern: /^\/api\/admin\/partners\/([^/]+)\/payouts$/,
+    module: adminPartnerPayouts,
     params: (match) => ({ id: decodeURIComponent(match[1] ?? "") }),
   },
   {

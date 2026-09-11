@@ -35,13 +35,23 @@ export async function GET(request: Request) {
       .bind(partner.id)
       .first<{ orderCount: number; revenue: number; commissionTotal: number }>();
 
+    const payoutTotalRow = await db
+      .prepare("SELECT COALESCE(SUM(amount), 0) AS total FROM partner_payouts WHERE partner_id = ?")
+      .bind(partner.id)
+      .first<{ total: number }>();
+
+    const commissionTotal = orderStats?.commissionTotal ?? 0;
+    const payoutTotal = payoutTotalRow?.total ?? 0;
+
     return Response.json({
       referralCode: partner.referralCode,
       commissionRate: partner.commissionRate,
       customerCount: customerCount?.c ?? 0,
       orderCount: orderStats?.orderCount ?? 0,
       revenue: orderStats?.revenue ?? 0,
-      commissionTotal: orderStats?.commissionTotal ?? 0,
+      commissionTotal,
+      payoutTotal,
+      pendingTotal: Math.max(0, commissionTotal - payoutTotal),
     });
   } catch (error) {
     return Response.json(

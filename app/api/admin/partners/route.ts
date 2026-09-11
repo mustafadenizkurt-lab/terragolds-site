@@ -21,11 +21,13 @@ type PartnerRow = {
   email: string;
   referralCode: string | null;
   commissionRate: number | null;
+  isActive: number;
   createdAt: string;
   customerCount: number;
   orderCount: number;
   revenue: number;
   commissionTotal: number;
+  payoutTotal: number;
 };
 
 export async function GET(request: Request) {
@@ -43,11 +45,13 @@ export async function GET(request: Request) {
             partner.email AS email,
             partner.referral_code AS referralCode,
             partner.commission_rate AS commissionRate,
+            partner.is_active AS isActive,
             partner.created_at AS createdAt,
             (SELECT COUNT(*) FROM users customer WHERE customer.referred_by = partner.id) AS customerCount,
             COUNT(orders.id) AS orderCount,
             COALESCE(SUM(CASE WHEN orders.status IN (${eligibleStatusList}) THEN orders.total_amount ELSE 0 END), 0) AS revenue,
-            COALESCE(SUM(CASE WHEN orders.status IN (${eligibleStatusList}) AND orders.commission_status = 'earned' THEN orders.commission_amount ELSE 0 END), 0) AS commissionTotal
+            COALESCE(SUM(CASE WHEN orders.status IN (${eligibleStatusList}) AND orders.commission_status = 'earned' THEN orders.commission_amount ELSE 0 END), 0) AS commissionTotal,
+            (SELECT COALESCE(SUM(amount), 0) FROM partner_payouts WHERE partner_payouts.partner_id = partner.id) AS payoutTotal
           FROM users partner
           LEFT JOIN orders ON orders.referred_by_partner_id = partner.id
           WHERE partner.role = 'partner'

@@ -10,6 +10,8 @@ type DashboardData = {
   orderCount: number;
   revenue: number;
   commissionTotal: number;
+  payoutTotal: number;
+  pendingTotal: number;
 };
 
 const money = new Intl.NumberFormat("tr-TR", {
@@ -99,7 +101,15 @@ export default function PartnerClient({
               </div>
               <div>
                 <strong>{money.format(data.commissionTotal / 100)}</strong>
-                <div>Hakkedilen komisyon (%{data.commissionRate})</div>
+                <div>Toplam hakkedilen (%{data.commissionRate})</div>
+              </div>
+              <div>
+                <strong>{money.format(data.payoutTotal / 100)}</strong>
+                <div>Ödenen</div>
+              </div>
+              <div>
+                <strong>{money.format(data.pendingTotal / 100)}</strong>
+                <div>Bekleyen</div>
               </div>
             </div>
           )}

@@ -9,11 +9,13 @@ type Partner = {
   email: string;
   referralCode: string | null;
   commissionRate: number | null;
+  isActive: number;
   createdAt: string;
   customerCount: number;
   orderCount: number;
   revenue: number;
   commissionTotal: number;
+  payoutTotal: number;
 };
 
 type Draft = {
@@ -46,6 +48,9 @@ export default function PartnersPanel({
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [editingRateId, setEditingRateId] = useState<number | null>(null);
   const [editingRateValue, setEditingRateValue] = useState(0);
+  const [payoutFormId, setPayoutFormId] = useState<number | null>(null);
+  const [payoutAmount, setPayoutAmount] = useState("");
+  const [payoutNote, setPayoutNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -107,6 +112,62 @@ export default function PartnersPanel({
       onNotice("Komisyon oranı güncellendi (yalnızca yeni siparişlere uygulanır).");
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Komisyon oranı güncellenemedi.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const toggleActive = async (partner: Partner) => {
+    setBusy(true);
+    setError("");
+    try {
+      await readJson(
+        await fetch(`/api/admin/partners/${partner.id}`, {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ isActive: !partner.isActive }),
+        }),
+      );
+      await load();
+      onNotice(
+        partner.isActive
+          ? "Partner pasife alındı - referans linki artık komisyon oluşturmaz."
+          : "Partner tekrar aktif edildi.",
+      );
+    } catch (toggleError) {
+      setError(toggleError instanceof Error ? toggleError.message : "Partner durumu değiştirilemedi.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const startPayout = (partner: Partner) => {
+    setPayoutFormId(partner.id);
+    setPayoutAmount("");
+    setPayoutNote("");
+  };
+
+  const savePayout = async (id: number) => {
+    const amountTl = Number(payoutAmount);
+    if (!Number.isFinite(amountTl) || amountTl <= 0) {
+      setError("Geçerli bir tutar girin.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      await readJson(
+        await fetch(`/api/admin/partners/${id}/payouts`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ amountTl, note: payoutNote }),
+        }),
+      );
+      setPayoutFormId(null);
+      await load();
+      onNotice("Ödeme kaydedildi.");
+    } catch (payoutError) {
+      setError(payoutError instanceof Error ? payoutError.message : "Ödeme kaydedilemedi.");
     } finally {
       setBusy(false);
     }
@@ -183,10 +244,13 @@ export default function PartnersPanel({
               <th>Partner</th>
               <th>Referans kodu</th>
               <th>Komisyon</th>
+              <th>Durum</th>
               <th>Müşteri</th>
               <th>Sipariş</th>
               <th>Ciro</th>
-              <th>Komisyon tutarı</th>
+              <th>Hakkedilen</th>
+              <th>Ödenen</th>
+              <th>Bekleyen</th>
               <th />
             </tr>
           </thead>
@@ -226,11 +290,47 @@ export default function PartnersPanel({
                     </>
                   )}
                 </td>
+                <td>{partner.isActive ? "Aktif" : "Pasif"}</td>
                 <td>{partner.customerCount}</td>
                 <td>{partner.orderCount}</td>
                 <td>{money.format(partner.revenue / 100)}</td>
                 <td>{money.format(partner.commissionTotal / 100)}</td>
-                <td />
+                <td>{money.format(partner.payoutTotal / 100)}</td>
+                <td>{money.format(Math.max(0, partner.commissionTotal - partner.payoutTotal) / 100)}</td>
+                <td>
+                  <button type="button" disabled={busy} onClick={() => void toggleActive(partner)}>
+                    {partner.isActive ? "Pasife Al" : "Aktif Et"}
+                  </button>{" "}
+                  {payoutFormId === partner.id ? (
+                    <div style={{ marginTop: 8 }}>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="Tutar (TL)"
+                        value={payoutAmount}
+                        onChange={(event) => setPayoutAmount(event.target.value)}
+                        style={{ width: 90 }}
+                      />
+                      <input
+                        placeholder="Not"
+                        value={payoutNote}
+                        onChange={(event) => setPayoutNote(event.target.value)}
+                        style={{ width: 100 }}
+                      />
+                      <button type="button" disabled={busy} onClick={() => void savePayout(partner.id)}>
+                        Kaydet
+                      </button>
+                      <button type="button" onClick={() => setPayoutFormId(null)}>
+                        Vazgeç
+                      </button>
+                    </div>
+                  ) : (
+                    <button type="button" onClick={() => startPayout(partner)}>
+                      Ödeme kaydet
+                    </button>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
