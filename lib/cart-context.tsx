@@ -10,6 +10,7 @@ import {
 } from "react";
 import { getDiscountedPrice, type Product } from "./store-data";
 import { trackAddToCart } from "./analytics";
+import { useLanguage } from "./language-client";
 import type {
   CheckoutPaymentMethod,
   PaymentProviderSummary,
@@ -71,6 +72,208 @@ const moneyWithCents = new Intl.NumberFormat("tr-TR", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });
+
+// Cart drawer, checkout modal and their toasts/errors are rendered by this
+// single provider for every page, so they need their own copy table (same
+// pattern as store-site-footer.tsx) - unlike page copy that's already
+// resolved server-side, this is the site's only remaining checkout-path UI
+// that stayed hardcoded Turkish regardless of the language toggle.
+const copy = {
+  tr: {
+    cartAriaLabel: "Alışveriş sepetiniz",
+    close: "Kapat",
+    itemsCount: (n: number) => `${n} ürün`,
+    emptyTitle: "Henüz ürün eklemediniz",
+    emptyDetail:
+      "Beğendiğiniz ürünleri sepetinize ekleyerek alışverişinizi tamamlayabilirsiniz.",
+    continueShopping: "Alışverişe devam et",
+    removeItem: (name: string) => `${name} ürününü sepetten sil`,
+    decreaseQty: (name: string) => `${name} adedini azalt`,
+    increaseQty: (name: string) => `${name} adedini artır`,
+    qtyLabel: (name: string) => `${name} sepet adedi`,
+    summaryTitle: "Sepet Özeti",
+    subtotal: "Ara Toplam",
+    discount: "İndirim",
+    vat: "KDV (%20)",
+    shipping: "Kargo Tutarı",
+    calculating: "Hesaplanıyor…",
+    free: "Ücretsiz",
+    notCalculated: "Hesaplanamadı",
+    freeShippingMore: (amount: string) =>
+      `${amount} daha ekleyin, kargo ücretsiz olsun.`,
+    totalSavings: "Toplam Kazancınız",
+    total: "Toplam",
+    shippingCaveat:
+      "Kargo tutarı hesaplanamadığı için gösterilen tutara kargo dahil değildir; kesin tutar ödeme adımında görünecektir.",
+    couponPlaceholder: "İndirim kodu",
+    apply: "Uygula",
+    remove: "Kaldır",
+    checkout: "ÖDEMEYE GEÇ",
+    clearCartConfirmTitle: "Sepetiniz boşaltıldı",
+    clearCartConfirmDetail: "Alışverişe dilediğiniz zaman devam edebilirsiniz.",
+    clearCart: "Sepeti boşalt",
+    checkoutAriaLabel: "Sipariş talebi",
+    checkoutEyebrow: "Sipariş talebi",
+    checkoutTitle: "Güvenli ödemeye hazırlanın.",
+    checkoutIntro:
+      "Teslimat bilgilerinizi girin ve kullanmak istediğiniz güvenli ödeme yöntemini seçin.",
+    paymentMethodLegend: "Ödeme yöntemi",
+    codDetail: "Teslimatta nakit veya kartla ödeyin",
+    testMode: "Test ortamı",
+    securePaymentPage: "Güvenli ödeme sayfası",
+    noPaymentMethod: "Kullanılabilir ödeme yöntemi bulunmuyor.",
+    firstName: "Ad",
+    lastName: "Soyad",
+    email: "E-posta",
+    emailNote: "Sipariş ve teslimat bilgileri bu adrese gönderilir.",
+    phone: "Telefon",
+    address: "Teslimat adresi",
+    district: "İlçe",
+    city: "Şehir",
+    postcode: "Posta kodu",
+    usePoints: "Puanlarınızı kullanın",
+    pointsAvailable: (points: number, value: string) =>
+      `${points} puanınız var (~${value} değerinde)`,
+    pointsPlaceholder: "Kullanmak istediğiniz puan",
+    pointsRedeemed: (points: number, value: string) =>
+      `${points} puan kullanılıyor (-${value}).`,
+    giftWrap: "Hediye paketi istiyorum (ücretsiz)",
+    giftMessage: "Hediye mesajı",
+    optional: "İsteğe bağlı",
+    giftMessagePlaceholder: "Pakete eklenecek kısa bir not yazabilirsiniz.",
+    orderNote: "Sipariş açıklaması",
+    orderNotePlaceholder:
+      "Paketleme, hediye notu veya teslimatla ilgili özel isteğinizi yazabilirsiniz.",
+    orderNoteHint:
+      "Açıklamanız paket hazırlanırken yönetim ekranında görüntülenir. En fazla 500 karakter.",
+    preInfoForm: "Ön Bilgilendirme Formu",
+    distanceSalesAgreement: "Mesafeli Satış Sözleşmesi",
+    checkoutTotalItems: (n: number) => `${n} ürün`,
+    checkoutPreparing: "Güvenli ödeme hazırlanıyor…",
+    payWith: (method: string) => `${method} ile ödemeye geç`,
+    selectedMethodFallback: "Seçilen yöntem",
+    paymentUnavailable: "Ödeme yöntemi kullanılamıyor",
+    cardSafetyNote: "Ödeme kart bilgileriniz Terragolds sunucularında tutulmaz.",
+    addToCartCooldownTitle: "Lütfen kısa bir süre bekleyin",
+    addToCartCooldownDetail: (seconds: number) =>
+      `${seconds} saniye sonra yeniden ürün ekleyebilirsiniz.`,
+    outOfStockTitle: "Stokta yok",
+    outOfStockDetail: "Bu ürün şu anda mağazamızda bulunmuyor.",
+    notEnoughStockTitle: "Yeterli stok bulunmuyor",
+    notEnoughStockDetail: (name: string, max: number) =>
+      `${name} için sepette en fazla ${max} adet olabilir.`,
+    addedToCartTitle: "Ürün sepete eklendi",
+    addedToCartDetail: (qty: number, name: string, total: number) =>
+      `${qty} adet ${name} · Sepetinizde ${total} ürün`,
+    stockLimitTitle: "Stok sınırına ulaştınız",
+    stockLimitDetail: (name: string, max: number) =>
+      `${name} için en fazla ${max} adet seçebilirsiniz.`,
+    couponEmptyError: "Önce indirim kodunu yazın.",
+    couponApplyFailed: "İndirim kodu uygulanamadı.",
+    couponAppliedFallback: (code: string) => `${code} kodu uygulandı.`,
+    cartQuoteFailed: "Sepet özeti hesaplanamadı.",
+    shippingQuoteFailed: "Kargo tutarı hesaplanamadı.",
+    invalidPaymentMethod: "Geçerli bir ödeme yöntemi seçin.",
+    paymentStartFailed: "Ödeme başlatılamadı.",
+    invalidRedirect: "Ödeme sağlayıcısından geçerli yönlendirme alınamadı.",
+  },
+  en: {
+    cartAriaLabel: "Your shopping cart",
+    close: "Close",
+    itemsCount: (n: number) => `${n} item${n === 1 ? "" : "s"}`,
+    emptyTitle: "Your cart is empty",
+    emptyDetail: "Add items you like to your cart to complete your purchase.",
+    continueShopping: "Continue shopping",
+    removeItem: (name: string) => `Remove ${name} from cart`,
+    decreaseQty: (name: string) => `Decrease ${name} quantity`,
+    increaseQty: (name: string) => `Increase ${name} quantity`,
+    qtyLabel: (name: string) => `${name} cart quantity`,
+    summaryTitle: "Cart Summary",
+    subtotal: "Subtotal",
+    discount: "Discount",
+    vat: "VAT (20%)",
+    shipping: "Shipping",
+    calculating: "Calculating…",
+    free: "Free",
+    notCalculated: "Not calculated",
+    freeShippingMore: (amount: string) => `Add ${amount} more for free shipping.`,
+    totalSavings: "Total Savings",
+    total: "Total",
+    shippingCaveat:
+      "Shipping isn't included in the total shown because it couldn't be calculated; the exact amount will appear at checkout.",
+    couponPlaceholder: "Discount code",
+    apply: "Apply",
+    remove: "Remove",
+    checkout: "CHECKOUT",
+    clearCartConfirmTitle: "Your cart is cleared",
+    clearCartConfirmDetail: "You can continue shopping whenever you like.",
+    clearCart: "Clear cart",
+    checkoutAriaLabel: "Order request",
+    checkoutEyebrow: "Order request",
+    checkoutTitle: "Get ready for secure checkout.",
+    checkoutIntro:
+      "Enter your delivery details and choose the secure payment method you'd like to use.",
+    paymentMethodLegend: "Payment method",
+    codDetail: "Pay by cash or card on delivery",
+    testMode: "Test mode",
+    securePaymentPage: "Secure payment page",
+    noPaymentMethod: "No payment method is available.",
+    firstName: "First name",
+    lastName: "Last name",
+    email: "Email",
+    emailNote: "Order and delivery information will be sent to this address.",
+    phone: "Phone",
+    address: "Delivery address",
+    district: "District",
+    city: "City",
+    postcode: "Postal code",
+    usePoints: "Use your points",
+    pointsAvailable: (points: number, value: string) =>
+      `You have ${points} points (worth ~${value})`,
+    pointsPlaceholder: "Points you'd like to use",
+    pointsRedeemed: (points: number, value: string) =>
+      `Using ${points} points (-${value}).`,
+    giftWrap: "I'd like gift wrapping (free)",
+    giftMessage: "Gift message",
+    optional: "Optional",
+    giftMessagePlaceholder: "You can write a short note to include with the package.",
+    orderNote: "Order note",
+    orderNotePlaceholder:
+      "You can write any special requests about packaging, gift notes, or delivery.",
+    orderNoteHint:
+      "Your note is shown on the admin screen while the order is prepared. 500 characters max.",
+    preInfoForm: "Pre-Information Form",
+    distanceSalesAgreement: "Distance Sales Agreement",
+    checkoutTotalItems: (n: number) => `${n} item${n === 1 ? "" : "s"}`,
+    checkoutPreparing: "Preparing secure checkout…",
+    payWith: (method: string) => `Pay with ${method}`,
+    selectedMethodFallback: "Selected method",
+    paymentUnavailable: "Payment method unavailable",
+    cardSafetyNote: "Your card details are never stored on Terragolds servers.",
+    addToCartCooldownTitle: "Please wait a moment",
+    addToCartCooldownDetail: (seconds: number) =>
+      `You can add this item again in ${seconds} seconds.`,
+    outOfStockTitle: "Out of stock",
+    outOfStockDetail: "This product isn't currently available in our store.",
+    notEnoughStockTitle: "Not enough stock",
+    notEnoughStockDetail: (name: string, max: number) =>
+      `You can have at most ${max} of ${name} in your cart.`,
+    addedToCartTitle: "Added to cart",
+    addedToCartDetail: (qty: number, name: string, total: number) =>
+      `${qty} × ${name} · ${total} item${total === 1 ? "" : "s"} in your cart`,
+    stockLimitTitle: "Stock limit reached",
+    stockLimitDetail: (name: string, max: number) =>
+      `You can select at most ${max} of ${name}.`,
+    couponEmptyError: "Enter a discount code first.",
+    couponApplyFailed: "The discount code couldn't be applied.",
+    couponAppliedFallback: (code: string) => `Code ${code} applied.`,
+    cartQuoteFailed: "The cart summary couldn't be calculated.",
+    shippingQuoteFailed: "Shipping couldn't be calculated.",
+    invalidPaymentMethod: "Choose a valid payment method.",
+    paymentStartFailed: "Payment couldn't be started.",
+    invalidRedirect: "Couldn't get a valid redirect from the payment provider.",
+  },
+} as const;
 
 function normalizeStoredCart(value: unknown): CartEntry[] {
   if (!Array.isArray(value)) return [];
@@ -156,6 +359,8 @@ export function useCart() {
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {
+  const [language] = useLanguage();
+  const t = copy[language];
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartEntry[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
@@ -288,12 +493,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
               current.filter((entry) => !unavailableIds.has(entry.productId)),
             );
           }
-          throw new Error(body.error ?? "Sepet özeti hesaplanamadı.");
+          throw new Error(body.error ?? t.cartQuoteFailed);
         }
         setCartQuote(body);
         if (body.discountCode) {
           setCouponMessage(
-            body.discountDescription || `${body.discountCode} kodu uygulandı.`,
+            body.discountDescription ||
+              t.couponAppliedFallback(body.discountCode),
           );
           setCouponError("");
         }
@@ -302,11 +508,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
         if (controller.signal.aborted) return;
         setCartQuote(null);
         setQuoteError(
-          error instanceof Error ? error.message : "Kargo tutarı hesaplanamadı.",
+          error instanceof Error ? error.message : t.shippingQuoteFailed,
         );
         if (appliedDiscountCode) {
           setCouponError(
-            error instanceof Error ? error.message : "İndirim kodu uygulanamadı.",
+            error instanceof Error ? error.message : t.couponApplyFailed,
           );
           setCouponMessage("");
           setAppliedDiscountCode("");
@@ -422,16 +628,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
     if (remainingCooldown > 0) {
       showToast({
         kind: "error",
-        title: "Lütfen kısa bir süre bekleyin",
-        detail: `${remainingCooldown} saniye sonra yeniden ürün ekleyebilirsiniz.`,
+        title: t.addToCartCooldownTitle,
+        detail: t.addToCartCooldownDetail(remainingCooldown),
       });
       return false;
     }
     if (product.stock <= 0) {
       showToast({
         kind: "error",
-        title: "Stokta yok",
-        detail: "Bu ürün şu anda mağazamızda bulunmuyor.",
+        title: t.outOfStockTitle,
+        detail: t.outOfStockDetail,
       });
       return false;
     }
@@ -446,8 +652,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
     if (currentQuantity + safeQuantity > maximumQuantity) {
       showToast({
         kind: "error",
-        title: "Yeterli stok bulunmuyor",
-        detail: `${product.name} için sepette en fazla ${maximumQuantity} adet olabilir.`,
+        title: t.notEnoughStockTitle,
+        detail: t.notEnoughStockDetail(product.name, maximumQuantity),
       });
       return false;
     }
@@ -474,10 +680,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
     showToast({
       kind: "success",
-      title: "Ürün sepete eklendi",
-      detail: `${safeQuantity} adet ${product.name} · Sepetinizde ${
-        cartUnitCount + safeQuantity
-      } ürün`,
+      title: t.addedToCartTitle,
+      detail: t.addedToCartDetail(
+        safeQuantity,
+        product.name,
+        cartUnitCount + safeQuantity,
+      ),
     });
     return true;
   };
@@ -512,8 +720,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
     if (roundedQuantity > maximum) {
       showToast({
         kind: "error",
-        title: "Stok sınırına ulaştınız",
-        detail: `${product.name} için en fazla ${maximum} adet seçebilirsiniz.`,
+        title: t.stockLimitTitle,
+        detail: t.stockLimitDetail(product.name, maximum),
       });
     }
   };
@@ -530,7 +738,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const applyDiscountCode = async () => {
     const code = couponInput.trim().toUpperCase().replace(/\s+/g, "");
     if (!code) {
-      setCouponError("Önce indirim kodunu yazın.");
+      setCouponError(t.couponEmptyError);
       setCouponMessage("");
       return;
     }
@@ -546,19 +754,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
       });
       const body = (await response.json()) as CartQuote & { error?: string };
       if (!response.ok) {
-        throw new Error(body.error ?? "İndirim kodu uygulanamadı.");
+        throw new Error(body.error ?? t.couponApplyFailed);
       }
       setCartQuote(body);
       setAppliedDiscountCode(body.discountCode ?? "");
       setCouponInput(body.discountCode ?? code);
       setCouponMessage(
-        body.discountDescription || `${body.discountCode ?? code} kodu uygulandı.`,
+        body.discountDescription ||
+          t.couponAppliedFallback(body.discountCode ?? code),
       );
     } catch (applyError) {
       setCouponError(
-        applyError instanceof Error
-          ? applyError.message
-          : "İndirim kodu uygulanamadı.",
+        applyError instanceof Error ? applyError.message : t.couponApplyFailed,
       );
     } finally {
       setQuoteLoading(false);
@@ -577,7 +784,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     try {
       if (!selectedPaymentProvider) {
-        throw new Error("Geçerli bir ödeme yöntemi seçin.");
+        throw new Error(t.invalidPaymentMethod);
       }
       const endpoint =
         selectedPaymentProvider === "cod"
@@ -601,14 +808,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
         redirectUrl?: string;
       };
       if (!response.ok) {
-        throw new Error(body.error ?? "Ödeme başlatılamadı.");
+        throw new Error(body.error ?? t.paymentStartFailed);
       }
       if (body.redirectUrl) {
         window.location.assign(body.redirectUrl);
         return;
       }
       if (!body.action || !body.fields) {
-        throw new Error("Ödeme sağlayıcısından geçerli yönlendirme alınamadı.");
+        throw new Error(t.invalidRedirect);
       }
 
       const paymentForm = document.createElement("form");
@@ -628,7 +835,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setCheckoutError(
         checkoutFailure instanceof Error
           ? checkoutFailure.message
-          : "Ödeme başlatılamadı.",
+          : t.paymentStartFailed,
       );
       setCheckoutLoading(false);
     }
@@ -672,13 +879,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
             className="cart-drawer"
             role="dialog"
             aria-modal="true"
-            aria-label="Alışveriş sepetiniz"
+            aria-label={t.cartAriaLabel}
             onMouseDown={(event) => event.stopPropagation()}
           >
             <div className="drawer-header">
               <div>
                 {cartUnitCount > 0 && (
-                  <span className="drawer-count">{cartUnitCount} ürün</span>
+                  <span className="drawer-count">{t.itemsCount(cartUnitCount)}</span>
                 )}
               </div>
               <div className="drawer-actions">
@@ -686,7 +893,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
                   className="drawer-close"
                   type="button"
                   onClick={() => setCartOpen(false)}
-                  aria-label="Kapat"
+                  aria-label={t.close}
                 >
                   ×
                 </button>
@@ -702,17 +909,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
                       alt=""
                     />
                   </div>
-                  <h3>Henüz ürün eklemediniz</h3>
-                  <p>
-                    Beğendiğiniz ürünleri sepetinize ekleyerek
-                    alışverişinizi tamamlayabilirsiniz.
-                  </p>
+                  <h3>{t.emptyTitle}</h3>
+                  <p>{t.emptyDetail}</p>
                   <button
                     type="button"
                     className="button button-dark"
                     onClick={() => setCartOpen(false)}
                   >
-                    Alışverişe devam et
+                    {t.continueShopping}
                   </button>
                 </div>
               ) : (
@@ -746,8 +950,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
                             }
                             aria-label={
                               quantity === 1
-                                ? `${product.name} ürününü sepetten sil`
-                                : `${product.name} adedini azalt`
+                                ? t.removeItem(product.name)
+                                : t.decreaseQty(product.name)
                             }
                           >
                             {quantity === 1 ? (
@@ -771,7 +975,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
                                 Number(event.target.value),
                               )
                             }
-                            aria-label={`${product.name} sepet adedi`}
+                            aria-label={t.qtyLabel(product.name)}
                           />
                           <button
                             type="button"
@@ -779,7 +983,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
                               updateCartQuantity(product, quantity + 1)
                             }
                             disabled={quantity >= Math.min(product.stock, 20)}
-                            aria-label={`${product.name} adedini artır`}
+                            aria-label={t.increaseQty(product.name)}
                           >
                             +
                           </button>
@@ -795,9 +999,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
             </div>
             {cartItems.length > 0 && (
               <div className="cart-summary">
-                <h3>Sepet Özeti</h3>
+                <h3>{t.summaryTitle}</h3>
                 <div className="cart-summary-row">
-                  <span>Ara Toplam</span>
+                  <span>{t.subtotal}</span>
                   <strong>
                     {cartQuote
                       ? formatCents(cartQuote.subtotalAmount)
@@ -806,30 +1010,30 @@ export function CartProvider({ children }: { children: ReactNode }) {
                 </div>
                 {cartQuote && cartQuote.discountAmount > 0 && (
                   <div className="cart-summary-row discount">
-                    <span>İndirim</span>
+                    <span>{t.discount}</span>
                     <strong>−{formatCents(cartQuote.discountAmount)}</strong>
                   </div>
                 )}
                 {cartQuote && (
                   <div className="cart-summary-row vat">
-                    <span>KDV (%20)</span>
+                    <span>{t.vat}</span>
                     <strong>{formatCents(cartQuote.vatAmount)}</strong>
                   </div>
                 )}
                 <div className="cart-summary-row shipping">
-                  <span>Kargo Tutarı</span>
+                  <span>{t.shipping}</span>
                   <strong>
                     {quoteLoading ? (
-                      "Hesaplanıyor…"
+                      t.calculating
                     ) : cartQuote?.freeShipping ? (
                       <>
                         <del>{formatCents(cartQuote.shippingFee)}</del>
-                        <em>Ücretsiz</em>
+                        <em>{t.free}</em>
                       </>
                     ) : cartQuote ? (
                       formatCents(cartQuote.shippingAmount)
                     ) : (
-                      "Hesaplanamadı"
+                      t.notCalculated
                     )}
                   </strong>
                 </div>
@@ -843,18 +1047,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
                   cartQuote.freeShippingThreshold > 0 && (
                     <p className="shipping-progress">
                       <span aria-hidden="true">◇</span>
-                      {formatCents(freeShippingRemaining)} daha ekleyin, kargo
-                      ücretsiz olsun.
+                      {t.freeShippingMore(formatCents(freeShippingRemaining))}
                     </p>
                   )}
                 {totalSavings > 0 && (
                   <div className="cart-savings">
-                    <span>Toplam Kazancınız</span>
+                    <span>{t.totalSavings}</span>
                     <strong>−{formatCents(totalSavings)}</strong>
                   </div>
                 )}
                 <div className="cart-summary-total">
-                  <span>Toplam</span>
+                  <span>{t.total}</span>
                   <strong>
                     {cartQuote
                       ? formatCents(cartQuote.totalAmount)
@@ -862,10 +1065,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
                   </strong>
                 </div>
                 {!cartQuote && quoteError && (
-                  <p className="cart-total-caveat">
-                    Kargo tutarı hesaplanamadığı için gösterilen tutara kargo
-                    dahil değildir; kesin tutar ödeme adımında görünecektir.
-                  </p>
+                  <p className="cart-total-caveat">{t.shippingCaveat}</p>
                 )}
                 <div className="coupon-box">
                   <div>
@@ -880,15 +1080,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
                           void applyDiscountCode();
                         }
                       }}
-                      placeholder="İndirim kodu"
-                      aria-label="İndirim kodu"
+                      placeholder={t.couponPlaceholder}
+                      aria-label={t.couponPlaceholder}
                     />
                     <button
                       type="button"
                       onClick={() => void applyDiscountCode()}
                       disabled={quoteLoading}
                     >
-                      Uygula
+                      {t.apply}
                     </button>
                   </div>
                   {couponMessage && (
@@ -902,7 +1102,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
                           setCouponMessage("");
                         }}
                       >
-                        Kaldır
+                        {t.remove}
                       </button>
                     </p>
                   )}
@@ -917,7 +1117,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
                   type="button"
                   onClick={beginCheckout}
                 >
-                  ÖDEMEYE GEÇ
+                  {t.checkout}
                 </button>
                 <button
                   className="clear-cart-bottom"
@@ -926,13 +1126,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
                     clearCart();
                     showToast({
                       kind: "success",
-                      title: "Sepetiniz boşaltıldı",
-                      detail: "Alışverişe dilediğiniz zaman devam edebilirsiniz.",
+                      title: t.clearCartConfirmTitle,
+                      detail: t.clearCartConfirmDetail,
                     });
                   }}
                 >
                   <span className="trash-icon" aria-hidden="true" />
-                  Sepeti boşalt
+                  {t.clearCart}
                 </button>
               </div>
             )}
@@ -950,23 +1150,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
             className="checkout-modal"
             role="dialog"
             aria-modal="true"
-            aria-label="Sipariş talebi"
+            aria-label={t.checkoutAriaLabel}
             onMouseDown={(event) => event.stopPropagation()}
           >
             <button
               className="modal-close"
               type="button"
               onClick={() => setCheckoutOpen(false)}
-              aria-label="Kapat"
+              aria-label={t.close}
             >
               ×
             </button>
-            <p className="eyebrow">Sipariş talebi</p>
-            <h2>Güvenli ödemeye hazırlanın.</h2>
-            <p>
-              Teslimat bilgilerinizi girin ve kullanmak istediğiniz güvenli
-              ödeme yöntemini seçin.
-            </p>
+            <p className="eyebrow">{t.checkoutEyebrow}</p>
+            <h2>{t.checkoutTitle}</h2>
+            <p>{t.checkoutIntro}</p>
             <form onSubmit={submitCheckout}>
               <fieldset
                 className={
@@ -975,7 +1172,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
                     : "checkout-payment-methods single"
                 }
               >
-                <legend>Ödeme yöntemi</legend>
+                <legend>{t.paymentMethodLegend}</legend>
                 {paymentMethods.length > 1 ? (
                   paymentMethods.map((method) => (
                     <label
@@ -998,10 +1195,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
                         <strong>{method.name}</strong>
                         <small>
                           {method.id === "cod"
-                            ? "Teslimatta nakit veya kartla ödeyin"
+                            ? t.codDetail
                             : method.testMode
-                              ? "Test ortamı"
-                              : "Güvenli ödeme sayfası"}
+                              ? t.testMode
+                              : t.securePaymentPage}
                         </small>
                       </span>
                       <i aria-hidden="true" />
@@ -1018,29 +1215,29 @@ export function CartProvider({ children }: { children: ReactNode }) {
                       <strong>{paymentMethods[0].name}</strong>
                       <small>
                         {paymentMethods[0].testMode
-                          ? "Test ortamı"
-                          : "Güvenli ödeme sayfası"}
+                          ? t.testMode
+                          : t.securePaymentPage}
                       </small>
                     </span>
                   </div>
                 ) : (
                   <div className="checkout-no-provider">
-                    Kullanılabilir ödeme yöntemi bulunmuyor.
+                    {t.noPaymentMethod}
                   </div>
                 )}
               </fieldset>
               <div className="checkout-name-row">
                 <label>
-                  Ad
+                  {t.firstName}
                   <input name="firstName" autoComplete="given-name" required />
                 </label>
                 <label>
-                  Soyad
+                  {t.lastName}
                   <input name="lastName" autoComplete="family-name" required />
                 </label>
               </div>
               <label>
-                E-posta
+                {t.email}
                 <input
                   name="email"
                   type="email"
@@ -1050,16 +1247,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
                   onChange={(event) => setCheckoutEmail(event.target.value)}
                   required
                 />
-                <small className="checkout-field-note">
-                  Sipariş ve teslimat bilgileri bu adrese gönderilir.
-                </small>
+                <small className="checkout-field-note">{t.emailNote}</small>
               </label>
               <label>
-                Telefon
+                {t.phone}
                 <input name="phone" type="tel" autoComplete="tel" required />
               </label>
               <label>
-                Teslimat adresi
+                {t.address}
                 <textarea
                   name="address"
                   rows={2}
@@ -1069,26 +1264,29 @@ export function CartProvider({ children }: { children: ReactNode }) {
               </label>
               <div className="checkout-name-row">
                 <label>
-                  İlçe
+                  {t.district}
                   <input name="district" autoComplete="address-level2" />
                 </label>
                 <label>
-                  Şehir
+                  {t.city}
                   <input name="city" autoComplete="address-level1" required />
                 </label>
               </div>
               <label>
-                Posta kodu
+                {t.postcode}
                 <input name="postcode" autoComplete="postal-code" />
               </label>
               {Boolean(authUser?.loyaltyPoints) && (
                 <label className="checkout-note-field">
                   <span>
-                    Puanlarınızı kullanın{" "}
+                    {t.usePoints}{" "}
                     <em>
-                      {authUser?.loyaltyPoints} puanınız var (~
-                      {money.format(((authUser?.loyaltyPoints ?? 0) * POINT_VALUE_TL))}{" "}
-                      değerinde)
+                      {t.pointsAvailable(
+                        authUser?.loyaltyPoints ?? 0,
+                        money.format(
+                          (authUser?.loyaltyPoints ?? 0) * POINT_VALUE_TL,
+                        ),
+                      )}
                     </em>
                   </span>
                   <input
@@ -1098,12 +1296,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
                     max={authUser?.loyaltyPoints ?? 0}
                     value={redeemPointsInput}
                     onChange={(event) => setRedeemPointsInput(event.target.value)}
-                    placeholder="Kullanmak istediğiniz puan"
+                    placeholder={t.pointsPlaceholder}
                   />
                   {cartQuote && cartQuote.loyaltyPointsRedeemed > 0 && (
                     <small className="checkout-field-note">
-                      {cartQuote.loyaltyPointsRedeemed} puan kullanılıyor (-
-                      {money.format(cartQuote.loyaltyDiscountAmount / 100)}).
+                      {t.pointsRedeemed(
+                        cartQuote.loyaltyPointsRedeemed,
+                        money.format(cartQuote.loyaltyDiscountAmount / 100),
+                      )}
                     </small>
                   )}
                 </label>
@@ -1115,49 +1315,62 @@ export function CartProvider({ children }: { children: ReactNode }) {
                   checked={giftWrap}
                   onChange={(event) => setGiftWrap(event.target.checked)}
                 />
-                <span>Hediye paketi istiyorum (ücretsiz)</span>
+                <span>{t.giftWrap}</span>
               </label>
               {giftWrap && (
                 <label className="checkout-note-field">
                   <span>
-                    Hediye mesajı <em>İsteğe bağlı</em>
+                    {t.giftMessage} <em>{t.optional}</em>
                   </span>
                   <textarea
                     name="giftMessage"
                     rows={2}
                     maxLength={200}
-                    placeholder="Pakete eklenecek kısa bir not yazabilirsiniz."
+                    placeholder={t.giftMessagePlaceholder}
                   />
                 </label>
               )}
               <label className="checkout-note-field">
                 <span>
-                  Sipariş açıklaması <em>İsteğe bağlı</em>
+                  {t.orderNote} <em>{t.optional}</em>
                 </span>
                 <textarea
                   name="note"
                   rows={4}
                   maxLength={500}
-                  placeholder="Paketleme, hediye notu veya teslimatla ilgili özel isteğinizi yazabilirsiniz."
+                  placeholder={t.orderNotePlaceholder}
                 />
-                <small className="checkout-field-note">
-                  Açıklamanız paket hazırlanırken yönetim ekranında görüntülenir.
-                  En fazla 500 karakter.
-                </small>
+                <small className="checkout-field-note">{t.orderNoteHint}</small>
               </label>
               <label className="checkout-legal-consent">
                 <span className="legal-consent-checkbox">
                   <input name="legalConsent" type="checkbox" required />
                 </span>
                 <span>
-                  <a href="/on-bilgilendirme-formu" target="_blank">
-                    Ön Bilgilendirme Formu
-                  </a>{" "}
-                  ile{" "}
-                  <a href="/mesafeli-satis-sozlesmesi" target="_blank">
-                    Mesafeli Satış Sözleşmesi
-                  </a>
-                  'ni okudum ve kabul ediyorum.
+                  {language === "en" ? (
+                    <>
+                      I have read and accept the{" "}
+                      <a href="/on-bilgilendirme-formu" target="_blank">
+                        {t.preInfoForm}
+                      </a>{" "}
+                      and the{" "}
+                      <a href="/mesafeli-satis-sozlesmesi" target="_blank">
+                        {t.distanceSalesAgreement}
+                      </a>
+                      .
+                    </>
+                  ) : (
+                    <>
+                      <a href="/on-bilgilendirme-formu" target="_blank">
+                        {t.preInfoForm}
+                      </a>{" "}
+                      ile{" "}
+                      <a href="/mesafeli-satis-sozlesmesi" target="_blank">
+                        {t.distanceSalesAgreement}
+                      </a>
+                      'ni okudum ve kabul ediyorum.
+                    </>
+                  )}
                 </span>
               </label>
               {checkoutError && (
@@ -1166,7 +1379,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
                 </div>
               )}
               <div className="checkout-total">
-                <span>{cartUnitCount} ürün</span>
+                <span>{t.checkoutTotalItems(cartUnitCount)}</span>
                 <strong>
                   {cartQuote
                     ? formatCents(cartQuote.totalAmount)
@@ -1174,10 +1387,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
                 </strong>
               </div>
               {!cartQuote && quoteError && (
-                <p className="cart-total-caveat">
-                  Kargo tutarı hesaplanamadığı için gösterilen tutara kargo
-                  dahil değildir; kesin tutar ödeme sayfasında görünecektir.
-                </p>
+                <p className="cart-total-caveat">{t.shippingCaveat}</p>
               )}
               <button
                 className="button button-dark wide"
@@ -1185,14 +1395,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
                 disabled={checkoutLoading || !selectedPaymentProvider}
               >
                 {checkoutLoading
-                  ? "Güvenli ödeme hazırlanıyor…"
+                  ? t.checkoutPreparing
                   : selectedPaymentProvider
-                    ? `${paymentMethods.find((method) => method.id === selectedPaymentProvider)?.name ?? "Seçilen yöntem"} ile ödemeye geç`
-                    : "Ödeme yöntemi kullanılamıyor"}
+                    ? t.payWith(
+                        paymentMethods.find(
+                          (method) => method.id === selectedPaymentProvider,
+                        )?.name ?? t.selectedMethodFallback,
+                      )
+                    : t.paymentUnavailable}
               </button>
-              <small className="form-note">
-                Ödeme kart bilgileriniz Terragolds sunucularında tutulmaz.
-              </small>
+              <small className="form-note">{t.cardSafetyNote}</small>
             </form>
           </section>
         </div>
