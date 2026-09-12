@@ -9,6 +9,8 @@ import {
 } from "../lib/category-subgroups";
 import { useCart } from "../lib/cart-context";
 import { getDiscountedPrice, type Product } from "../lib/store-data";
+import { useLanguage } from "../lib/language-client";
+import { uiText } from "../lib/i18n";
 import CategoryNavDropdown from "./category-nav-dropdown";
 
 const money = new Intl.NumberFormat("tr-TR", {
@@ -88,6 +90,8 @@ export default function StoreSubpageHeader({
   activeGroupSlug?: string;
 }) {
   const cart = useCart();
+  const [language, setLanguage] = useLanguage();
+  const ui = uiText[language];
   const [favoriteCount, setFavoriteCount] = useState(0);
   const [compareCount, setCompareCount] = useState(0);
   const [user, setUser] = useState<HeaderUser | null>(null);
@@ -114,6 +118,10 @@ export default function StoreSubpageHeader({
       document.body.style.overflow = previousOverflow;
     };
   }, [menuOpen]);
+
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
 
   useEffect(() => {
     const refresh = () => {
@@ -245,11 +253,11 @@ export default function StoreSubpageHeader({
   return (
     <>
       <div className="store-market-announcement">
-        <span>Özenle seçilmiş takılar</span>
+        <span>{language === "en" ? "Curated jewelry" : "Özenle seçilmiş takılar"}</span>
         <i />
-        <span>Güvenli paketleme</span>
+        <span>{ui.trustSafePackaging}</span>
         <i />
-        <span>Türkiye'nin her yerine gönderim</span>
+        <span>{ui.trustTurkeyDelivery}</span>
       </div>
       <div className="market-utility-bar store-market-utility">
         <div className="market-utility-inner">
@@ -263,16 +271,16 @@ export default function StoreSubpageHeader({
               <img src="https://cdn.jsdelivr.net/npm/simple-icons@v16/icons/whatsapp.svg" alt="" />
             </span>
             <span className="market-whatsapp-copy">
-              <small>WhatsApp Destek</small>
+              <small>{ui.whatsapp} {language === "en" ? "Support" : "Destek"}</small>
               <strong>{whatsapp.display}</strong>
             </span>
-            <i><span /> Çevrimiçi</i>
+            <i><span /> {language === "en" ? "Online" : "Çevrimiçi"}</i>
           </a>
-          <nav aria-label="Hızlı bağlantılar">
-            <Link href="/login">Üye Girişi</Link>
-            <Link href="/register">Kayıt Ol</Link>
-            <Link href="/orders">Sipariş Takibi</Link>
-            <Link href="/support">İletişim</Link>
+          <nav aria-label={language === "en" ? "Quick links" : "Hızlı bağlantılar"}>
+            <Link href="/login">{ui.login}</Link>
+            <Link href="/register">{ui.register}</Link>
+            <Link href="/orders">{ui.orderTracking}</Link>
+            <Link href="/support">{ui.contact}</Link>
           </nav>
         </div>
       </div>
@@ -296,8 +304,8 @@ export default function StoreSubpageHeader({
               setSearchQuery(event.target.value);
               setSearchOpen(true);
             }}
-            placeholder="Ürün, taş veya kategori ara"
-            aria-label="Ürün, taş veya kategori ara"
+            placeholder={ui.searchPlaceholder}
+            aria-label={ui.searchPlaceholder}
           />
           {searchQuery && (
             <button
@@ -308,10 +316,10 @@ export default function StoreSubpageHeader({
                 searchInputRef.current?.focus();
               }}
             >
-              Temizle
+              {ui.clear}
             </button>
           )}
-          <button className="header-search-submit" type="submit" aria-label="Ara">
+          <button className="header-search-submit" type="submit" aria-label={ui.searchSubmit}>
             <span className="search-glyph" aria-hidden="true" />
           </button>
         </form>
@@ -320,15 +328,15 @@ export default function StoreSubpageHeader({
           <div
             className="header-search-dropdown"
             role="dialog"
-            aria-label="Arama sonuçları"
+            aria-label={ui.searchResults}
           >
             <div className="search-result-meta">
               <span>
                 {searchQuery
-                  ? `"${searchQuery}" için sonuçlar`
-                  : "Öne çıkan ürünler"}
+                  ? ui.resultsFor(searchQuery)
+                  : ui.featuredProducts}
               </span>
-              <strong>{searchResults.length} ürün</strong>
+              <strong>{ui.productCount(searchResults.length)}</strong>
             </div>
 
             {searchCategorySuggestions.length > 0 && (
@@ -371,13 +379,10 @@ export default function StoreSubpageHeader({
                 ))
               ) : (
                 <div className="search-empty">
-                  <strong>Aradığınız ürün henüz mağazamızda bulunmuyor.</strong>
-                  <p>
-                    Farklı bir kelime deneyebilir veya taş seçimi için ekibimizden
-                    destek alabilirsiniz.
-                  </p>
+                  <strong>{ui.searchEmptyTitle}</strong>
+                  <p>{ui.searchEmptyBody}</p>
                   <a href="/support" onClick={() => setSearchOpen(false)}>
-                    Destek ekibiyle iletişime geç
+                    {ui.contactSupport}
                   </a>
                 </div>
               )}
@@ -389,21 +394,40 @@ export default function StoreSubpageHeader({
               onClick={() => setSearchOpen(false)}
             >
               <span>
-                <small>Doğru taşı bulmakta zorlanıyor musunuz?</small>
-                <strong>Sizinle birlikte bulalım</strong>
+                <small>{ui.selectionHelp}</small>
+                <strong>{ui.findStoneTogether}</strong>
               </span>
-              <b>Bize ulaşın</b>
+              <b>{ui.contactUs}</b>
             </a>
           </div>
         )}
       </div>
 
       <div className="header-actions">
+        <div className="language-switch" aria-label={ui.languageLabel}>
+          <button
+            type="button"
+            className={language === "tr" ? "active" : ""}
+            onClick={() => setLanguage("tr")}
+            aria-pressed={language === "tr"}
+          >
+            TR
+          </button>
+          <button
+            type="button"
+            className={language === "en" ? "active" : ""}
+            onClick={() => setLanguage("en")}
+            aria-pressed={language === "en"}
+          >
+            EN
+          </button>
+        </div>
+
         <div className="account-menu-button">
           {user ? (
             <>
               <Link className="header-auth-link" href="/profile">
-                Hesabım
+                {ui.account}
               </Link>
               <span className="header-auth-separator" aria-hidden="true" />
               <button
@@ -414,17 +438,17 @@ export default function StoreSubpageHeader({
                   setUser(null);
                 }}
               >
-                Çıkış
+                {ui.logout}
               </button>
             </>
           ) : (
             <>
               <Link className="header-auth-link" href="/login">
-                Giriş Yap
+                {ui.login}
               </Link>
               <span className="header-auth-separator" aria-hidden="true" />
               <Link className="header-auth-link" href="/register">
-                Kayıt Ol
+                {ui.register}
               </Link>
             </>
           )}
@@ -433,9 +457,9 @@ export default function StoreSubpageHeader({
         <Link
           className={`header-favorites${active === "favorites" ? " active" : ""}`}
           href="/favorites"
-          aria-label={`Favorilerim: ${favoriteCount}`}
+          aria-label={ui.favoritesCount(favoriteCount)}
         >
-          <em>Favorilerim</em>
+          <em>{ui.favorites}</em>
           {favoriteCount > 0 && <b>{favoriteCount}</b>}
         </Link>
 
@@ -443,9 +467,9 @@ export default function StoreSubpageHeader({
           <Link
             className="header-favorites"
             href="/karsilastir"
-            aria-label={`Karşılaştırma listesi: ${compareCount}`}
+            aria-label={`${ui.compare}: ${compareCount}`}
           >
-            <em>Karşılaştır</em>
+            <em>{ui.compare}</em>
             <b>{compareCount}</b>
           </Link>
         )}
@@ -454,9 +478,9 @@ export default function StoreSubpageHeader({
           type="button"
           className="cart-button"
           onClick={cart.openCart}
-          aria-label={`Sepetim: ${cart.cartUnitCount}`}
+          aria-label={ui.openCart(cart.cartUnitCount)}
         >
-          <em>Sepet</em>
+          <em>{ui.cart}</em>
           {cart.cartUnitCount > 0 && (
             <span className="cart-count">{cart.cartUnitCount}</span>
           )}
@@ -473,9 +497,9 @@ export default function StoreSubpageHeader({
             active={activeGroupSlug === group.slug}
           />
         ))}
-        <Link className="sale" href="/#shop">Outlet</Link>
-        <Link href="/ozel-uretim">Özel Üretim</Link>
-        <Link href="/blog">Blog</Link>
+        <Link className="sale" href="/#shop">{ui.sale}</Link>
+        <Link href="/ozel-uretim">{ui.customProduction}</Link>
+        <Link href="/blog">{ui.blog}</Link>
       </nav>
 
       {menuOpen && (
@@ -497,7 +521,7 @@ export default function StoreSubpageHeader({
             type="button"
             className="mobile-menu-close"
             onClick={() => setMenuOpen(false)}
-            aria-label="Menüyü kapat"
+            aria-label={ui.close}
           >
             ×
           </button>
@@ -511,7 +535,7 @@ export default function StoreSubpageHeader({
                   href="/profile"
                   onClick={() => setMenuOpen(false)}
                 >
-                  Hesabım
+                  {ui.account}
                 </a>
                 <button
                   type="button"
@@ -521,7 +545,7 @@ export default function StoreSubpageHeader({
                     setMenuOpen(false);
                   }}
                 >
-                  Çıkış Yap
+                  {ui.logoutFull}
                 </button>
               </>
             ) : (
@@ -531,17 +555,17 @@ export default function StoreSubpageHeader({
                   href="/login"
                   onClick={() => setMenuOpen(false)}
                 >
-                  Giriş Yap
+                  {ui.login}
                 </a>
                 <a href="/register" onClick={() => setMenuOpen(false)}>
-                  Üye Ol
+                  {ui.register}
                 </a>
               </>
             )}
           </div>
 
           <div className="mobile-menu-section">
-            <strong>Kategoriler</strong>
+            <strong>{ui.categories}</strong>
             {groups.map((group) => (
               <a
                 key={group.slug}
@@ -557,43 +581,43 @@ export default function StoreSubpageHeader({
               href="/#shop"
               onClick={() => setMenuOpen(false)}
             >
-              Outlet
+              {ui.sale}
             </a>
             <a href="/ozel-uretim" onClick={() => setMenuOpen(false)}>
-              Özel Üretim
+              {ui.customProduction}
             </a>
             <Link href="/blog" onClick={() => setMenuOpen(false)}>
-              Blog
+              {ui.blog}
             </Link>
             {compareCount > 0 && (
               <Link href="/karsilastir" onClick={() => setMenuOpen(false)}>
-                Karşılaştır ({compareCount})
+                {ui.compare} ({compareCount})
               </Link>
             )}
           </div>
 
           <div className="mobile-menu-section">
-            <strong>Yardım</strong>
+            <strong>{ui.help}</strong>
             <a href="/kvkk" onClick={() => setMenuOpen(false)}>
-              KVKK
+              {ui.kvkk}
             </a>
             <a href="/support" onClick={() => setMenuOpen(false)}>
-              Destek / SSS
+              {ui.faq}
             </a>
             <a href="/teslimat-ve-iade" onClick={() => setMenuOpen(false)}>
-              Teslimat ve İade
+              {ui.delivery}
             </a>
           </div>
         </div>
       </nav>
 
-      <nav className="mobile-bottom-nav" aria-label="Alt gezinme">
+      <nav className="mobile-bottom-nav" aria-label={language === "en" ? "Bottom navigation" : "Alt gezinme"}>
         <Link href="/" className="mobile-bottom-nav-item">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
             <path d="M4 11.5 12 4l8 7.5" />
             <path d="M6 10v9h5v-5h2v5h5v-9" />
           </svg>
-          <span>Ana Sayfa</span>
+          <span>{ui.home}</span>
         </Link>
         <button
           type="button"
@@ -606,13 +630,13 @@ export default function StoreSubpageHeader({
             <rect x="3.5" y="13.5" width="7" height="7" rx="1.4" />
             <rect x="13.5" y="13.5" width="7" height="7" rx="1.4" />
           </svg>
-          <span>Kategoriler</span>
+          <span>{ui.categories}</span>
         </button>
         <button
           type="button"
           onClick={cart.openCart}
           className="mobile-bottom-nav-item mobile-bottom-nav-primary"
-          aria-label={`Sepetim: ${cart.cartUnitCount}`}
+          aria-label={ui.openCart(cart.cartUnitCount)}
         >
           <span className="mobile-bottom-nav-primary-circle">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
@@ -623,13 +647,13 @@ export default function StoreSubpageHeader({
               <b className="mobile-bottom-nav-badge">{cart.cartUnitCount}</b>
             )}
           </span>
-          <span>Sepet</span>
+          <span>{ui.cart}</span>
         </button>
         <Link href="/favorites" className="mobile-bottom-nav-item">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 19.5s-7-4.2-9-8.2C1.3 7.8 2.7 4.5 6.2 4.5c2 0 3.3 1 5.8 3.3 2.5-2.3 3.8-3.3 5.8-3.3 3.5 0 4.9 3.3 3.2 6.8-2 4-9 8.2-9 8.2z" />
           </svg>
-          <span>Favorilerim</span>
+          <span>{ui.favorites}</span>
           {favoriteCount > 0 && (
             <b className="mobile-bottom-nav-badge">{favoriteCount}</b>
           )}
@@ -642,7 +666,7 @@ export default function StoreSubpageHeader({
             <circle cx="12" cy="8" r="3.4" />
             <path d="M4.5 19.5c1.4-3.5 4.3-5.3 7.5-5.3s6.1 1.8 7.5 5.3" />
           </svg>
-          <span>Hesabım</span>
+          <span>{ui.account}</span>
         </Link>
       </nav>
     </>

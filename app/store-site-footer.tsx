@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import { Mail, MessageCircle, Phone, ShieldCheck, Star } from "lucide-react";
+import { useLanguage } from "../lib/language-client";
 
 const GOOGLE_REVIEW_URL = "https://g.page/r/CULplaYbZk3XECE/review";
 
@@ -78,7 +81,7 @@ const copy = {
 } as const;
 
 export default function StoreSiteFooter({
-  lang = "tr",
+  lang,
   description,
   footerNote,
   businessName,
@@ -102,7 +105,12 @@ export default function StoreSiteFooter({
   facebook?: string;
   tiktok?: string;
 }) {
-  const t = copy[lang];
+  const [detectedLanguage] = useLanguage();
+  // Callers that already track their own language (the homepage) pass it
+  // explicitly; every other page has no language state of its own, so the
+  // footer detects it itself from the shared "terragolds-language" key
+  // (see lib/language-client.ts) instead of always defaulting to Turkish.
+  const t = copy[lang ?? detectedLanguage];
   const hasSupportInfo = Boolean(phone || whatsapp || email);
   const hasSocialLinks = Boolean(instagram || facebook || tiktok);
 

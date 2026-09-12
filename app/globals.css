@@ -12320,7 +12320,7 @@ body:has(.market-theme)::before, body:has(.market-theme)::after, .market-theme .
 .market-theme .header-actions {
   gap: 16px;
 }
-.market-theme .language-switch, .market-theme .header-support-link, .market-theme .account-menu-wrap {
+.market-theme .header-support-link, .market-theme .account-menu-wrap {
   display: none;
 }
 .market-theme .header-auth-strip {
