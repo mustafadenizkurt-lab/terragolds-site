@@ -10,7 +10,7 @@ import {
 import { useCart } from "../lib/cart-context";
 import { getDiscountedPrice, type Product } from "../lib/store-data";
 import { useLanguage } from "../lib/language-client";
-import { uiText } from "../lib/i18n";
+import { uiText, uiUpper } from "../lib/i18n";
 import CategoryNavDropdown from "./category-nav-dropdown";
 
 const money = new Intl.NumberFormat("tr-TR", {
@@ -253,11 +253,11 @@ export default function StoreSubpageHeader({
   return (
     <>
       <div className="store-market-announcement">
-        <span>{language === "en" ? "Curated jewelry" : "Özenle seçilmiş takılar"}</span>
+        <span>{uiUpper(language === "en" ? "Curated jewelry" : "Özenle seçilmiş takılar", language)}</span>
         <i />
-        <span>{ui.trustSafePackaging}</span>
+        <span>{uiUpper(ui.trustSafePackaging, language)}</span>
         <i />
-        <span>{ui.trustTurkeyDelivery}</span>
+        <span>{uiUpper(ui.trustTurkeyDelivery, language)}</span>
       </div>
       <div className="market-utility-bar store-market-utility">
         <div className="market-utility-inner">
@@ -497,9 +497,9 @@ export default function StoreSubpageHeader({
             active={activeGroupSlug === group.slug}
           />
         ))}
-        <Link className="sale" href="/#shop">{ui.sale}</Link>
-        <Link href="/ozel-uretim">{ui.customProduction}</Link>
-        <Link href="/blog">{ui.blog}</Link>
+        <Link className="sale" href="/#shop">{uiUpper(ui.sale, language)}</Link>
+        <Link href="/ozel-uretim">{uiUpper(ui.customProduction, language)}</Link>
+        <Link href="/blog">{uiUpper(ui.blog, language)}</Link>
       </nav>
 
       {menuOpen && (

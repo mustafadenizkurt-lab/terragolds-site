@@ -35,6 +35,13 @@ export default function CategoryNavDropdown({
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
+  // The nav bar uppercases this via CSS (text-transform: uppercase), but
+  // that transform ignores document language and turns a lowercase "i"
+  // into a dotless "I" instead of Turkish "İ" (e.g. "Bileklik" -> "BILEKLIK").
+  // Pre-uppercasing with the Turkish locale here renders the correct
+  // letter; the CSS transform then leaves already-uppercase text alone.
+  const displayLabel = label.toLocaleUpperCase("tr-TR");
+
   useEffect(() => {
     if (!open) return;
     const onDocumentClick = (event: MouseEvent) => {
@@ -62,7 +69,7 @@ export default function CategoryNavDropdown({
   if (subgroups.length <= 1) {
     return (
       <Link href={href} className={active ? "active" : undefined}>
-        {label}
+        {displayLabel}
       </Link>
     );
   }
@@ -75,7 +82,7 @@ export default function CategoryNavDropdown({
       onMouseLeave={() => setOpen(false)}
     >
       <Link href={href} className={active ? "active" : undefined}>
-        {label}
+        {displayLabel}
       </Link>
       <button
         type="button"

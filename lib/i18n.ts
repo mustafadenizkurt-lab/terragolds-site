@@ -296,3 +296,13 @@ export const uiText = {
     viewStore: "View store",
   },
 } satisfies Record<Language, Record<string, unknown>>;
+
+// CSS-driven text-transform: uppercase ignores document language and turns
+// a lowercase "i" into a dotless "I" instead of Turkish "İ" (e.g. "Güvenli"
+// -> "GÜVENLI" instead of "GÜVENLİ"). For Turkish copy, uppercase it here
+// with the Turkish locale first - the CSS transform then leaves already-
+// uppercase text alone. English copy uses the default (dotless-I) casing,
+// which is correct for English.
+export function uiUpper(text: string, language: Language): string {
+  return language === "tr" ? text.toLocaleUpperCase("tr-TR") : text.toUpperCase();
+}

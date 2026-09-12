@@ -12,7 +12,7 @@ import {
   defaultSiteContent,
   type SiteContent,
 } from "../lib/site-content-types";
-import { englishSiteContent, uiText, type Language } from "../lib/i18n";
+import { englishSiteContent, uiText, uiUpper, type Language } from "../lib/i18n";
 import { activeCategoryGroups, type CategoryGroup } from "../lib/category-groups";
 import {
   subgroupsForGroup,
@@ -1382,10 +1382,10 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
             document.getElementById("shop")?.scrollIntoView({ behavior: "smooth" });
           }}
         >
-          {ui.sale}
+          {uiUpper(ui.sale, language)}
         </button>
-        <a href="/ozel-uretim">{ui.customProduction}</a>
-        <a href="/blog">{ui.blog}</a>
+        <a href="/ozel-uretim">{uiUpper(ui.customProduction, language)}</a>
+        <a href="/blog">{uiUpper(ui.blog, language)}</a>
       </nav>
 
       <section className="intro section-shell">
@@ -1540,9 +1540,9 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
           </div>
         </div>
         <div className="catalog-trust-strip" aria-label="Mağaza güvenceleri">
-          <span>{ui.trustSafePackaging}</span>
-          <span>{ui.trustTurkeyDelivery}</span>
-          <span>{ui.trustSupport}</span>
+          <span>{uiUpper(ui.trustSafePackaging, language)}</span>
+          <span>{uiUpper(ui.trustTurkeyDelivery, language)}</span>
+          <span>{uiUpper(ui.trustSupport, language)}</span>
         </div>
         <nav className="collection-nav collection-nav-top" aria-label="Koleksiyon bölümleri">
           <a href="#shop">{ui.newArrivals}</a>
