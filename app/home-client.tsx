@@ -942,8 +942,8 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
           <a
             className="announcement-social-link contact"
             href="/support"
-            aria-label="İletişim"
-            title="İletişim"
+            aria-label={ui.contact}
+            title={ui.contact}
           >
             <span aria-hidden="true">✉</span>
           </a>
@@ -957,7 +957,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
             href={`https://wa.me/${marketWhatsapp.digits}`}
             target="_blank"
             rel="noreferrer"
-            aria-label={`WhatsApp destek: ${marketWhatsapp.display}`}
+            aria-label={`${ui.whatsapp}: ${marketWhatsapp.display}`}
           >
             <span className="market-whatsapp-icon" aria-hidden="true">
               <img
@@ -966,16 +966,16 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
               />
             </span>
             <span className="market-whatsapp-copy">
-              <small>WhatsApp Destek</small>
+              <small>{ui.whatsapp} {language === "en" ? "Support" : "Destek"}</small>
               <strong>{marketWhatsapp.display}</strong>
             </span>
-            <i><span /> Çevrimiçi</i>
+            <i><span /> {language === "en" ? "Online" : "Çevrimiçi"}</i>
           </a>
-          <nav aria-label="Hızlı bağlantılar">
-            <a href="/login">Üye Girişi</a>
-            <a href="/register">Kayıt Ol</a>
-            <a href="/orders">Sipariş Takibi</a>
-            <a href="/support">İletişim</a>
+          <nav aria-label={language === "en" ? "Quick links" : "Hızlı bağlantılar"}>
+            <a href="/login">{ui.login}</a>
+            <a href="/register">{ui.register}</a>
+            <a href="/orders">{ui.orderTracking}</a>
+            <a href="/support">{ui.contact}</a>
           </nav>
         </div>
       </div>
@@ -1279,7 +1279,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
             type="button"
             className="mobile-menu-close"
             onClick={() => setMenuOpen(false)}
-            aria-label="Menüyü kapat"
+            aria-label={ui.close}
           >
             ×
           </button>
@@ -1323,7 +1323,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
           </div>
 
           <div className="mobile-menu-section">
-            <strong>Kategoriler</strong>
+            <strong>{ui.categories}</strong>
             {activeGroups.map((group) => (
               <a
                 key={group.slug}
@@ -1341,32 +1341,32 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
                 setMenuOpen(false);
               }}
             >
-              Outlet
+              {ui.sale}
             </a>
             <a href="/ozel-uretim" onClick={() => setMenuOpen(false)}>
-              Özel Üretim
+              {ui.customProduction}
             </a>
             <a href="/blog" onClick={() => setMenuOpen(false)}>
-              Blog
+              {ui.blog}
             </a>
           </div>
 
           <div className="mobile-menu-section">
-            <strong>Yardım</strong>
+            <strong>{ui.help}</strong>
             <a href="/kvkk" onClick={() => setMenuOpen(false)}>
-              KVKK
+              {ui.kvkk}
             </a>
             <a href="/support" onClick={() => setMenuOpen(false)}>
-              Destek / SSS
+              {ui.faq}
             </a>
             <a href="/teslimat-ve-iade" onClick={() => setMenuOpen(false)}>
-              Teslimat ve İade
+              {ui.delivery}
             </a>
           </div>
         </div>
       </nav>
 
-      <nav className="market-category-nav" id="top" aria-label="Ana kategoriler">
+      <nav className="market-category-nav" id="top" aria-label={language === "en" ? "Main categories" : "Ana kategoriler"}>
         {activeGroups.map((group) => (
           <CategoryNavDropdown
             key={group.slug}
@@ -1382,10 +1382,10 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
             document.getElementById("shop")?.scrollIntoView({ behavior: "smooth" });
           }}
         >
-          Outlet
+          {ui.sale}
         </button>
-        <a href="/ozel-uretim">Özel Üretim</a>
-        <a href="/blog">Blog</a>
+        <a href="/ozel-uretim">{ui.customProduction}</a>
+        <a href="/blog">{ui.blog}</a>
       </nav>
 
       <section className="intro section-shell">
@@ -2042,13 +2042,13 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
         </span>
       </div>
 
-      <nav className="mobile-bottom-nav" aria-label="Alt gezinme">
+      <nav className="mobile-bottom-nav" aria-label={language === "en" ? "Bottom navigation" : "Alt gezinme"}>
         <a href="/" className="mobile-bottom-nav-item">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
             <path d="M4 11.5 12 4l8 7.5" />
             <path d="M6 10v9h5v-5h2v5h5v-9" />
           </svg>
-          <span>Ana Sayfa</span>
+          <span>{ui.home}</span>
         </a>
         <button
           type="button"
@@ -2061,7 +2061,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
             <rect x="3.5" y="13.5" width="7" height="7" rx="1.4" />
             <rect x="13.5" y="13.5" width="7" height="7" rx="1.4" />
           </svg>
-          <span>Kategoriler</span>
+          <span>{ui.categories}</span>
         </button>
         <button
           type="button"
@@ -2078,13 +2078,13 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
               <b className="mobile-bottom-nav-badge">{cart.cartUnitCount}</b>
             )}
           </span>
-          <span>Sepet</span>
+          <span>{ui.cart}</span>
         </button>
         <a href="/favorites" className="mobile-bottom-nav-item">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 19.5s-7-4.2-9-8.2C1.3 7.8 2.7 4.5 6.2 4.5c2 0 3.3 1 5.8 3.3 2.5-2.3 3.8-3.3 5.8-3.3 3.5 0 4.9 3.3 3.2 6.8-2 4-9 8.2-9 8.2z" />
           </svg>
-          <span>Favorilerim</span>
+          <span>{ui.favorites}</span>
           {liked.length > 0 && (
             <b className="mobile-bottom-nav-badge">{liked.length}</b>
           )}
@@ -2097,7 +2097,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
             <circle cx="12" cy="8" r="3.4" />
             <path d="M4.5 19.5c1.4-3.5 4.3-5.3 7.5-5.3s6.1 1.8 7.5 5.3" />
           </svg>
-          <span>Hesabım</span>
+          <span>{ui.account}</span>
         </a>
       </nav>
     </main>
