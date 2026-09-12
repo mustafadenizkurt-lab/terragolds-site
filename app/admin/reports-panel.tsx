@@ -101,6 +101,12 @@ export default function ReportsPanel({
                 <strong>{item.count}</strong>
               </div>
             ))}
+            {dashboard.statusBreakdown.length === 0 && (
+              <div>
+                <span>Henüz sipariş yok</span>
+                <strong>0</strong>
+              </div>
+            )}
           </div>
         </section>
 
@@ -113,6 +119,12 @@ export default function ReportsPanel({
                 <strong>{product.favorites}</strong>
               </div>
             ))}
+            {dashboard.favoriteProducts.length === 0 && (
+              <div>
+                <span>Henüz favori ürün yok</span>
+                <strong>0</strong>
+              </div>
+            )}
           </div>
         </section>
 
