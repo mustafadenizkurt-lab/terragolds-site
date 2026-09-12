@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { cache } from "react";
-import { permanentRedirect } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import {
   getDiscountedPrice,
   productDescriptorPhrase,
@@ -83,6 +83,13 @@ export default async function ProductPage({ params }: ProductPageProps) {
     getProduct(param),
     readSettings(),
   ]);
+
+  // A nonexistent product must respond 404, not 200 with a client-rendered
+  // "not found" message - search engines were indexing dead product URLs
+  // as if they were real pages (see app/blog/[slug]/page.tsx for the same
+  // pattern). ProductDetailClient's own not-found state below still
+  // handles the case of a product deleted after this page was cached.
+  if (!product) notFound();
 
   // Canonicalize legacy numeric URLs to the slug URL once a slug exists,
   // so old links/bookmarks/search results keep working via redirect.
