@@ -7,6 +7,7 @@ import StoreSiteFooter from "../store-site-footer";
 import QuickAddToCart from "../quick-add-to-cart";
 import { getDiscountedPrice, type Product } from "../../lib/store-data";
 import { useLanguage } from "../../lib/language-client";
+import { decodeHtmlEntities } from "../../lib/text-utils";
 import {
   COMPARE_STORAGE_KEY,
   readCompareList,
@@ -266,7 +267,7 @@ export default function CompareClient({
                     <th scope="row">{t.description}</th>
                     {products.map((product) => (
                       <td key={product.id} className="compare-description">
-                        {product.description}
+                        {decodeHtmlEntities(product.description)}
                       </td>
                     ))}
                   </tr>

@@ -30,12 +30,11 @@ export default function FavoriteHeartButton({
   productId: number;
   productName: string;
 }) {
-  const [liked, setLikedState] = useState(
-    () => typeof window !== "undefined" && readLiked().includes(productId),
-  );
+  const [liked, setLikedState] = useState(false);
 
   useEffect(() => {
     const refresh = () => setLikedState(readLiked().includes(productId));
+    refresh();
     window.addEventListener("terragolds-storage", refresh);
     window.addEventListener("storage", refresh);
     return () => {

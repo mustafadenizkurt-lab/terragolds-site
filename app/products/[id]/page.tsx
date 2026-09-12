@@ -6,6 +6,7 @@ import {
   productDescriptorPhrase,
 } from "../../../lib/store-data";
 import { readProductByIdOrSlug, readSettings } from "../../../lib/store-db";
+import { decodeHtmlEntities } from "../../../lib/text-utils";
 import { categoryToSlug } from "../../../lib/category-slugs";
 import {
   productSchema,
@@ -44,7 +45,7 @@ export async function generateMetadata({
     product.metaTitle || `${product.name} – ${product.stone || product.category}`;
   const description =
     product.metaDescription ||
-    `${product.name}, ${productDescriptorPhrase(product)}. ${product.description}`.slice(
+    `${product.name}, ${productDescriptorPhrase(product)}. ${decodeHtmlEntities(product.description)}`.slice(
       0,
       155,
     );

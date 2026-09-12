@@ -13,6 +13,7 @@ import { syncFavorites } from "../../../lib/favorite-client";
 import { useCart } from "../../../lib/cart-context";
 import { useLanguage } from "../../../lib/language-client";
 import { uiUpper } from "../../../lib/i18n";
+import { decodeHtmlEntities } from "../../../lib/text-utils";
 
 type Review = {
   id: number;
@@ -59,9 +60,9 @@ const copy = {
     beFirstToReview: "İlk yorumu siz yapın",
     vat: "+ KDV",
     carefulPackaging: "Özenli paketleme",
-    carefulPackagingDetail: "Taşın doğal yüzeyini koruyan güvenli gönderim",
+    carefulPackagingDetail: "Ürünü hasarsız ulaştıran güvenli gönderim",
     verifiedPiece: "Doğrulanmış parça",
-    verifiedPieceDetail: "Görsellerdeki doğal doku ve form karakteri",
+    verifiedPieceDetail: "Görsellerdeki hâliyle aynı parça",
     authenticityGuarantee: "Orijinallik Garantisi",
     authenticityGuaranteeTextBefore:
       "Her ürünümüz, mağazamıza eklenmeden önce doğallık ve kalite açısından ekibimizce incelenir. Ürün açıklamasına uygun bulunmayan parçalarda ",
@@ -129,9 +130,9 @@ const copy = {
     beFirstToReview: "Be the first to review",
     vat: "+ VAT",
     carefulPackaging: "Careful packaging",
-    carefulPackagingDetail: "Secure delivery that protects the stone's natural surface",
+    carefulPackagingDetail: "Secure delivery, undamaged on arrival",
     verifiedPiece: "Verified piece",
-    verifiedPieceDetail: "Natural texture and form shown in the photos",
+    verifiedPieceDetail: "The exact piece shown in the photos",
     authenticityGuarantee: "Authenticity Guarantee",
     authenticityGuaranteeTextBefore:
       "Every product is inspected by our team for authenticity and quality before it's listed. If a piece doesn't match its description, you're covered under our ",
@@ -460,9 +461,15 @@ export default function ProductDetailClient({
             <small>{t.vat}</small>
           </div>
 
-          <p className="product-profile-description">{product.description}</p>
+          <p className="product-profile-description">
+            {decodeHtmlEntities(product.description)}
+          </p>
 
-          <SizeGuide category={product.category} productName={product.name} />
+          <SizeGuide
+            category={product.category}
+            productName={product.name}
+            language={language}
+          />
 
           <CompareToggleButton productId={product.id} productName={product.name} />
 

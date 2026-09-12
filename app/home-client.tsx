@@ -13,6 +13,7 @@ import {
   type SiteContent,
 } from "../lib/site-content-types";
 import { englishSiteContent, uiText, uiUpper, type Language } from "../lib/i18n";
+import { decodeHtmlEntities } from "../lib/text-utils";
 import { activeCategoryGroups, categoryGroupLabel, type CategoryGroup } from "../lib/category-groups";
 import {
   subgroupsForGroup,
@@ -1938,7 +1939,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
               <p className="eyebrow">{selectedProduct.category}</p>
               <h2>{selectedProduct.name}</h2>
               <ProductPrice product={selectedProduct} className="modal-price" />
-              <p>{selectedProduct.description}</p>
+              <p>{decodeHtmlEntities(selectedProduct.description)}</p>
               <ul>
                 {ui.productBullets.map((bullet) => (
                   <li key={bullet}>{bullet}</li>

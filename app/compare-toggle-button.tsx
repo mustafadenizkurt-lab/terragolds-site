@@ -1,9 +1,27 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useLanguage } from "../lib/language-client";
 
 export const COMPARE_STORAGE_KEY = "terragolds-compare";
 export const MAX_COMPARE_PRODUCTS = 4;
+
+const copy = {
+  tr: {
+    inCompare: "Karşılaştırmada",
+    compare: "Karşılaştır",
+    atCapacity: (max: number) => `En fazla ${max} ürün karşılaştırabilirsiniz`,
+    remove: (name: string) => `${name} ürününü karşılaştırmadan çıkar`,
+    add: (name: string) => `${name} ürününü karşılaştırmaya ekle`,
+  },
+  en: {
+    inCompare: "In compare",
+    compare: "Compare",
+    atCapacity: (max: number) => `You can compare up to ${max} products`,
+    remove: (name: string) => `Remove ${name} from compare`,
+    add: (name: string) => `Add ${name} to compare`,
+  },
+} as const;
 
 export function readCompareList(): number[] {
   try {
@@ -32,10 +50,10 @@ export default function CompareToggleButton({
   productId: number;
   productName: string;
 }) {
-  const [selected, setSelected] = useState(
-    () => typeof window !== "undefined" && readCompareList().includes(productId),
-  );
+  const [selected, setSelected] = useState(false);
   const [atCapacity, setAtCapacity] = useState(false);
+  const [language] = useLanguage();
+  const t = copy[language];
 
   useEffect(() => {
     const refresh = () => {
@@ -73,21 +91,17 @@ export default function CompareToggleButton({
       onClick={toggle}
       disabled={atCapacity}
       aria-pressed={selected}
-      title={
-        atCapacity
-          ? `En fazla ${MAX_COMPARE_PRODUCTS} ürün karşılaştırabilirsiniz`
-          : undefined
-      }
+      title={atCapacity ? t.atCapacity(MAX_COMPARE_PRODUCTS) : undefined}
       aria-label={
         selected
-          ? `${productName} ürününü karşılaştırmadan çıkar`
+          ? t.remove(productName)
           : atCapacity
-            ? `En fazla ${MAX_COMPARE_PRODUCTS} ürün karşılaştırabilirsiniz`
-            : `${productName} ürününü karşılaştırmaya ekle`
+            ? t.atCapacity(MAX_COMPARE_PRODUCTS)
+            : t.add(productName)
       }
     >
       <span aria-hidden="true">⇄</span>
-      {selected ? "Karşılaştırmada" : "Karşılaştır"}
+      {selected ? t.inCompare : t.compare}
     </button>
   );
 }
