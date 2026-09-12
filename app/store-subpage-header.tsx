@@ -37,12 +37,6 @@ function groupUrl(group: CategoryGroup) {
   return `/kategori/${group.slug}`;
 }
 
-type HeaderUser = {
-  firstName: string;
-  lastName: string;
-  email: string;
-};
-
 type ContactSettings = {
   phone?: string;
   whatsapp?: string;
@@ -94,7 +88,10 @@ export default function StoreSubpageHeader({
   const ui = uiText[language];
   const [favoriteCount, setFavoriteCount] = useState(0);
   const [compareCount, setCompareCount] = useState(0);
-  const [user, setUser] = useState<HeaderUser | null>(null);
+  // Shared with every other page via CartProvider instead of each header
+  // issuing its own redundant /api/auth/me request - see lib/cart-context.tsx.
+  const user = cart.authUser;
+  const setUser = cart.setAuthUser;
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchResults, setSearchResults] = useState<Product[]>([]);
@@ -131,13 +128,6 @@ export default function StoreSubpageHeader({
     refresh();
     window.addEventListener("storage", refresh);
     window.addEventListener("terragolds-storage", refresh);
-    fetch("/api/auth/me", { cache: "no-store" })
-      .then(
-        (response) =>
-          response.json() as Promise<{ user?: HeaderUser | null }>,
-      )
-      .then((data) => setUser(data.user ?? null))
-      .catch(() => setUser(null));
     fetch("/api/store", { cache: "no-store" })
       .then(
         (response) =>

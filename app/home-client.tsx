@@ -119,14 +119,6 @@ type NoticeState = {
   detail: string;
 };
 
-type HeaderUser = {
-  id: number;
-  firstName: string;
-  lastName: string;
-  email: string;
-  emailVerifiedAt: string | null;
-};
-
 
 function ProductPrice({
   product,
@@ -338,7 +330,10 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Product[]>([]);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-  const [headerUser, setHeaderUser] = useState<HeaderUser | null>(null);
+  // Shared with every other page via CartProvider instead of each header
+  // issuing its own redundant /api/auth/me request - see lib/cart-context.tsx.
+  const headerUser = cart.authUser;
+  const setHeaderUser = cart.setAuthUser;
   const [headerCompact, setHeaderCompact] = useState(false);
   const marketWhatsapp = useMemo(
     () => formatWhatsappContact(settings.whatsapp || settings.phone),
@@ -352,6 +347,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
   const searchAreaRef = useRef<HTMLDivElement | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const accountAreaRef = useRef<HTMLDivElement | null>(null);
+  const didSyncFavoritesOnceRef = useRef(false);
   const ui = uiText[language];
   const managedContent =
     language === "tr" ? content : { ...content, ...englishSiteContent };
@@ -421,14 +417,6 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
             .slice(0, DISCOUNT_SHOWCASE_COUNT),
         });
       });
-
-    fetch("/api/auth/me", { cache: "no-store" })
-      .then(
-        (response) =>
-          response.json() as Promise<{ user?: HeaderUser | null }>,
-      )
-      .then((data) => setHeaderUser(data.user ?? null))
-      .catch(() => setHeaderUser(null));
   }, []);
 
   // Header search: results are scored server-side (readShowcaseProducts'
@@ -465,6 +453,14 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
   useEffect(() => {
     window.localStorage.setItem("terragolds-liked", JSON.stringify(liked));
     window.dispatchEvent(new Event("terragolds-storage"));
+    // Skip the mount run: `liked` is still its pre-load default ([]) here,
+    // before the effect above has read the real list out of localStorage,
+    // so syncing now would just POST an empty list moments before the real
+    // one - a redundant /api/favorites/sync call on every page view.
+    if (!didSyncFavoritesOnceRef.current) {
+      didSyncFavoritesOnceRef.current = true;
+      return;
+    }
     syncFavorites(liked);
   }, [liked]);
 

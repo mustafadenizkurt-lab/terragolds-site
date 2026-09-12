@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import StoreSubpageHeader from "../../store-subpage-header";
 import SizeGuide from "./size-guide";
 import CompareToggleButton from "../../compare-toggle-button";
@@ -220,14 +220,23 @@ export default function ProductDetailClient({
     [t],
   );
 
+  // Read via a ref rather than a `t`/`language` dependency below: `language`
+  // flips from its "tr" default to the stored preference right after mount
+  // (see useLanguage's hydration-safety comment), and putting `t` in
+  // fetchReviews's deps propagated that one-time change into the data-load
+  // effect's deps too, refetching the product and its reviews a second time
+  // on every load for any non-Turkish visitor.
+  const reviewsFetchErrorRef = useRef(t.reviewsFetchError);
+  reviewsFetchErrorRef.current = t.reviewsFetchError;
+
   const fetchReviews = useCallback(async () => {
     const response = await fetch(`/api/products/${productId}/reviews`, {
       cache: "no-store",
     });
     const payload = (await response.json()) as ReviewPayload;
-    if (!response.ok) throw new Error(payload.error || t.reviewsFetchError);
+    if (!response.ok) throw new Error(payload.error || reviewsFetchErrorRef.current);
     return payload;
-  }, [productId, t]);
+  }, [productId]);
 
   const loadReviews = useCallback(async () => {
     setReviewData(await fetchReviews());

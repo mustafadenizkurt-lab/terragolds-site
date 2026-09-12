@@ -47,7 +47,7 @@ type CartToast = {
   detail: string;
 };
 
-type HeaderUser = {
+export type HeaderUser = {
   firstName: string;
   lastName: string;
   email: string;
@@ -138,6 +138,11 @@ type CartContextValue = {
   updateCartQuantity: (product: Product, nextQuantity: number) => void;
   clearCart: () => void;
   addCooldownSeconds: number;
+  // Fetched once here (see the mount effect below) so every consumer that
+  // just needs to know "is someone logged in" shares this instead of each
+  // issuing its own redundant /api/auth/me request on every page.
+  authUser: HeaderUser | null;
+  setAuthUser: (user: HeaderUser | null) => void;
 };
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -649,6 +654,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
     updateCartQuantity,
     clearCart,
     addCooldownSeconds,
+    authUser,
+    setAuthUser,
   };
 
   return (
