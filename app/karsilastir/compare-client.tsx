@@ -6,6 +6,7 @@ import StoreSubpageHeader from "../store-subpage-header";
 import StoreSiteFooter from "../store-site-footer";
 import QuickAddToCart from "../quick-add-to-cart";
 import { getDiscountedPrice, type Product } from "../../lib/store-data";
+import { useLanguage } from "../../lib/language-client";
 import {
   COMPARE_STORAGE_KEY,
   readCompareList,
@@ -16,6 +17,60 @@ const money = new Intl.NumberFormat("tr-TR", {
   currency: "TRY",
   maximumFractionDigits: 0,
 });
+
+const copy = {
+  tr: {
+    eyebrow: "Yan yana inceleyin",
+    title: "Ürün Karşılaştır",
+    subtitle:
+      "Karşılaştırma listenize eklediğiniz ürünlerin fiyat, taş ve stok bilgilerini tek ekranda görün.",
+    preparing: "Karşılaştırma listeniz hazırlanıyor…",
+    emptyTitle: "Karşılaştırma listeniz henüz boş",
+    emptyDetailBefore: 'Ürün kartlarındaki "',
+    compareButtonLabel: "Karşılaştır",
+    emptyDetailAfter:
+      '" düğmesine dokunarak en fazla 4 ürünü yan yana inceleyebilirsiniz.',
+    discoverProducts: "Ürünleri keşfet",
+    comparingCount: (count: number) => `${count} ürün karşılaştırılıyor`,
+    clearAll: "Tümünü temizle",
+    removeFromCompare: (name: string) => `${name} ürününü karşılaştırmadan çıkar`,
+    price: "Fiyat",
+    category: "Kategori",
+    stoneType: "Taş türü",
+    rating: "Değerlendirme",
+    noReviewsYet: "Henüz yorum yok",
+    stockStatus: "Stok durumu",
+    lastUnits: (stock: number) => `Son ${stock} adet`,
+    inStock: "Stokta",
+    outOfStock: "Tükendi",
+    description: "Açıklama",
+  },
+  en: {
+    eyebrow: "Compare side by side",
+    title: "Compare Products",
+    subtitle:
+      "See the price, stone and stock details of the products you've added to your comparison list, all on one screen.",
+    preparing: "Preparing your comparison list…",
+    emptyTitle: "Your comparison list is empty",
+    emptyDetailBefore: 'Tap the "',
+    compareButtonLabel: "Compare",
+    emptyDetailAfter: '" button on product cards to compare up to 4 products side by side.',
+    discoverProducts: "Discover products",
+    comparingCount: (count: number) => `Comparing ${count} products`,
+    clearAll: "Clear all",
+    removeFromCompare: (name: string) => `Remove ${name} from comparison`,
+    price: "Price",
+    category: "Category",
+    stoneType: "Stone type",
+    rating: "Rating",
+    noReviewsYet: "No reviews yet",
+    stockStatus: "Stock status",
+    lastUnits: (stock: number) => `${stock} left`,
+    inStock: "In stock",
+    outOfStock: "Sold out",
+    description: "Description",
+  },
+} as const;
 
 function stars(rating: number) {
   return "★★★★★".slice(0, rating) + "☆☆☆☆☆".slice(rating);
@@ -40,6 +95,8 @@ export default function CompareClient({
   facebook?: string;
   tiktok?: string;
 } = {}) {
+  const [language] = useLanguage();
+  const t = copy[language];
   const [compareIds, setCompareIds] = useState<number[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -99,32 +156,30 @@ export default function CompareClient({
       <StoreSubpageHeader />
       <section className="compare-content section-shell">
         <div className="compare-title">
-          <p className="eyebrow">Yan yana inceleyin</p>
-          <h1>Ürün Karşılaştır</h1>
-          <span>
-            Karşılaştırma listenize eklediğiniz ürünlerin fiyat, taş ve stok
-            bilgilerini tek ekranda görün.
-          </span>
+          <p className="eyebrow">{t.eyebrow}</p>
+          <h1>{t.title}</h1>
+          <span>{t.subtitle}</span>
         </div>
 
         {loading ? (
-          <div className="compare-empty">Karşılaştırma listeniz hazırlanıyor…</div>
+          <div className="compare-empty">{t.preparing}</div>
         ) : products.length === 0 ? (
           <div className="compare-empty">
             <span aria-hidden="true">⇄</span>
-            <h2>Karşılaştırma listeniz henüz boş</h2>
+            <h2>{t.emptyTitle}</h2>
             <p>
-              Ürün kartlarındaki &ldquo;Karşılaştır&rdquo; düğmesine dokunarak
-              en fazla 4 ürünü yan yana inceleyebilirsiniz.
+              {t.emptyDetailBefore}
+              {t.compareButtonLabel}
+              {t.emptyDetailAfter}
             </p>
-            <Link href="/#shop">Ürünleri keşfet</Link>
+            <Link href="/#shop">{t.discoverProducts}</Link>
           </div>
         ) : (
           <>
             <div className="compare-toolbar">
-              <span>{products.length} ürün karşılaştırılıyor</span>
+              <span>{t.comparingCount(products.length)}</span>
               <button type="button" onClick={clearAll}>
-                Tümünü temizle
+                {t.clearAll}
               </button>
             </div>
             <div className="compare-table-scroll">
@@ -141,7 +196,7 @@ export default function CompareClient({
                           type="button"
                           className="compare-remove"
                           onClick={() => removeProduct(product.id)}
-                          aria-label={`${product.name} ürününü karşılaştırmadan çıkar`}
+                          aria-label={t.removeFromCompare(product.name)}
                         >
                           ×
                         </button>
@@ -155,7 +210,7 @@ export default function CompareClient({
                 </thead>
                 <tbody>
                   <tr>
-                    <th scope="row">Fiyat</th>
+                    <th scope="row">{t.price}</th>
                     {products.map((product) => (
                       <td key={product.id}>
                         {product.discountPercent > 0 && (
@@ -166,19 +221,19 @@ export default function CompareClient({
                     ))}
                   </tr>
                   <tr>
-                    <th scope="row">Kategori</th>
+                    <th scope="row">{t.category}</th>
                     {products.map((product) => (
                       <td key={product.id}>{product.category}</td>
                     ))}
                   </tr>
                   <tr>
-                    <th scope="row">Taş türü</th>
+                    <th scope="row">{t.stoneType}</th>
                     {products.map((product) => (
                       <td key={product.id}>{product.stone || "—"}</td>
                     ))}
                   </tr>
                   <tr>
-                    <th scope="row">Değerlendirme</th>
+                    <th scope="row">{t.rating}</th>
                     {products.map((product) => (
                       <td key={product.id}>
                         {product.reviewCount ? (
@@ -187,13 +242,13 @@ export default function CompareClient({
                             <small>({product.reviewCount})</small>
                           </>
                         ) : (
-                          "Henüz yorum yok"
+                          t.noReviewsYet
                         )}
                       </td>
                     ))}
                   </tr>
                   <tr>
-                    <th scope="row">Stok durumu</th>
+                    <th scope="row">{t.stockStatus}</th>
                     {products.map((product) => (
                       <td
                         key={product.id}
@@ -201,14 +256,14 @@ export default function CompareClient({
                       >
                         {product.stock > 0
                           ? product.stock <= 3
-                            ? `Son ${product.stock} adet`
-                            : "Stokta"
-                          : "Tükendi"}
+                            ? t.lastUnits(product.stock)
+                            : t.inStock
+                          : t.outOfStock}
                       </td>
                     ))}
                   </tr>
                   <tr>
-                    <th scope="row">Açıklama</th>
+                    <th scope="row">{t.description}</th>
                     {products.map((product) => (
                       <td key={product.id} className="compare-description">
                         {product.description}

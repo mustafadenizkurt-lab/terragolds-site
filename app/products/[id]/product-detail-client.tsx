@@ -11,6 +11,8 @@ import {
 } from "../../../lib/store-data";
 import { syncFavorites } from "../../../lib/favorite-client";
 import { useCart } from "../../../lib/cart-context";
+import { useLanguage } from "../../../lib/language-client";
+import { uiUpper } from "../../../lib/i18n";
 
 type Review = {
   id: number;
@@ -35,18 +37,150 @@ const money = new Intl.NumberFormat("tr-TR", {
   maximumFractionDigits: 0,
 });
 
+const copy = {
+  tr: {
+    preparing: "Ürün hazırlanıyor…",
+    notFoundTitle: "Ürün bulunamadı",
+    continueShopping: "Alışverişe devam et",
+    home: "Ana Sayfa",
+    products: "Ürünler",
+    discount: (percent: number) => `%${percent} İndirim`,
+    removeFavorite: "Favorilerden çıkar",
+    addFavorite: "Favorilere ekle",
+    zoomPhoto: (name: string) => `${name} fotoğrafını büyüt`,
+    productPhotos: "Ürün fotoğrafları",
+    showPhoto: (name: string, index: number) => `${name}, ${index}. fotoğrafı göster`,
+    photoAlt: (name: string, index: number) => `${name} - görsel ${index}`,
+    limitedCollectionOffer: "Sınırlı koleksiyon avantajı",
+    lastPieces: (stock: number) => `Koleksiyonluk son ${stock} parça`,
+    curatedPiece: "Seçkin koleksiyondan özel parça",
+    ratingNew: "Yeni",
+    verifiedReviewCount: (count: number) => `${count} doğrulanmış yorum`,
+    beFirstToReview: "İlk yorumu siz yapın",
+    vat: "+ KDV",
+    carefulPackaging: "Özenli paketleme",
+    carefulPackagingDetail: "Taşın doğal yüzeyini koruyan güvenli gönderim",
+    verifiedPiece: "Doğrulanmış parça",
+    verifiedPieceDetail: "Görsellerdeki doğal doku ve form karakteri",
+    authenticityGuarantee: "Orijinallik Garantisi",
+    authenticityGuaranteeTextBefore:
+      "Her ürünümüz, mağazamıza eklenmeden önce doğallık ve kalite açısından ekibimizce incelenir. Ürün açıklamasına uygun bulunmayan parçalarda ",
+    returnPolicyLink: "iade ve değişim politikamız",
+    authenticityGuaranteeTextAfter: " kapsamında güvencedesiniz.",
+    decreaseQuantity: "Adedi azalt",
+    increaseQuantity: "Adedi artır",
+    productQuantity: "Ürün adedi",
+    outOfStock: "Tükendi",
+    waitSeconds: (seconds: number) => `${seconds} sn bekleyin`,
+    addToCart: "Sepete ekle",
+    limitedStock: (stock: number) => `Sınırlı stok · ${stock} adet`,
+    inStock: "Stokta mevcut",
+    largePhoto: (name: string) => `${name} büyük fotoğraf`,
+    close: "Kapat",
+    previousPhoto: "Önceki fotoğraf",
+    nextPhoto: "Sonraki fotoğraf",
+    verifiedExperiences: "Doğrulanmış deneyimler",
+    customerReviews: "Müşteri yorumları",
+    reviewCount: (count: number) => `${count} yorum`,
+    verifiedPurchase: "Doğrulanmış alışveriş",
+    starsLabel: (rating: number) => `${rating} yıldız`,
+    noReviewsYet: "Henüz yorum yok",
+    noReviewsYetDetail:
+      "Bu ürünü satın alan ilk üyelerden biriyseniz deneyiminizi paylaşabilirsiniz.",
+    shareYourExperience: "Deneyiminizi paylaşın",
+    loginToReview: "Yorum yazmak için hesabınıza giriş yapmanız gerekir.",
+    login: "Giriş yap",
+    alreadyReviewed:
+      "Bu ürün için yorum hakkınızı kullandınız. Her üye yalnızca bir yorum paylaşabilir.",
+    mustPurchaseToReview:
+      "Yorumlar yalnızca bu ürünü satın almış üyeler tarafından yazılabilir.",
+    yourRating: "Puanınız",
+    reviewTitleLabel: "Yorum başlığı",
+    optional: "İsteğe bağlı",
+    reviewTitlePlaceholder: "Örneğin: Beklediğimden daha etkileyici",
+    yourExperience: "Deneyiminiz",
+    reviewCommentPlaceholder:
+      "Ürünün dokusu, rengi ve paketleme deneyimi hakkında düşüncelerinizi yazın.",
+    submitting: "Gönderiliyor…",
+    publishReview: "Yorumu yayınla",
+    reviewsFetchError: "Yorumlar alınamadı.",
+    reviewSubmitError: "Yorum gönderilemedi.",
+    reviewSubmitSuccess: "Yorumunuz yayınlandı. Teşekkür ederiz.",
+    dateLocale: "tr-TR",
+  },
+  en: {
+    preparing: "Preparing product…",
+    notFoundTitle: "Product not found",
+    continueShopping: "Continue shopping",
+    home: "Home",
+    products: "Products",
+    discount: (percent: number) => `${percent}% Off`,
+    removeFavorite: "Remove from favorites",
+    addFavorite: "Add to favorites",
+    zoomPhoto: (name: string) => `Zoom into ${name} photo`,
+    productPhotos: "Product photos",
+    showPhoto: (name: string, index: number) => `Show ${name}, photo ${index}`,
+    photoAlt: (name: string, index: number) => `${name} - image ${index}`,
+    limitedCollectionOffer: "Limited collection advantage",
+    lastPieces: (stock: number) => `Only ${stock} pieces left`,
+    curatedPiece: "A special piece from a curated collection",
+    ratingNew: "New",
+    verifiedReviewCount: (count: number) => `${count} verified reviews`,
+    beFirstToReview: "Be the first to review",
+    vat: "+ VAT",
+    carefulPackaging: "Careful packaging",
+    carefulPackagingDetail: "Secure delivery that protects the stone's natural surface",
+    verifiedPiece: "Verified piece",
+    verifiedPieceDetail: "Natural texture and form shown in the photos",
+    authenticityGuarantee: "Authenticity Guarantee",
+    authenticityGuaranteeTextBefore:
+      "Every product is inspected by our team for authenticity and quality before it's listed. If a piece doesn't match its description, you're covered under our ",
+    returnPolicyLink: "return and exchange policy",
+    authenticityGuaranteeTextAfter: ".",
+    decreaseQuantity: "Decrease quantity",
+    increaseQuantity: "Increase quantity",
+    productQuantity: "Product quantity",
+    outOfStock: "Sold out",
+    waitSeconds: (seconds: number) => `Wait ${seconds}s`,
+    addToCart: "Add to cart",
+    limitedStock: (stock: number) => `Limited stock · ${stock} left`,
+    inStock: "In stock",
+    largePhoto: (name: string) => `${name} large photo`,
+    close: "Close",
+    previousPhoto: "Previous photo",
+    nextPhoto: "Next photo",
+    verifiedExperiences: "Verified experiences",
+    customerReviews: "Customer reviews",
+    reviewCount: (count: number) => `${count} reviews`,
+    verifiedPurchase: "Verified purchase",
+    starsLabel: (rating: number) => `${rating} stars`,
+    noReviewsYet: "No reviews yet",
+    noReviewsYetDetail:
+      "If you're one of the first to buy this product, share your experience.",
+    shareYourExperience: "Share your experience",
+    loginToReview: "You need to sign in to your account to leave a review.",
+    login: "Sign in",
+    alreadyReviewed:
+      "You've already used your review for this product. Each member can share one review.",
+    mustPurchaseToReview: "Only members who purchased this product can leave a review.",
+    yourRating: "Your rating",
+    reviewTitleLabel: "Review title",
+    optional: "Optional",
+    reviewTitlePlaceholder: "E.g.: More impressive than I expected",
+    yourExperience: "Your experience",
+    reviewCommentPlaceholder:
+      "Share your thoughts on the product's texture, color and packaging experience.",
+    submitting: "Submitting…",
+    publishReview: "Publish review",
+    reviewsFetchError: "Could not load reviews.",
+    reviewSubmitError: "Could not submit review.",
+    reviewSubmitSuccess: "Your review has been published. Thank you.",
+    dateLocale: "en-US",
+  },
+} as const;
+
 function stars(rating: number) {
   return "★★★★★".slice(0, rating) + "☆☆☆☆☆".slice(rating);
-}
-
-function collectionMessage(product: Product) {
-  if (product.campaignLabel) {
-    return `${product.campaignLabel} · Sınırlı koleksiyon avantajı`;
-  }
-  if (product.stock <= 3) {
-    return `Koleksiyonluk son ${product.stock} parça`;
-  }
-  return "Seçkin koleksiyondan özel parça";
 }
 
 export default function ProductDetailClient({
@@ -57,6 +191,8 @@ export default function ProductDetailClient({
   showHeader?: boolean;
 }) {
   const cart = useCart();
+  const [language] = useLanguage();
+  const t = copy[language];
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -71,14 +207,27 @@ export default function ProductDetailClient({
   const [imageZoomOpen, setImageZoomOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
+  const collectionMessage = useCallback(
+    (item: Product) => {
+      if (item.campaignLabel) {
+        return `${item.campaignLabel} · ${t.limitedCollectionOffer}`;
+      }
+      if (item.stock <= 3) {
+        return t.lastPieces(item.stock);
+      }
+      return t.curatedPiece;
+    },
+    [t],
+  );
+
   const fetchReviews = useCallback(async () => {
     const response = await fetch(`/api/products/${productId}/reviews`, {
       cache: "no-store",
     });
     const payload = (await response.json()) as ReviewPayload;
-    if (!response.ok) throw new Error(payload.error || "Yorumlar alınamadı.");
+    if (!response.ok) throw new Error(payload.error || t.reviewsFetchError);
     return payload;
-  }, [productId]);
+  }, [productId, t]);
 
   const loadReviews = useCallback(async () => {
     setReviewData(await fetchReviews());
@@ -166,14 +315,14 @@ export default function ProductDetailClient({
         }),
       });
       const payload = (await response.json()) as { error?: string };
-      if (!response.ok) throw new Error(payload.error || "Yorum gönderilemedi.");
+      if (!response.ok) throw new Error(payload.error || t.reviewSubmitError);
       setReviewTitle("");
       setReviewComment("");
-      setReviewMessage("Yorumunuz yayınlandı. Teşekkür ederiz.");
+      setReviewMessage(t.reviewSubmitSuccess);
       await loadReviews();
     } catch (error) {
       setReviewMessage(
-        error instanceof Error ? error.message : "Yorum gönderilemedi.",
+        error instanceof Error ? error.message : t.reviewSubmitError,
       );
     } finally {
       setReviewSubmitting(false);
@@ -184,7 +333,7 @@ export default function ProductDetailClient({
     return (
       <main className="product-profile-page">
         {showHeader && <StoreSubpageHeader />}
-        <div className="product-profile-loading">Ürün hazırlanıyor…</div>
+        <div className="product-profile-loading">{t.preparing}</div>
       </main>
     );
   }
@@ -194,8 +343,8 @@ export default function ProductDetailClient({
       <main className="product-profile-page">
         {showHeader && <StoreSubpageHeader />}
         <div className="product-profile-loading">
-          <h1>Ürün bulunamadı</h1>
-          <Link href="/#shop">Alışverişe devam et</Link>
+          <h1>{t.notFoundTitle}</h1>
+          <Link href="/#shop">{t.continueShopping}</Link>
         </div>
       </main>
     );
@@ -218,9 +367,9 @@ export default function ProductDetailClient({
       {showHeader && <StoreSubpageHeader />}
 
       <div className="product-breadcrumb section-shell">
-        <Link href="/">Ana Sayfa</Link>
+        <Link href="/">{t.home}</Link>
         <span>/</span>
-        <Link href="/#shop">Ürünler</Link>
+        <Link href="/#shop">{t.products}</Link>
         <span>/</span>
         <b>{product.name}</b>
       </div>
@@ -230,16 +379,14 @@ export default function ProductDetailClient({
           <div className="product-profile-visual">
             {product.discountPercent > 0 && (
               <span className="profile-discount-badge">
-                %{product.discountPercent} İNDİRİM
+                {uiUpper(t.discount(product.discountPercent), language)}
               </span>
             )}
             <button
               type="button"
               className={`profile-heart${favorite ? " liked" : ""}`}
               onClick={toggleFavorite}
-              aria-label={
-                favorite ? "Favorilerden çıkar" : "Favorilere ekle"
-              }
+              aria-label={favorite ? t.removeFavorite : t.addFavorite}
             >
               {favorite ? "♥" : "♡"}
             </button>
@@ -247,24 +394,24 @@ export default function ProductDetailClient({
               type="button"
               className="product-image-zoom-trigger"
               onClick={() => setImageZoomOpen(true)}
-              aria-label={`${product.name} fotoğrafını büyüt`}
+              aria-label={t.zoomPhoto(product.name)}
             >
               <img src={activeImage} alt={product.name} />
             </button>
           </div>
 
           {productImages.length > 1 && (
-            <div className="product-gallery-thumbnails" aria-label="Ürün fotoğrafları">
+            <div className="product-gallery-thumbnails" aria-label={t.productPhotos}>
               {productImages.map((image, index) => (
                 <button
                   type="button"
                   className={index === selectedImageIndex ? "active" : ""}
                   key={image}
                   onClick={() => setSelectedImageIndex(index)}
-                  aria-label={`${product.name}, ${index + 1}. fotoğrafı göster`}
+                  aria-label={t.showPhoto(product.name, index + 1)}
                   aria-pressed={index === selectedImageIndex}
                 >
-                  <img src={image} alt={`${product.name} - görsel ${index + 1}`} />
+                  <img src={image} alt={t.photoAlt(product.name, index + 1)} />
                   <span aria-hidden="true" />
                 </button>
               ))}
@@ -283,16 +430,16 @@ export default function ProductDetailClient({
           <a className="product-rating-line" href="#yorumlar">
             <strong>
               {summary.reviewCount > 0
-                ? summary.averageRating.toLocaleString("tr-TR")
-                : "Yeni"}
+                ? summary.averageRating.toLocaleString(t.dateLocale)
+                : t.ratingNew}
             </strong>
             <span aria-hidden="true">
               {stars(Math.round(summary.averageRating || 0))}
             </span>
             <small>
               {summary.reviewCount > 0
-                ? `${summary.reviewCount} doğrulanmış yorum`
-                : "İlk yorumu siz yapın"}
+                ? t.verifiedReviewCount(summary.reviewCount)
+                : t.beFirstToReview}
             </small>
           </a>
 
@@ -301,7 +448,7 @@ export default function ProductDetailClient({
               <del>{money.format(product.price)}</del>
             )}
             <strong>{money.format(currentPrice)}</strong>
-            <small>+ KDV</small>
+            <small>{t.vat}</small>
           </div>
 
           <p className="product-profile-description">{product.description}</p>
@@ -312,23 +459,21 @@ export default function ProductDetailClient({
 
           <div className="product-assurances">
             <span>
-              <b>Özenli paketleme</b>
-              Taşın doğal yüzeyini koruyan güvenli gönderim
+              <b>{t.carefulPackaging}</b>
+              {t.carefulPackagingDetail}
             </span>
             <span>
-              <b>Doğrulanmış parça</b>
-              Görsellerdeki doğal doku ve form karakteri
+              <b>{t.verifiedPiece}</b>
+              {t.verifiedPieceDetail}
             </span>
           </div>
 
           <div className="product-authenticity-guarantee">
-            <b>Orijinallik Garantisi</b>
+            <b>{t.authenticityGuarantee}</b>
             <p>
-              Her ürünümüz, mağazamıza eklenmeden önce doğallık ve kalite
-              açısından ekibimizce incelenir. Ürün açıklamasına uygun
-              bulunmayan parçalarda{" "}
-              <Link href="/teslimat-ve-iade">iade ve değişim politikamız</Link>{" "}
-              kapsamında güvencedesiniz.
+              {t.authenticityGuaranteeTextBefore}
+              <Link href="/teslimat-ve-iade">{t.returnPolicyLink}</Link>
+              {t.authenticityGuaranteeTextAfter}
             </p>
           </div>
 
@@ -338,7 +483,7 @@ export default function ProductDetailClient({
                 type="button"
                 onClick={() => setQuantity((current) => Math.max(1, current - 1))}
                 disabled={quantity <= 1}
-                aria-label="Adedi azalt"
+                aria-label={t.decreaseQuantity}
               >
                 −
               </button>
@@ -356,7 +501,7 @@ export default function ProductDetailClient({
                     ),
                   )
                 }
-                aria-label="Ürün adedi"
+                aria-label={t.productQuantity}
               />
               <button
                 type="button"
@@ -366,7 +511,7 @@ export default function ProductDetailClient({
                   )
                 }
                 disabled={quantity >= maximumQuantity}
-                aria-label="Adedi artır"
+                aria-label={t.increaseQuantity}
               >
                 +
               </button>
@@ -378,17 +523,15 @@ export default function ProductDetailClient({
               disabled={product.stock <= 0 || cart.addCooldownSeconds > 0}
             >
               {product.stock <= 0
-                ? "Tükendi"
+                ? t.outOfStock
                 : cart.addCooldownSeconds > 0
-                  ? `${cart.addCooldownSeconds} sn bekleyin`
-                  : "Sepete ekle"}
+                  ? t.waitSeconds(cart.addCooldownSeconds)
+                  : t.addToCart}
             </button>
           </div>
           <div className="product-purchase-meta">
             <span>
-              {product.stock <= 3
-                ? `Sınırlı stok · ${product.stock} adet`
-                : "Stokta mevcut"}
+              {product.stock <= 3 ? t.limitedStock(product.stock) : t.inStock}
             </span>
           </div>
         </div>
@@ -404,14 +547,14 @@ export default function ProductDetailClient({
             className="image-zoom-modal"
             role="dialog"
             aria-modal="true"
-            aria-label={`${product.name} büyük fotoğraf`}
+            aria-label={t.largePhoto(product.name)}
             onMouseDown={(event) => event.stopPropagation()}
           >
             <button
               type="button"
               className="modal-close"
               onClick={() => setImageZoomOpen(false)}
-              aria-label="Kapat"
+              aria-label={t.close}
             >
               ×
             </button>
@@ -425,7 +568,7 @@ export default function ProductDetailClient({
                       (current - 1 + productImages.length) % productImages.length
                     )
                   }
-                  aria-label="Önceki fotoğraf"
+                  aria-label={t.previousPhoto}
                 >
                   ←
                 </button>
@@ -439,7 +582,7 @@ export default function ProductDetailClient({
                       (current + 1) % productImages.length
                     )
                   }
-                  aria-label="Sonraki fotoğraf"
+                  aria-label={t.nextPhoto}
                 >
                   →
                 </button>
@@ -452,17 +595,17 @@ export default function ProductDetailClient({
       <section className="product-reviews section-shell" id="yorumlar">
         <div className="reviews-heading">
           <div>
-            <p className="eyebrow">Doğrulanmış deneyimler</p>
-            <h2>Müşteri yorumları</h2>
+            <p className="eyebrow">{t.verifiedExperiences}</p>
+            <h2>{t.customerReviews}</h2>
           </div>
           <div className="review-summary">
             <strong>
               {summary.reviewCount > 0
-                ? summary.averageRating.toLocaleString("tr-TR")
+                ? summary.averageRating.toLocaleString(t.dateLocale)
                 : "—"}
             </strong>
             <span>{stars(Math.round(summary.averageRating || 0))}</span>
-            <small>{summary.reviewCount} yorum</small>
+            <small>{t.reviewCount(summary.reviewCount)}</small>
           </div>
         </div>
 
@@ -474,13 +617,13 @@ export default function ProductDetailClient({
                   <header>
                     <div>
                       <strong>{review.customerName}</strong>
-                      <span>Doğrulanmış alışveriş</span>
+                      <span>{t.verifiedPurchase}</span>
                     </div>
                     <time>
-                      {new Date(review.createdAt).toLocaleDateString("tr-TR")}
+                      {new Date(review.createdAt).toLocaleDateString(t.dateLocale)}
                     </time>
                   </header>
-                  <div className="review-stars" aria-label={`${review.rating} yıldız`}>
+                  <div className="review-stars" aria-label={t.starsLabel(review.rating)}>
                     {stars(review.rating)}
                   </div>
                   {review.title && <h3>{review.title}</h3>}
@@ -490,36 +633,27 @@ export default function ProductDetailClient({
             ) : (
               <div className="review-empty">
                 <span>★★★★★</span>
-                <h3>Henüz yorum yok</h3>
-                <p>
-                  Bu ürünü satın alan ilk üyelerden biriyseniz deneyiminizi
-                  paylaşabilirsiniz.
-                </p>
+                <h3>{t.noReviewsYet}</h3>
+                <p>{t.noReviewsYetDetail}</p>
               </div>
             )}
           </div>
 
           <aside className="review-form-panel">
-            <h3>Deneyiminizi paylaşın</h3>
+            <h3>{t.shareYourExperience}</h3>
             {!reviewData?.viewer.signedIn ? (
               <>
-                <p>Yorum yazmak için hesabınıza giriş yapmanız gerekir.</p>
-                <Link href="/login">Giriş yap</Link>
+                <p>{t.loginToReview}</p>
+                <Link href="/login">{t.login}</Link>
               </>
             ) : reviewData.viewer.hasReviewed ? (
-              <p className="review-status">
-                Bu ürün için yorum hakkınızı kullandınız. Her üye yalnızca bir
-                yorum paylaşabilir.
-              </p>
+              <p className="review-status">{t.alreadyReviewed}</p>
             ) : !reviewData.viewer.canReview ? (
-              <p className="review-status">
-                Yorumlar yalnızca bu ürünü satın almış üyeler tarafından
-                yazılabilir.
-              </p>
+              <p className="review-status">{t.mustPurchaseToReview}</p>
             ) : (
               <form onSubmit={submitReview}>
                 <fieldset>
-                  <legend>Puanınız</legend>
+                  <legend>{t.yourRating}</legend>
                   <div className="review-star-picker">
                     {[1, 2, 3, 4, 5].map((rating) => (
                       <button
@@ -527,7 +661,7 @@ export default function ProductDetailClient({
                         className={rating <= reviewRating ? "active" : ""}
                         key={rating}
                         onClick={() => setReviewRating(rating)}
-                        aria-label={`${rating} yıldız`}
+                        aria-label={t.starsLabel(rating)}
                       >
                         ★
                       </button>
@@ -535,27 +669,27 @@ export default function ProductDetailClient({
                   </div>
                 </fieldset>
                 <label>
-                  Yorum başlığı <small>İsteğe bağlı</small>
+                  {t.reviewTitleLabel} <small>{t.optional}</small>
                   <input
                     value={reviewTitle}
                     maxLength={80}
                     onChange={(event) => setReviewTitle(event.target.value)}
-                    placeholder="Örneğin: Beklediğimden daha etkileyici"
+                    placeholder={t.reviewTitlePlaceholder}
                   />
                 </label>
                 <label>
-                  Deneyiminiz
+                  {t.yourExperience}
                   <textarea
                     value={reviewComment}
                     minLength={10}
                     maxLength={1000}
                     required
                     onChange={(event) => setReviewComment(event.target.value)}
-                    placeholder="Ürünün dokusu, rengi ve paketleme deneyimi hakkında düşüncelerinizi yazın."
+                    placeholder={t.reviewCommentPlaceholder}
                   />
                 </label>
                 <button type="submit" disabled={reviewSubmitting}>
-                  {reviewSubmitting ? "Gönderiliyor…" : "Yorumu yayınla"}
+                  {reviewSubmitting ? t.submitting : t.publishReview}
                 </button>
               </form>
             )}

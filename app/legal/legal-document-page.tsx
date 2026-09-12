@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { readPublishedSiteContent } from "../../lib/site-content";
 import {
   defaultSiteContent,
@@ -10,6 +9,7 @@ import { FloatingSocialLinks } from "../store-shared-chrome";
 import StoreSiteFooter from "../store-site-footer";
 import StoreSubpageHeader from "../store-subpage-header";
 import ReturnRequestForm from "./return-request-form";
+import { LegalHero, LegalSidebar, LegalSellerCard } from "./legal-document-chrome";
 
 export type { LegalDocumentKey };
 
@@ -40,25 +40,9 @@ export default async function LegalDocumentPage({ document }: { document: LegalD
   return (
     <main className="legal-page market-subpage">
       <StoreSubpageHeader />
-      <section className="legal-hero">
-        <div className="legal-breadcrumb"><Link href="/">Ana Sayfa</Link><span>/</span><b>{content.title}</b></div>
-        <p>{content.eyebrow}</p>
-        <h1>{content.title}</h1>
-        <span>{content.summary}</span>
-        <small>Son güncelleme: {content.updated}</small>
-      </section>
+      <LegalHero content={content} />
       <div className="legal-layout">
-        <aside>
-          <strong>Yasal Belgeler</strong>
-          <Link href="/guvenli-alisveris">Güvenli Alışveriş</Link>
-          <Link href="/kvkk">KVKK</Link>
-          <Link href="/gizlilik-politikasi">Gizlilik</Link>
-          <Link href="/cerez-politikasi">Çerezler</Link>
-          <Link href="/mesafeli-satis-sozlesmesi">Mesafeli Satış</Link>
-          <Link href="/on-bilgilendirme-formu">Ön Bilgilendirme</Link>
-          <Link href="/teslimat-ve-iade">Teslimat ve İade</Link>
-          <Link href="/kullanim-kosullari">Kullanım Koşulları</Link>
-        </aside>
+        <LegalSidebar />
         <article className="legal-document">
           {content.sections.map((section, index) => (
             <section key={`${index}-${section.title}`}>
@@ -80,18 +64,12 @@ export default async function LegalDocumentPage({ document }: { document: LegalD
             </section>
           ))}
           {document === "deliveryReturns" && <ReturnRequestForm />}
-          <section className="legal-seller-card">
-            <span>—</span>
-            <div>
-              <h2>Satıcı / veri sorumlusu iletişim bilgileri</h2>
-              <dl>
-                <div><dt>İşletme</dt><dd>{settings.businessName || "Terragolds"}</dd></div>
-                <div><dt>Adres</dt><dd>{address || "Yönetim panelinden eklenmelidir."}</dd></div>
-                <div><dt>Telefon</dt><dd>{settings.phone || settings.whatsapp || "Yönetim panelinden eklenmelidir."}</dd></div>
-                <div><dt>E-posta</dt><dd>{settings.email || "Yönetim panelinden eklenmelidir."}</dd></div>
-              </dl>
-            </div>
-          </section>
+          <LegalSellerCard
+            businessName={settings.businessName}
+            address={address}
+            phone={settings.phone || settings.whatsapp}
+            email={settings.email}
+          />
           <div className="legal-note">
             Bu metin genel bilgilendirme taslağıdır. Şirket unvanı, vergi/MERSİS bilgileri,
             iade taşıyıcısı ve fiili iş süreçleriyle eşleştirilerek yayından önce hukuk danışmanı

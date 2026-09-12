@@ -1,18 +1,15 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import StoreSubpageHeader from "../../store-subpage-header";
 import StoreSiteFooter from "../../store-site-footer";
 import { FloatingSocialLinks } from "../../store-shared-chrome";
 import StoreTrustBar from "../../store-trust-bar";
+import CategoryPageBody from "./category-page-body";
 import { findCategoryBySlug } from "../../../lib/category-slugs";
 import { findCategoryGroupBySlug, groupForCategory } from "../../../lib/category-groups";
 import { subgroupsForGroup, tallyCategoryCounts } from "../../../lib/category-subgroups";
 import type { Product } from "../../../lib/store-data";
 import { readProducts, readSettings } from "../../../lib/store-db";
 import { breadcrumbSchema, toJsonLd } from "../../../lib/seo/structured-data";
-import QuickAddToCart from "../../quick-add-to-cart";
-import FavoriteHeartButton from "../../favorite-heart-button";
-import CompareToggleButton from "../../compare-toggle-button";
 
 export const dynamic = "force-dynamic";
 
@@ -146,95 +143,8 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
       <StoreSubpageHeader activeGroupSlug={slug} />
       <StoreTrustBar />
 
-      <section className="category-hero section-shell">
-        <div className="category-breadcrumb">
-          <Link href="/">Ana Sayfa</Link>
-          <span>/</span>
-          <Link href="/#shop">Ürünler</Link>
-          <span>/</span>
-          <b>{title ?? "Kategori bulunamadı"}</b>
-        </div>
-        <p className="eyebrow">Koleksiyon</p>
-        <h1>{title ?? "Kategori bulunamadı"}</h1>
-        <p>
-          {title
-            ? `${categoryProducts.length} seçilmiş parça. Kaliteli işçilik ve özenli tasarımlarla hazırlanmış ürünleri inceleyin.`
-            : "Aradığınız kategori bulunamadı. Tüm ürünlere geri dönebilirsiniz."}
-        </p>
-      </section>
+      <CategoryPageBody title={title} products={categoryProducts} />
 
-      {title ? (
-        <section className="category-products section-shell">
-          <div className="category-grid">
-            {categoryProducts.map((product, index) => {
-              const imageLoading = index < 6 ? "eager" : "lazy";
-              return (
-                <article className="category-product-card" key={product.id}>
-                  <div className="category-product-image-wrap">
-                    <FavoriteHeartButton productId={product.id} productName={product.name} />
-                    <Link
-                      className={`category-product-image${
-                        product.hoverImage ? " has-hover-image" : ""
-                      }`}
-                      href={`/products/${product.slug || product.id}`}
-                      aria-label={`${product.name} detaylarını gör`}
-                    >
-                      {product.stock > 0 && product.stock <= 3 ? (
-                        <span>Son parçalar</span>
-                      ) : product.discountPercent > 0 ? (
-                        <span>%{product.discountPercent} indirim</span>
-                      ) : product.badge ? (
-                        <em>{product.badge}</em>
-                      ) : null}
-                      {product.hoverImage && (
-                        <>
-                          <i className="product-hover-zone left" />
-                          <i className="product-hover-zone right" />
-                        </>
-                      )}
-                      <img
-                        className="product-hover-image primary"
-                        src={product.image}
-                        alt={product.name}
-                        loading={imageLoading}
-                      />
-                      {product.hoverImage && (
-                        <img
-                          className="product-hover-image secondary"
-                          src={product.hoverImage}
-                          alt=""
-                          loading={imageLoading}
-                        />
-                      )}
-                      {product.hoverImage && (
-                        <span className="product-image-progress" aria-hidden="true">
-                          <i className="left" />
-                          <i className="right" />
-                        </span>
-                      )}
-                    </Link>
-                  </div>
-                  <div className="category-product-copy">
-                    <small>{product.stone}</small>
-                    {product.xmlExternalId && (
-                      <span className="product-code">#{product.xmlExternalId}</span>
-                    )}
-                    <Link href={`/products/${product.slug || product.id}`}>{product.name}</Link>
-                    <CompareToggleButton productId={product.id} productName={product.name} />
-                    <QuickAddToCart product={product} />
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        </section>
-      ) : (
-        <section className="category-products section-shell">
-          <Link className="button button-dark" href="/#shop">
-            Tüm ürünlere dön
-          </Link>
-        </section>
-      )}
       <StoreSiteFooter
         businessName={settings.businessName}
         address={[settings.address, settings.district, settings.city]

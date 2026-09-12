@@ -1,3 +1,5 @@
+import type { Language } from "./i18n";
+
 // Top-level navigation groups the site's raw product categories collapse
 // into — modeled on ebijuteri.com's nav (Kolyeler, Küpeler, Bileklik &
 // Halhal, Yüzük, Saat & Kombin, Aksesuar). The underlying `products`
@@ -7,27 +9,39 @@
 export type CategoryGroup = {
   slug: string;
   label: string;
+  labelEn: string;
   keywords: string[];
 };
 
 export const categoryGroups: CategoryGroup[] = [
-  { slug: "yuzuk", label: "Yüzük", keywords: ["yüzük"] },
-  { slug: "kolyeler", label: "Kolyeler", keywords: ["kolye"] },
-  { slug: "kupeler", label: "Küpeler", keywords: ["küpe"] },
-  { slug: "bileklik", label: "Bileklik", keywords: ["bileklik"] },
+  { slug: "yuzuk", label: "Yüzük", labelEn: "Rings", keywords: ["yüzük"] },
+  { slug: "kolyeler", label: "Kolyeler", labelEn: "Necklaces", keywords: ["kolye"] },
+  { slug: "kupeler", label: "Küpeler", labelEn: "Earrings", keywords: ["küpe"] },
+  { slug: "bileklik", label: "Bileklik", labelEn: "Bracelets", keywords: ["bileklik"] },
   {
     slug: "sahmeran-halhal",
     label: "Şahmeran ve Halhal",
+    labelEn: "Sahmeran & Anklets",
     keywords: ["şahmeran", "halhal", "hal hal"],
   },
   {
     slug: "antika-vintage",
     label: "Antika ~ Vintage",
+    labelEn: "Antique ~ Vintage",
     keywords: ["antika", "vintage"],
   },
-  { slug: "saat-kombin", label: "Saat & Kombin", keywords: ["saat", "kombin"] },
-  { slug: "aksesuar", label: "Aksesuar", keywords: ["aksesuar"] },
+  { slug: "saat-kombin", label: "Saat & Kombin", labelEn: "Watches & Sets", keywords: ["saat", "kombin"] },
+  { slug: "aksesuar", label: "Aksesuar", labelEn: "Accessories", keywords: ["aksesuar"] },
 ];
+
+/**
+ * Curated nav-group labels have a real English counterpart, unlike raw
+ * product/subcategory data (see englishSiteContent's comment in lib/i18n.ts) -
+ * those stay Turkish since they're free-text supplier data, not UI copy.
+ */
+export function categoryGroupLabel(group: CategoryGroup, language: Language): string {
+  return language === "en" ? group.labelEn : group.label;
+}
 
 function normalize(value: string): string {
   return value.toLocaleLowerCase("tr-TR");

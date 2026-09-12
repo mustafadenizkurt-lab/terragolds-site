@@ -13,7 +13,7 @@ import {
   type SiteContent,
 } from "../lib/site-content-types";
 import { englishSiteContent, uiText, uiUpper, type Language } from "../lib/i18n";
-import { activeCategoryGroups, type CategoryGroup } from "../lib/category-groups";
+import { activeCategoryGroups, categoryGroupLabel, type CategoryGroup } from "../lib/category-groups";
 import {
   subgroupsForGroup,
   type CategorySubgroup,
@@ -1330,7 +1330,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
                 href={groupUrl(group)}
                 onClick={() => setMenuOpen(false)}
               >
-                {group.label}
+                {categoryGroupLabel(group, language)}
               </a>
             ))}
             <a
@@ -1370,9 +1370,10 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
         {activeGroups.map((group) => (
           <CategoryNavDropdown
             key={group.slug}
-            label={group.label}
+            label={categoryGroupLabel(group, language)}
             href={groupUrl(group)}
             subgroups={subgroupsByGroupSlug.get(group.slug) ?? []}
+            language={language}
           />
         ))}
         <button

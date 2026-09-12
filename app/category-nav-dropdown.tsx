@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import type { CategorySubgroup } from "../lib/category-subgroups";
+import { uiUpper, type Language } from "../lib/i18n";
 
 /**
  * One top-nav category item. Opens its subcategory panel on hover (desktop)
@@ -25,11 +26,13 @@ export default function CategoryNavDropdown({
   href,
   subgroups,
   active,
+  language,
 }: {
   label: string;
   href: string;
   subgroups: CategorySubgroup[];
   active?: boolean;
+  language: Language;
 }) {
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
@@ -38,9 +41,9 @@ export default function CategoryNavDropdown({
   // The nav bar uppercases this via CSS (text-transform: uppercase), but
   // that transform ignores document language and turns a lowercase "i"
   // into a dotless "I" instead of Turkish "İ" (e.g. "Bileklik" -> "BILEKLIK").
-  // Pre-uppercasing with the Turkish locale here renders the correct
-  // letter; the CSS transform then leaves already-uppercase text alone.
-  const displayLabel = label.toLocaleUpperCase("tr-TR");
+  // Pre-uppercasing here with the right locale renders the correct letter;
+  // the CSS transform then leaves already-uppercase text alone.
+  const displayLabel = uiUpper(label, language);
 
   useEffect(() => {
     if (!open) return;
@@ -88,7 +91,11 @@ export default function CategoryNavDropdown({
         type="button"
         className="category-nav-toggle"
         aria-expanded={open}
-        aria-label={`${label} alt kategorilerini ${open ? "kapat" : "aç"}`}
+        aria-label={
+          language === "en"
+            ? `${open ? "Close" : "Open"} ${label} subcategories`
+            : `${label} alt kategorilerini ${open ? "kapat" : "aç"}`
+        }
         onClick={(event) => {
           event.stopPropagation();
           if (open) setOpen(false);

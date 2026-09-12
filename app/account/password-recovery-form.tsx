@@ -3,6 +3,64 @@
 import Link from "next/link";
 import { useState } from "react";
 import StoreSubpageHeader from "../store-subpage-header";
+import { useLanguage } from "../../lib/language-client";
+
+const copy = {
+  tr: {
+    accountSecurity: "Hesap güvenliği",
+    heroTitleBefore: "Hesabınıza yeniden",
+    heroTitleAfter: "güvenle ulaşın.",
+    heroTagline: "Süreli bağlantı · Tek kullanım · Güvenli şifreleme",
+    passwordSupport: "Şifre desteği",
+    newPassword: "Yeni şifre",
+    renewYourPassword: "Şifrenizi yenileyin",
+    createNewPassword: "Yeni şifre oluşturun",
+    requestCopy:
+      "Hesabınıza bağlı e-posta adresini yazın. Geçerli bağlantıyı e-posta kutunuza gönderelim.",
+    resetCopy:
+      "Hesabınız için daha önce kullanmadığınız, en az 10 karakterli güçlü bir şifre belirleyin.",
+    devLink: "Yerel test bağlantısını aç →",
+    email: "E-posta",
+    newPasswordLabel: "Yeni şifre",
+    minChars: "En az 10 karakter kullanın.",
+    newPasswordRepeat: "Yeni şifre tekrar",
+    pleaseWait: "Lütfen bekleyin…",
+    sendResetLink: "Sıfırlama bağlantısı gönder",
+    renewPassword: "Şifremi yenile",
+    missingResetLink: "Şifre sıfırlama bağlantısı eksik.",
+    backToLogin: "← Giriş sayfasına dön",
+    passwordsDontMatch: "Yeni şifreler birbiriyle eşleşmiyor.",
+    genericError: "İşlem tamamlanamadı.",
+    genericSuccess: "İşlem tamamlandı.",
+  },
+  en: {
+    accountSecurity: "Account security",
+    heroTitleBefore: "Get back into",
+    heroTitleAfter: "your account securely.",
+    heroTagline: "Time-limited link · Single use · Secure encryption",
+    passwordSupport: "Password support",
+    newPassword: "New password",
+    renewYourPassword: "Reset your password",
+    createNewPassword: "Create a new password",
+    requestCopy:
+      "Enter the email address linked to your account. We'll send a valid link to your inbox.",
+    resetCopy:
+      "Choose a strong password for your account, at least 10 characters, that you haven't used before.",
+    devLink: "Open local test link →",
+    email: "Email",
+    newPasswordLabel: "New password",
+    minChars: "Use at least 10 characters.",
+    newPasswordRepeat: "Repeat new password",
+    pleaseWait: "Please wait…",
+    sendResetLink: "Send reset link",
+    renewPassword: "Reset my password",
+    missingResetLink: "The password reset link is missing.",
+    backToLogin: "← Back to sign in",
+    passwordsDontMatch: "The new passwords don't match.",
+    genericError: "The request could not be completed.",
+    genericSuccess: "Done.",
+  },
+} as const;
 
 export default function PasswordRecoveryForm({
   mode,
@@ -11,6 +69,8 @@ export default function PasswordRecoveryForm({
   mode: "request" | "reset";
   token?: string;
 }) {
+  const [language] = useLanguage();
+  const t = copy[language];
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -29,7 +89,7 @@ export default function PasswordRecoveryForm({
       mode === "reset" &&
       String(payload.password ?? "") !== String(payload.confirmPassword ?? "")
     ) {
-      setError("Yeni şifreler birbiriyle eşleşmiyor.");
+      setError(t.passwordsDontMatch);
       setLoading(false);
       return;
     }
@@ -55,16 +115,14 @@ export default function PasswordRecoveryForm({
         devResetUrl?: string;
       };
       if (!response.ok) {
-        throw new Error(body.error ?? "İşlem tamamlanamadı.");
+        throw new Error(body.error ?? t.genericError);
       }
-      setSuccess(body.message ?? "İşlem tamamlandı.");
+      setSuccess(body.message ?? t.genericSuccess);
       setDevResetUrl(body.devResetUrl ?? "");
       event.currentTarget.reset();
     } catch (submitError) {
       setError(
-        submitError instanceof Error
-          ? submitError.message
-          : "İşlem tamamlanamadı.",
+        submitError instanceof Error ? submitError.message : t.genericError,
       );
     } finally {
       setLoading(false);
@@ -83,26 +141,24 @@ export default function PasswordRecoveryForm({
           TERRA<strong>GOLDS</strong>
         </Link>
         <div>
-          <p>Hesap güvenliği</p>
+          <p>{t.accountSecurity}</p>
           <h1>
-            Hesabınıza yeniden
+            {t.heroTitleBefore}
             <br />
-            <em>güvenle ulaşın.</em>
+            <em>{t.heroTitleAfter}</em>
           </h1>
-          <span>Süreli bağlantı · Tek kullanım · Güvenli şifreleme</span>
+          <span>{t.heroTagline}</span>
         </div>
       </section>
 
       <section className="account-form-wrap">
         <div className="account-form-card">
           <p className="account-kicker">
-            {isRequest ? "Şifre desteği" : "Yeni şifre"}
+            {isRequest ? t.passwordSupport : t.newPassword}
           </p>
-          <h2>{isRequest ? "Şifrenizi yenileyin" : "Yeni şifre oluşturun"}</h2>
+          <h2>{isRequest ? t.renewYourPassword : t.createNewPassword}</h2>
           <p className="account-form-copy">
-            {isRequest
-              ? "Hesabınıza bağlı e-posta adresini yazın. Geçerli bağlantıyı e-posta kutunuza gönderelim."
-              : "Hesabınız için daha önce kullanmadığınız, en az 10 karakterli güçlü bir şifre belirleyin."}
+            {isRequest ? t.requestCopy : t.resetCopy}
           </p>
 
           {error && (
@@ -117,7 +173,7 @@ export default function PasswordRecoveryForm({
           )}
           {devResetUrl && (
             <a className="account-dev-link" href={devResetUrl}>
-              Yerel test bağlantısını aç →
+              {t.devLink}
             </a>
           )}
 
@@ -125,7 +181,7 @@ export default function PasswordRecoveryForm({
             <form onSubmit={submit}>
               {isRequest ? (
                 <label>
-                  <span>E-posta</span>
+                  <span>{t.email}</span>
                   <input
                     name="email"
                     type="email"
@@ -136,7 +192,7 @@ export default function PasswordRecoveryForm({
               ) : (
                 <>
                   <label>
-                    <span>Yeni şifre</span>
+                    <span>{t.newPasswordLabel}</span>
                     <input
                       name="password"
                       type="password"
@@ -145,10 +201,10 @@ export default function PasswordRecoveryForm({
                       maxLength={128}
                       required
                     />
-                    <small>En az 10 karakter kullanın.</small>
+                    <small>{t.minChars}</small>
                   </label>
                   <label>
-                    <span>Yeni şifre tekrar</span>
+                    <span>{t.newPasswordRepeat}</span>
                     <input
                       name="confirmPassword"
                       type="password"
@@ -161,22 +217,18 @@ export default function PasswordRecoveryForm({
                 </>
               )}
               <button type="submit" disabled={loading || (!isRequest && !token)}>
-                {loading
-                  ? "Lütfen bekleyin…"
-                  : isRequest
-                    ? "Sıfırlama bağlantısı gönder"
-                    : "Şifremi yenile"}
+                {loading ? t.pleaseWait : isRequest ? t.sendResetLink : t.renewPassword}
               </button>
             </form>
           ) : null}
 
           {!token && !isRequest && (
             <div className="account-error" role="alert">
-              Şifre sıfırlama bağlantısı eksik.
+              {t.missingResetLink}
             </div>
           )}
           <Link className="account-back" href="/login">
-            ← Giriş sayfasına dön
+            {t.backToLogin}
           </Link>
         </div>
       </section>

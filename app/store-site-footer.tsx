@@ -7,14 +7,14 @@ import { useLanguage } from "../lib/language-client";
 const GOOGLE_REVIEW_URL = "https://g.page/r/CULplaYbZk3XECE/review";
 
 const legalLinks = [
-  ["KVKK Aydınlatma Metni", "/kvkk"],
-  ["Gizlilik Politikası", "/gizlilik-politikasi"],
-  ["Çerez Politikası", "/cerez-politikasi"],
-  ["Mesafeli Satış Sözleşmesi", "/mesafeli-satis-sozlesmesi"],
-  ["Ön Bilgilendirme Formu", "/on-bilgilendirme-formu"],
-  ["Teslimat ve İade", "/teslimat-ve-iade"],
-  ["Kullanım Koşulları", "/kullanim-kosullari"],
-  ["Güvenli Alışveriş", "/guvenli-alisveris"],
+  { href: "/kvkk", tr: "KVKK Aydınlatma Metni", en: "Privacy Notice (KVKK)" },
+  { href: "/gizlilik-politikasi", tr: "Gizlilik Politikası", en: "Privacy Policy" },
+  { href: "/cerez-politikasi", tr: "Çerez Politikası", en: "Cookie Policy" },
+  { href: "/mesafeli-satis-sozlesmesi", tr: "Mesafeli Satış Sözleşmesi", en: "Distance Sales Agreement" },
+  { href: "/on-bilgilendirme-formu", tr: "Ön Bilgilendirme Formu", en: "Pre-Information Form" },
+  { href: "/teslimat-ve-iade", tr: "Teslimat ve İade", en: "Shipping & Returns" },
+  { href: "/kullanim-kosullari", tr: "Kullanım Koşulları", en: "Terms of Use" },
+  { href: "/guvenli-alisveris", tr: "Güvenli Alışveriş", en: "Secure Shopping" },
 ] as const;
 
 const paymentBadges = ["Visa", "Mastercard", "Troy", "Maestro"] as const;
@@ -110,7 +110,8 @@ export default function StoreSiteFooter({
   // explicitly; every other page has no language state of its own, so the
   // footer detects it itself from the shared "terragolds-language" key
   // (see lib/language-client.ts) instead of always defaulting to Turkish.
-  const t = copy[lang ?? detectedLanguage];
+  const resolvedLanguage = lang ?? detectedLanguage;
+  const t = copy[resolvedLanguage];
   const hasSupportInfo = Boolean(phone || whatsapp || email);
   const hasSocialLinks = Boolean(instagram || facebook || tiktok);
 
@@ -152,9 +153,9 @@ export default function StoreSiteFooter({
         </nav>
         <nav aria-label={t.legal}>
           <strong>{t.legal}</strong>
-          {legalLinks.slice(0, 3).map(([label, href]) => (
-            <Link href={href} key={href}>
-              {label}
+          {legalLinks.slice(0, 3).map((link) => (
+            <Link href={link.href} key={link.href}>
+              {resolvedLanguage === "en" ? link.en : link.tr}
             </Link>
           ))}
           <Link href="/kullanim-kosullari">{t.terms}</Link>
@@ -299,10 +300,10 @@ export default function StoreSiteFooter({
           {t.copyright}
           {footerNote ? ` · ${footerNote}` : ""}
         </span>
-        <nav aria-label="Sözleşmeler">
-          {legalLinks.map(([label, href]) => (
-            <Link href={href} key={href}>
-              {label}
+        <nav aria-label={resolvedLanguage === "en" ? "Agreements" : "Sözleşmeler"}>
+          {legalLinks.map((link) => (
+            <Link href={link.href} key={link.href}>
+              {resolvedLanguage === "en" ? link.en : link.tr}
             </Link>
           ))}
         </nav>

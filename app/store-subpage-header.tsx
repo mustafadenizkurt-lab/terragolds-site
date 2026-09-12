@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { activeCategoryGroups, type CategoryGroup } from "../lib/category-groups";
+import { activeCategoryGroups, categoryGroupLabel, type CategoryGroup } from "../lib/category-groups";
 import {
   subgroupsForGroup,
   type CategorySubgroup,
@@ -487,14 +487,15 @@ export default function StoreSubpageHeader({
         </button>
       </div>
       </header>
-      <nav className="market-category-nav store-market-categories" aria-label="Ana kategoriler">
+      <nav className="market-category-nav store-market-categories" aria-label={language === "en" ? "Main categories" : "Ana kategoriler"}>
         {groups.map((group) => (
           <CategoryNavDropdown
             key={group.slug}
-            label={group.label}
+            label={categoryGroupLabel(group, language)}
             href={groupUrl(group)}
             subgroups={subgroupsByGroupSlug.get(group.slug) ?? []}
             active={activeGroupSlug === group.slug}
+            language={language}
           />
         ))}
         <Link className="sale" href="/#shop">{uiUpper(ui.sale, language)}</Link>
@@ -573,7 +574,7 @@ export default function StoreSubpageHeader({
                 className={activeGroupSlug === group.slug ? "active" : undefined}
                 onClick={() => setMenuOpen(false)}
               >
-                {group.label}
+                {categoryGroupLabel(group, language)}
               </a>
             ))}
             <a

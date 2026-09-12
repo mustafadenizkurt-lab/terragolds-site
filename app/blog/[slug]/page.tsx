@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import { cache } from "react";
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { readPublishedBlogPostBySlug } from "../../../lib/blog";
 import { readSettings } from "../../../lib/store-db";
 import { FloatingSocialLinks } from "../../store-shared-chrome";
 import StoreSiteFooter from "../../store-site-footer";
 import StoreSubpageHeader from "../../store-subpage-header";
+import { BlogPostBackLink, BlogPostCta } from "./blog-post-chrome";
 import {
   articleSchema,
   breadcrumbSchema,
@@ -99,7 +99,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
       <StoreSubpageHeader />
       <article className="blog-post">
         <header className="blog-post-header">
-          <Link href="/blog">← Blog&rsquo;a dön</Link>
+          <BlogPostBackLink />
           {post.category && <span>{post.category}</span>}
           <h1>{post.title}</h1>
           {post.publishedAt && (
@@ -118,10 +118,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             <p>{post.excerpt}</p>
           )}
         </div>
-        <footer className="blog-post-cta">
-          <p>Koleksiyonumuzdaki özenle seçilmiş takıları keşfedin.</p>
-          <Link href="/#shop">Koleksiyonu incele</Link>
-        </footer>
+        <BlogPostCta />
       </article>
 
       <StoreSiteFooter
