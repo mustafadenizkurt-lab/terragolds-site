@@ -38,13 +38,19 @@ const copy = {
 
 export default function CategoryPageBody({
   title,
+  titleEn,
   products,
 }: {
   title: string | null;
+  titleEn?: string | null;
   products: Product[];
 }) {
   const [language] = useLanguage();
   const t = copy[language];
+  // Curated nav-group names have a real English label (titleEn); a raw,
+  // supplier-entered single category doesn't, so it stays Turkish even in
+  // English mode - see lib/i18n.ts's note on untranslated catalog data.
+  const displayTitle = (language === "en" && titleEn ? titleEn : title) ?? null;
 
   return (
     <>
@@ -54,10 +60,10 @@ export default function CategoryPageBody({
           <span>/</span>
           <Link href="/#shop">{t.products}</Link>
           <span>/</span>
-          <b>{title ?? t.notFoundTitle}</b>
+          <b>{displayTitle ?? t.notFoundTitle}</b>
         </div>
         <p className="eyebrow">{t.collection}</p>
-        <h1>{title ?? t.notFoundTitle}</h1>
+        <h1>{displayTitle ?? t.notFoundTitle}</h1>
         <p>{title ? t.piecesSelected(products.length) : t.notFoundDetail}</p>
       </section>
 

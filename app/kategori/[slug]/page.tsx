@@ -5,7 +5,7 @@ import { FloatingSocialLinks } from "../../store-shared-chrome";
 import StoreTrustBar from "../../store-trust-bar";
 import CategoryPageBody from "./category-page-body";
 import { findCategoryBySlug } from "../../../lib/category-slugs";
-import { findCategoryGroupBySlug, groupForCategory } from "../../../lib/category-groups";
+import { categoryGroupLabel, findCategoryGroupBySlug, groupForCategory } from "../../../lib/category-groups";
 import { subgroupsForGroup, tallyCategoryCounts } from "../../../lib/category-subgroups";
 import type { Product } from "../../../lib/store-data";
 import { readProducts, readSettings } from "../../../lib/store-db";
@@ -49,17 +49,24 @@ function resolveCategoryOrGroup(products: Product[], slug: string, altSlug?: str
         const categorySet = new Set(subgroup.categories);
         return {
           title: `${group.label} · ${subgroup.label}`,
+          // Subgroup names are raw, untranslated supplier data (see
+          // category-subgroups.ts) - only the curated group half has a
+          // real English label, so it's the only part that can flip.
+          titleEn: `${categoryGroupLabel(group, "en")} · ${subgroup.label}`,
           products: groupProducts.filter((product) => categorySet.has(product.category)),
         };
       }
     }
-    return { title: group.label, products: groupProducts };
+    return { title: group.label, titleEn: categoryGroupLabel(group, "en"), products: groupProducts };
   }
   const categories = [...new Set(products.map((product) => product.category))];
   const category = findCategoryBySlug(categories, slug);
   if (!category) return null;
   return {
     title: category,
+    // Raw category data (supplier/admin free text) has no stored
+    // translation - stays Turkish in both languages, see lib/i18n.ts.
+    titleEn: null as string | null,
     products: products.filter((product) => product.category === category),
   };
 }
@@ -118,6 +125,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
   ]);
   const resolved = resolveCategoryOrGroup(products, slug, alt);
   const title = resolved?.title ?? null;
+  const titleEn = resolved?.titleEn ?? null;
   const categoryProducts = resolved?.products ?? [];
 
   const breadcrumbUrl = alt
@@ -143,7 +151,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
       <StoreSubpageHeader activeGroupSlug={slug} />
       <StoreTrustBar />
 
-      <CategoryPageBody title={title} products={categoryProducts} />
+      <CategoryPageBody title={title} titleEn={titleEn} products={categoryProducts} />
 
       <StoreSiteFooter
         businessName={settings.businessName}
