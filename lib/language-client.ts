@@ -25,9 +25,12 @@ export function writeLanguage(language: Language) {
  * its own identical localStorage key directly - both read the same value.
  */
 export function useLanguage(): [Language, (language: Language) => void] {
-  const [language, setLanguageState] = useState<Language>(
-    () => (typeof window !== "undefined" ? readLanguage() : "tr"),
-  );
+  // Always starts as "tr" to match the server-rendered markup - the real
+  // localStorage value is only applied after mount (below), never during
+  // the initial/hydrating render, otherwise a stored "en" preference makes
+  // this render diverge from the server output and React throws a
+  // hydration-mismatch error (#418).
+  const [language, setLanguageState] = useState<Language>("tr");
 
   useEffect(() => {
     const refresh = () => setLanguageState(readLanguage());
