@@ -8,6 +8,7 @@ import {
   getDiscountedPrice,
   type Product,
 } from "../../lib/store-data";
+import { optimizedImageUrl } from "../../lib/image-transform";
 
 type Profile = {
   id: number;
@@ -1144,7 +1145,7 @@ function ProductRail({
       {products.map((product, index) => (
         <Link href={`/products/${product.slug || product.id}`} key={product.id}>
           <img
-            src={product.image}
+            src={optimizedImageUrl(product.image, 300)}
             alt={product.name}
             loading={index < 6 ? "eager" : "lazy"}
           />

@@ -14,6 +14,7 @@ import {
 } from "../lib/site-content-types";
 import { englishSiteContent, uiText, uiUpper, type Language } from "../lib/i18n";
 import { decodeHtmlEntities } from "../lib/text-utils";
+import { optimizedImageUrl } from "../lib/image-transform";
 import { activeCategoryGroups, categoryGroupLabel, type CategoryGroup } from "../lib/category-groups";
 import {
   subgroupsForGroup,
@@ -235,14 +236,14 @@ function ProductCard({
           )}
           <img
             className="product-hover-image primary"
-            src={product.image}
+            src={optimizedImageUrl(product.image, 500)}
             alt={product.name}
             loading={loading}
           />
           {product.hoverImage && (
             <img
               className="product-hover-image secondary"
-              src={product.hoverImage}
+              src={optimizedImageUrl(product.hoverImage, 500)}
               alt=""
               loading={loading}
             />
@@ -1080,7 +1081,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
                       key={product.id}
                       onClick={() => selectSearchProduct(product)}
                     >
-                      <img src={product.image} alt={product.name} loading="lazy" />
+                      <img src={optimizedImageUrl(product.image, 100)} alt={product.name} loading="lazy" />
                       <span>
                         <small>
                           {product.stone} · {product.category}
@@ -1933,7 +1934,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
                   {selectedProduct.campaignLabel || ui.discountOpportunity}
                 </span>
               )}
-              <img src={selectedProduct.image} alt={selectedProduct.name} />
+              <img src={optimizedImageUrl(selectedProduct.image, 700)} alt={selectedProduct.name} />
             </div>
             <div className="modal-copy">
               <p className="eyebrow">{selectedProduct.category}</p>

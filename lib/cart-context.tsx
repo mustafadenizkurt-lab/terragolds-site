@@ -11,6 +11,7 @@ import {
 import { getDiscountedPrice, type Product } from "./store-data";
 import { trackAddToCart } from "./analytics";
 import { useLanguage } from "./language-client";
+import { optimizedImageUrl } from "./image-transform";
 import type {
   CheckoutPaymentMethod,
   PaymentProviderSummary,
@@ -922,7 +923,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
               ) : (
                 cartItems.map(({ product, quantity }) => (
                   <div className="cart-item" key={product.id}>
-                    <img src={product.image} alt="" />
+                    <img src={optimizedImageUrl(product.image, 150)} alt="" />
                     <div className="cart-item-body">
                       <div className="cart-item-copy">
                         <small>{product.stone}</small>

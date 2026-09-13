@@ -10,6 +10,7 @@ import {
   type Product,
 } from "../../lib/store-data";
 import { syncFavorites } from "../../lib/favorite-client";
+import { optimizedImageUrl } from "../../lib/image-transform";
 
 const money = new Intl.NumberFormat("tr-TR", {
   style: "currency",
@@ -130,7 +131,7 @@ export default function FavoritesClient({
                 <div className="favorite-card-image">
                   <Link href={`/products/${product.slug || product.id}`}>
                     <img
-                      src={product.image}
+                      src={optimizedImageUrl(product.image, 500)}
                       alt={product.name}
                       loading={index < 6 ? "eager" : "lazy"}
                     />

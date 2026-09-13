@@ -14,6 +14,7 @@ import { useCart } from "../../../lib/cart-context";
 import { useLanguage } from "../../../lib/language-client";
 import { uiUpper } from "../../../lib/i18n";
 import { decodeHtmlEntities } from "../../../lib/text-utils";
+import { optimizedImageUrl } from "../../../lib/image-transform";
 
 type Review = {
   id: number;
@@ -404,7 +405,7 @@ export default function ProductDetailClient({
               onClick={() => setImageZoomOpen(true)}
               aria-label={t.zoomPhoto(product.name)}
             >
-              <img src={activeImage} alt={product.name} />
+              <img src={optimizedImageUrl(activeImage, 900)} alt={product.name} />
             </button>
           </div>
 
@@ -419,7 +420,7 @@ export default function ProductDetailClient({
                   aria-label={t.showPhoto(product.name, index + 1)}
                   aria-pressed={index === selectedImageIndex}
                 >
-                  <img src={image} alt={t.photoAlt(product.name, index + 1)} />
+                  <img src={optimizedImageUrl(image, 150)} alt={t.photoAlt(product.name, index + 1)} />
                   <span aria-hidden="true" />
                 </button>
               ))}
@@ -571,7 +572,7 @@ export default function ProductDetailClient({
             >
               ×
             </button>
-            <img src={activeImage} alt={product.name} />
+            <img src={optimizedImageUrl(activeImage, 1400)} alt={product.name} />
             {productImages.length > 1 && (
               <div className="image-zoom-navigation">
                 <button

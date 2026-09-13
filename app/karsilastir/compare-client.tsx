@@ -8,6 +8,7 @@ import QuickAddToCart from "../quick-add-to-cart";
 import { getDiscountedPrice, type Product } from "../../lib/store-data";
 import { useLanguage } from "../../lib/language-client";
 import { decodeHtmlEntities } from "../../lib/text-utils";
+import { optimizedImageUrl } from "../../lib/image-transform";
 import {
   COMPARE_STORAGE_KEY,
   readCompareList,
@@ -202,7 +203,7 @@ export default function CompareClient({
                           ×
                         </button>
                         <Link href={`/products/${product.slug || product.id}`}>
-                          <img src={product.image} alt={product.name} loading="lazy" />
+                          <img src={optimizedImageUrl(product.image, 250)} alt={product.name} loading="lazy" />
                           <strong>{product.name}</strong>
                         </Link>
                       </th>

@@ -5,6 +5,7 @@ import type {
   AdminDashboardData,
   DashboardPeriod,
 } from "../../lib/admin-dashboard-types";
+import { optimizedImageUrl } from "../../lib/image-transform";
 
 const currency = new Intl.NumberFormat("tr-TR", {
   style: "currency",
@@ -354,7 +355,7 @@ export default function DashboardOverview({
                 key={product.id}
                 onClick={() => onOpenProduct(product.id)}
               >
-                <img src={product.image} alt="" />
+                <img src={optimizedImageUrl(product.image, 80)} alt="" />
                 <span>
                   <strong>{product.name}</strong>
                   <small>
@@ -387,7 +388,7 @@ export default function DashboardOverview({
                 onClick={() => onOpenProduct(product.id)}
               >
                 <em>{String(index + 1).padStart(2, "0")}</em>
-                <img src={product.image} alt="" />
+                <img src={optimizedImageUrl(product.image, 80)} alt="" />
                 <span>
                   <strong>{product.name}</strong>
                   <i>

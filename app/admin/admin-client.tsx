@@ -33,6 +33,7 @@ import type {
   DashboardPeriod,
 } from "../../lib/admin-dashboard-types";
 import type { ProductCategory } from "../../lib/category-types";
+import { optimizedImageUrl } from "../../lib/image-transform";
 import { buildPageWindow } from "../../lib/pagination";
 
 type AdminView =
@@ -918,7 +919,7 @@ export default function AdminClient({
                       type="button"
                       onClick={() => openProduct(product)}
                     >
-                      <img src={product.image} alt="" />
+                      <img src={optimizedImageUrl(product.image, 80)} alt="" />
                       <span>
                         <strong>{product.name}</strong>
                         <small>{product.category} · {product.stone}</small>

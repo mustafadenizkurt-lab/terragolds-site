@@ -12,6 +12,7 @@ import { getDiscountedPrice, type Product } from "../lib/store-data";
 import { useLanguage } from "../lib/language-client";
 import { uiText, uiUpper } from "../lib/i18n";
 import CategoryNavDropdown from "./category-nav-dropdown";
+import { optimizedImageUrl } from "../lib/image-transform";
 
 const money = new Intl.NumberFormat("tr-TR", {
   style: "currency",
@@ -357,7 +358,7 @@ export default function StoreSubpageHeader({
                     key={product.id}
                     onClick={() => selectSearchProduct(product)}
                   >
-                    <img src={product.image} alt={product.name} loading="lazy" />
+                    <img src={optimizedImageUrl(product.image, 100)} alt={product.name} loading="lazy" />
                     <span>
                       <small>
                         {product.stone} · {product.category}

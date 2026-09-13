@@ -6,6 +6,7 @@ import { useLanguage } from "../../../lib/language-client";
 import QuickAddToCart from "../../quick-add-to-cart";
 import FavoriteHeartButton from "../../favorite-heart-button";
 import CompareToggleButton from "../../compare-toggle-button";
+import { optimizedImageUrl } from "../../../lib/image-transform";
 
 const copy = {
   tr: {
@@ -98,14 +99,14 @@ export default function CategoryPageBody({
                       )}
                       <img
                         className="product-hover-image primary"
-                        src={product.image}
+                        src={optimizedImageUrl(product.image, 500)}
                         alt={product.name}
                         loading={imageLoading}
                       />
                       {product.hoverImage && (
                         <img
                           className="product-hover-image secondary"
-                          src={product.hoverImage}
+                          src={optimizedImageUrl(product.hoverImage, 500)}
                           alt=""
                           loading={imageLoading}
                         />
