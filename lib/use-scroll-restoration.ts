@@ -31,9 +31,15 @@ export function useScrollRestoration(storageKey: string) {
       };
     }
 
-    // Keep re-asserting the saved position for a couple of seconds while
-    // content streams in, and stop the moment the visitor scrolls or
-    // touches the page themselves.
+    // Keep re-asserting the saved position while content (images in
+    // particular) is still streaming in and growing the page - a fixed
+    // short timeout isn't enough for grids with a dozen+ product photos,
+    // which can take longer than that to reach their final height, leaving
+    // the restore stuck wherever the page happened to be clamped to when
+    // the timeout gave up. Stop as soon as the target is actually reached,
+    // the visitor scrolls/touches on their own, or a generous safety cap
+    // elapses (a broken image or infinite layout shift shouldn't spin this
+    // forever).
     let cancelled = false;
     const stop = () => {
       cancelled = true;
@@ -42,6 +48,7 @@ export function useScrollRestoration(storageKey: string) {
     window.addEventListener("touchstart", stop, { once: true, passive: true });
 
     const start = Date.now();
+    const MAX_DURATION_MS = 6000;
     const tick = () => {
       if (cancelled) return;
       // The site sets `scroll-behavior: smooth` globally, which hijacks even
@@ -50,7 +57,8 @@ export function useScrollRestoration(storageKey: string) {
       // bottom of the page instead of the target). "instant" bypasses that
       // CSS entirely.
       window.scrollTo({ top: target, left: 0, behavior: "instant" });
-      if (Date.now() - start < 2000) {
+      const reached = Math.abs(window.scrollY - target) < 2;
+      if (!reached && Date.now() - start < MAX_DURATION_MS) {
         window.requestAnimationFrame(tick);
       }
     };
