@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
  */
 export async function GET() {
   const data = await readShowcaseProducts({
-    featuredCount: 10,
+    featuredCount: 30,
     newestCount: 30,
     discountCount: 30,
   });
