@@ -333,6 +333,14 @@ export default function AdminClient({
 
   const applyBulkUpdate = async () => {
     if (!selectedProductIds.length) return;
+    if (
+      bulkAction === "delete" &&
+      !window.confirm(
+        `${selectedProductIds.length} ürün silinecek. Devam edilsin mi?`,
+      )
+    ) {
+      return;
+    }
     setSaving(true);
     setError("");
     try {
@@ -353,7 +361,11 @@ export default function AdminClient({
       setBulkValue("");
       setBulkLabel("");
       setBulkCategory("");
-      flash(`${Number(body.updated ?? 0)} ürün toplu olarak güncellendi.`);
+      flash(
+        bulkAction === "delete"
+          ? `${Number(body.updated ?? 0)} ürün silindi.`
+          : `${Number(body.updated ?? 0)} ürün toplu olarak güncellendi.`,
+      );
     } catch (bulkError) {
       setError(
         bulkError instanceof Error
@@ -794,6 +806,7 @@ export default function AdminClient({
                     <option value="set-category">Kategoriye taşı</option>
                     <option value="feature">Öne çıkar</option>
                     <option value="unfeature">Öne çıkarmayı kaldır</option>
+                    <option value="delete">Sil</option>
                   </select>
                   {(bulkAction === "increase-stock" ||
                     bulkAction === "set-discount") && (
@@ -843,6 +856,7 @@ export default function AdminClient({
                   )}
                   <button
                     type="button"
+                    className={bulkAction === "delete" ? "danger" : ""}
                     disabled={
                       saving ||
                       !selectedProductIds.length ||
@@ -850,7 +864,7 @@ export default function AdminClient({
                     }
                     onClick={() => void applyBulkUpdate()}
                   >
-                    Uygula
+                    {bulkAction === "delete" ? "Sil" : "Uygula"}
                   </button>
                 </section>
                 <div className="admin-product-head">

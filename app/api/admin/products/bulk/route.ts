@@ -15,7 +15,8 @@ type BulkAction =
   | "clear-discount"
   | "set-category"
   | "feature"
-  | "unfeature";
+  | "unfeature"
+  | "delete";
 
 const actions = new Set<BulkAction>([
   "publish",
@@ -26,6 +27,7 @@ const actions = new Set<BulkAction>([
   "set-category",
   "feature",
   "unfeature",
+  "delete",
 ]);
 
 export async function PATCH(request: Request) {
@@ -49,6 +51,33 @@ export async function PATCH(request: Request) {
 
     if (!productIds.length || !actions.has(action)) {
       return Response.json({ error: "Ürün ve işlem seçimi gereklidir." }, { status: 400 });
+    }
+
+    if (action === "delete") {
+      const db = getD1();
+      const placeholders = productIds.map(() => "?").join(", ");
+      // Senkron ürünü (xml_sync_status = 'synced') gerçekten silinirse,
+      // kodu tedarikçi feed'inde hâlâ varsa bir sonraki senkronda sıfırdan
+      // geri geliyordu - tek ürün DELETE route'undaki aynı mantık: taslağa
+      // alıp 'manual' işaretle, syncSupplier bir daha hiç dokunmasın. Elle
+      // eklenmiş ürünler (senkrona bağlı olmayan) gerçekten siliniyor.
+      const excluded = await db
+        .prepare(
+          `UPDATE products SET status = 'draft', xml_sync_status = 'manual', updated_at = CURRENT_TIMESTAMP
+           WHERE id IN (${placeholders}) AND xml_sync_status = 'synced'`,
+        )
+        .bind(...productIds)
+        .run();
+      const deleted = await db
+        .prepare(
+          `DELETE FROM products WHERE id IN (${placeholders}) AND (xml_sync_status IS NULL OR xml_sync_status != 'synced')`,
+        )
+        .bind(...productIds)
+        .run();
+      return Response.json({
+        ok: true,
+        updated: excluded.meta.changes + deleted.meta.changes,
+      });
     }
 
     let assignment = "";

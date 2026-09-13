@@ -6972,6 +6972,10 @@ footer {
   opacity: 0.42;
   cursor: not-allowed;
 }
+.admin-bulk-toolbar button.danger {
+  border-color: #934334;
+  background: #934334;
+}
 .admin-product-head, .admin-product-row {
   grid-template-columns: 26px minmax(240px, 2fr) minmax(85px, 0.7fr) minmax(65px, 0.55fr)
     minmax(85px, 0.65fr) minmax(80px, 0.65fr) minmax(125px, 0.7fr);
