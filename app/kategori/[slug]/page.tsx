@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 
 const SITE_URL = "https://www.terragolds.com";
 
-const CATEGORY_PRODUCTS_PER_PAGE = 15;
+const CATEGORY_PRODUCTS_PER_PAGE = 30;
 
 type CategoryPageProps = {
   params: Promise<{ slug: string }>;
