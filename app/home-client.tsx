@@ -392,7 +392,12 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
     const start = Date.now();
     const tick = () => {
       if (cancelled) return;
-      window.scrollTo(0, target);
+      // The site sets `scroll-behavior: smooth` globally, which hijacks the
+      // plain (x, y) form of scrollTo too - restarting a smooth-scroll
+      // animation 60x/second here made Chrome's interpolation overshoot
+      // wildly (observed: landing at the very bottom of the page instead of
+      // the target). "instant" bypasses that CSS entirely.
+      window.scrollTo({ top: target, left: 0, behavior: "instant" });
       if (Date.now() - start < 2000) {
         window.requestAnimationFrame(tick);
       }
