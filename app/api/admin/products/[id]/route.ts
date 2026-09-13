@@ -93,7 +93,34 @@ export async function DELETE(request: Request, context: RouteContext) {
     return Response.json({ error: "Geçersiz ürün." }, { status: 400 });
   }
 
-  const result = await getD1()
+  const db = getD1();
+  const product = await db
+    .prepare("SELECT xml_sync_status AS xmlSyncStatus FROM products WHERE id = ?")
+    .bind(id)
+    .first<{ xmlSyncStatus: string | null }>();
+  if (!product) {
+    return Response.json({ error: "Ürün bulunamadı." }, { status: 404 });
+  }
+
+  // A tedarikçi-senkron ürünü tamamen silinirse, o ürünün kodu feed'de hâlâ
+  // varsa bir sonraki senkron onu "yeni ürün" sanıp sıfırdan yeniden
+  // oluşturuyordu (syncSupplier.ts sadece (tedarikçi, ürün kodu) eşleşmesine
+  // bakıyor, satır yoksa INSERT ediyor). Bunun yerine satırı taslağa alıp
+  // xml_sync_status'u 'manual' yapıyoruz: syncSupplier.ts "synced" olmayan
+  // satırlara hiç dokunmuyor, yani bu ürün bir daha asla geri gelmiyor ve
+  // müşteriye de görünmüyor (status='draft'). Senkrona hiç bağlı olmayan
+  // (elle eklenmiş) ürünlerde bu risk yok, onlar gerçekten siliniyor.
+  if (product.xmlSyncStatus === "synced") {
+    await db
+      .prepare(
+        "UPDATE products SET status = 'draft', xml_sync_status = 'manual', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+      )
+      .bind(id)
+      .run();
+    return Response.json({ ok: true });
+  }
+
+  const result = await db
     .prepare("DELETE FROM products WHERE id = ?")
     .bind(id)
     .run();
