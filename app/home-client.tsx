@@ -15,6 +15,7 @@ import {
 import { englishSiteContent, uiText, uiUpper, type Language } from "../lib/i18n";
 import { decodeHtmlEntities } from "../lib/text-utils";
 import { optimizedImageUrl } from "../lib/image-transform";
+import { useScrollRestoration } from "../lib/use-scroll-restoration";
 import { activeCategoryGroups, categoryGroupLabel, type CategoryGroup } from "../lib/category-groups";
 import {
   subgroupsForGroup,
@@ -354,64 +355,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
   const managedContent =
     language === "tr" ? content : { ...content, ...englishSiteContent };
 
-  useEffect(() => {
-    const STORAGE_KEY = "terragolds-home-scroll-y";
-    if ("scrollRestoration" in window.history) {
-      window.history.scrollRestoration = "manual";
-    }
-
-    const saveScroll = () => {
-      window.sessionStorage.setItem(STORAGE_KEY, String(window.scrollY));
-    };
-    window.addEventListener("scroll", saveScroll, { passive: true });
-    window.addEventListener("pagehide", saveScroll);
-
-    // The featured/catalog sections below fetch their data client-side
-    // after mount, so right after a back-navigation to "/" the page is far
-    // shorter than its final height - the browser's own scroll-restore
-    // fires too early and undershoots badly (lands near the top instead of
-    // deep in the catalog grid), which reads to a visitor as "going back
-    // sent me to the home page". Keep re-asserting the saved position for a
-    // couple of seconds while content streams in, and stop the moment the
-    // visitor scrolls or touches the page themselves.
-    const target = Number(window.sessionStorage.getItem(STORAGE_KEY));
-    if (!Number.isFinite(target) || target <= 0) {
-      return () => {
-        window.removeEventListener("scroll", saveScroll);
-        window.removeEventListener("pagehide", saveScroll);
-      };
-    }
-
-    let cancelled = false;
-    const stop = () => {
-      cancelled = true;
-    };
-    window.addEventListener("wheel", stop, { once: true, passive: true });
-    window.addEventListener("touchstart", stop, { once: true, passive: true });
-
-    const start = Date.now();
-    const tick = () => {
-      if (cancelled) return;
-      // The site sets `scroll-behavior: smooth` globally, which hijacks the
-      // plain (x, y) form of scrollTo too - restarting a smooth-scroll
-      // animation 60x/second here made Chrome's interpolation overshoot
-      // wildly (observed: landing at the very bottom of the page instead of
-      // the target). "instant" bypasses that CSS entirely.
-      window.scrollTo({ top: target, left: 0, behavior: "instant" });
-      if (Date.now() - start < 2000) {
-        window.requestAnimationFrame(tick);
-      }
-    };
-    tick();
-
-    return () => {
-      cancelled = true;
-      window.removeEventListener("scroll", saveScroll);
-      window.removeEventListener("pagehide", saveScroll);
-      window.removeEventListener("wheel", stop);
-      window.removeEventListener("touchstart", stop);
-    };
-  }, []);
+  useScrollRestoration("terragolds-home-scroll-y");
 
   useEffect(() => {
     const savedLiked = window.localStorage.getItem("terragolds-liked");

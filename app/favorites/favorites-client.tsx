@@ -11,6 +11,7 @@ import {
 } from "../../lib/store-data";
 import { syncFavorites } from "../../lib/favorite-client";
 import { optimizedImageUrl } from "../../lib/image-transform";
+import { useScrollRestoration } from "../../lib/use-scroll-restoration";
 
 const money = new Intl.NumberFormat("tr-TR", {
   style: "currency",
@@ -52,6 +53,8 @@ export default function FavoritesClient({
   const [favorites, setFavorites] = useState<Product[]>([]);
   const [liked, setLiked] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
+
+  useScrollRestoration("terragolds-favorites-scroll-y");
 
   useEffect(() => {
     let storedLikes: number[] = [];

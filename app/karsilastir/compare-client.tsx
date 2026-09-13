@@ -9,6 +9,7 @@ import { getDiscountedPrice, type Product } from "../../lib/store-data";
 import { useLanguage } from "../../lib/language-client";
 import { decodeHtmlEntities } from "../../lib/text-utils";
 import { optimizedImageUrl } from "../../lib/image-transform";
+import { useScrollRestoration } from "../../lib/use-scroll-restoration";
 import {
   COMPARE_STORAGE_KEY,
   readCompareList,
@@ -102,6 +103,8 @@ export default function CompareClient({
   const [compareIds, setCompareIds] = useState<number[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+
+  useScrollRestoration("terragolds-compare-scroll-y");
 
   useEffect(() => {
     const refresh = () => setCompareIds(readCompareList());
