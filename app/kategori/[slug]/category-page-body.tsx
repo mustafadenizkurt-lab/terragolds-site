@@ -7,6 +7,7 @@ import QuickAddToCart from "../../quick-add-to-cart";
 import FavoriteHeartButton from "../../favorite-heart-button";
 import CompareToggleButton from "../../compare-toggle-button";
 import { optimizedImageUrl } from "../../../lib/image-transform";
+import { buildPageWindow } from "../../../lib/pagination";
 
 const copy = {
   tr: {
@@ -21,6 +22,9 @@ const copy = {
     lastPieces: "Son parçalar",
     discount: (percent: number) => `%${percent} indirim`,
     backToAllProducts: "Tüm ürünlere dön",
+    previousPage: "Önceki",
+    nextPage: "Sonraki",
+    pageStatus: (page: number, total: number) => `${page}. sayfa / ${total}`,
   },
   en: {
     home: "Home",
@@ -34,6 +38,9 @@ const copy = {
     lastPieces: "Last pieces",
     discount: (percent: number) => `${percent}% off`,
     backToAllProducts: "Back to all products",
+    previousPage: "Previous",
+    nextPage: "Next",
+    pageStatus: (page: number, total: number) => `Page ${page} / ${total}`,
   },
 } as const;
 
@@ -41,10 +48,20 @@ export default function CategoryPageBody({
   title,
   titleEn,
   products,
+  totalCount,
+  page,
+  totalPages,
+  slug,
+  alt,
 }: {
   title: string | null;
   titleEn?: string | null;
   products: Product[];
+  totalCount: number;
+  page: number;
+  totalPages: number;
+  slug: string;
+  alt?: string;
 }) {
   const [language] = useLanguage();
   const t = copy[language];
@@ -52,6 +69,14 @@ export default function CategoryPageBody({
   // supplier-entered single category doesn't, so it stays Turkish even in
   // English mode - see lib/i18n.ts's note on untranslated catalog data.
   const displayTitle = (language === "en" && titleEn ? titleEn : title) ?? null;
+  const pageWindow = buildPageWindow(page, totalPages);
+  const pageHref = (targetPage: number) => {
+    const params = new URLSearchParams();
+    if (alt) params.set("alt", alt);
+    if (targetPage > 1) params.set("sayfa", String(targetPage));
+    const query = params.toString();
+    return `/kategori/${slug}${query ? `?${query}` : ""}`;
+  };
 
   return (
     <>
@@ -65,7 +90,7 @@ export default function CategoryPageBody({
         </div>
         <p className="eyebrow">{t.collection}</p>
         <h1>{displayTitle ?? t.notFoundTitle}</h1>
-        <p>{title ? t.piecesSelected(products.length) : t.notFoundDetail}</p>
+        <p>{title ? t.piecesSelected(totalCount) : t.notFoundDetail}</p>
       </section>
 
       {title ? (
@@ -132,6 +157,50 @@ export default function CategoryPageBody({
               );
             })}
           </div>
+          {totalPages > 1 && (
+            <nav className="catalog-pagination" aria-label={t.pageStatus(page, totalPages)}>
+              <Link
+                href={pageHref(page - 1)}
+                aria-disabled={page === 1}
+                onClick={(event) => {
+                  if (page === 1) event.preventDefault();
+                }}
+              >
+                {t.previousPage}
+              </Link>
+              <div>
+                {pageWindow.map((item) =>
+                  typeof item === "number" ? (
+                    <Link
+                      href={pageHref(item)}
+                      className={item === page ? "active" : ""}
+                      key={item}
+                      aria-current={item === page ? "page" : undefined}
+                    >
+                      {item}
+                    </Link>
+                  ) : (
+                    <span
+                      className="catalog-pagination-ellipsis"
+                      key={item}
+                      aria-hidden="true"
+                    >
+                      …
+                    </span>
+                  ),
+                )}
+              </div>
+              <Link
+                href={pageHref(page + 1)}
+                aria-disabled={page === totalPages}
+                onClick={(event) => {
+                  if (page === totalPages) event.preventDefault();
+                }}
+              >
+                {t.nextPage}
+              </Link>
+            </nav>
+          )}
         </section>
       ) : (
         <section className="category-products section-shell">

@@ -15,9 +15,11 @@ export const dynamic = "force-dynamic";
 
 const SITE_URL = "https://www.terragolds.com";
 
+const CATEGORY_PRODUCTS_PER_PAGE = 15;
+
 type CategoryPageProps = {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ alt?: string }>;
+  searchParams: Promise<{ alt?: string; sayfa?: string }>;
 };
 
 /**
@@ -118,7 +120,7 @@ export async function generateMetadata({
 
 export default async function CategoryPage({ params, searchParams }: CategoryPageProps) {
   const { slug } = await params;
-  const { alt } = await searchParams;
+  const { alt, sayfa } = await searchParams;
   const [products, settings] = await Promise.all([
     readProducts(),
     readSettings(),
@@ -127,6 +129,19 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
   const title = resolved?.title ?? null;
   const titleEn = resolved?.titleEn ?? null;
   const categoryProducts = resolved?.products ?? [];
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(categoryProducts.length / CATEGORY_PRODUCTS_PER_PAGE),
+  );
+  const requestedPage = Number(sayfa);
+  const page = Number.isInteger(requestedPage)
+    ? Math.min(Math.max(1, requestedPage), totalPages)
+    : 1;
+  const pagedProducts = categoryProducts.slice(
+    (page - 1) * CATEGORY_PRODUCTS_PER_PAGE,
+    page * CATEGORY_PRODUCTS_PER_PAGE,
+  );
 
   const breadcrumbUrl = alt
     ? `${SITE_URL}/kategori/${slug}?alt=${alt}`
@@ -151,7 +166,16 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
       <StoreSubpageHeader activeGroupSlug={slug} />
       <StoreTrustBar />
 
-      <CategoryPageBody title={title} titleEn={titleEn} products={categoryProducts} />
+      <CategoryPageBody
+        title={title}
+        titleEn={titleEn}
+        products={pagedProducts}
+        totalCount={categoryProducts.length}
+        page={page}
+        totalPages={totalPages}
+        slug={slug}
+        alt={alt}
+      />
 
       <StoreSiteFooter
         businessName={settings.businessName}

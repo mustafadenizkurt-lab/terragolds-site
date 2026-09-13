@@ -13458,7 +13458,7 @@ body:has(.market-theme)::before, body:has(.market-theme)::after, .market-theme .
   overflow-x: auto;
   padding: 4px;
 }
-.catalog-pagination button {
+.catalog-pagination button, .catalog-pagination a {
   display: inline-flex;
   min-width: 38px;
   min-height: 38px;
@@ -13472,18 +13472,20 @@ body:has(.market-theme)::before, body:has(.market-theme)::after, .market-theme .
   font-size: 12px;
   font-weight: 850;
   cursor: pointer;
+  text-decoration: none;
   transition: background 180ms ease,
     border-color 180ms ease,
     color 180ms ease,
     transform 180ms ease;
 }
-.catalog-pagination button:hover:not(:disabled), .catalog-pagination button.active {
+.catalog-pagination button:hover:not(:disabled), .catalog-pagination button.active,
+.catalog-pagination a:hover:not([aria-disabled="true"]), .catalog-pagination a.active {
   border-color: rgba(142, 102, 37, 0.55);
   background: #c99839;
   color: #fffaf0;
   transform: translateY(-1px);
 }
-.catalog-pagination button:disabled {
+.catalog-pagination button:disabled, .catalog-pagination a[aria-disabled="true"] {
   cursor: not-allowed;
   opacity: 0.42;
 }
