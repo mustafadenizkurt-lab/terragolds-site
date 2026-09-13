@@ -38,7 +38,6 @@ export default function QuickAddToCart({ product }: { product: Product }) {
       <div className={`quick-add-price${product.discountPercent > 0 ? " discounted" : ""}`}>
         {product.discountPercent > 0 && <del>{formatPrice(product.price)}</del>}
         <strong>{formatPrice(discountedPrice)}</strong>
-        <small>TL + KDV</small>
       </div>
       <div className="quick-add-row">
         <div className="quick-add-qty">

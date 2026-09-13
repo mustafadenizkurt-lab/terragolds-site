@@ -69,7 +69,7 @@ function buildFaqItems(language: Language, settings: Settings, address: string):
       {
         question: "Do product prices include VAT?",
         answer:
-          "Prices shown on product pages do not include VAT. A 20% VAT is added as a separate line at cart and checkout, and included in the total amount due.",
+          "Yes. The prices you see on product pages and in your cart are VAT-inclusive - that's the final amount you pay, with no VAT added on top.",
       },
       {
         question: "Can I return or exchange a product?",
@@ -165,7 +165,7 @@ function buildFaqItems(language: Language, settings: Settings, address: string):
     {
       question: "Ürün fiyatlarına KDV dahil mi?",
       answer:
-        "Ürün sayfalarında gösterilen fiyatlara KDV dahil değildir. Sepet ve ödeme adımında %20 KDV ayrı bir satır olarak eklenir ve ödenecek toplam tutara dahil edilir.",
+        "Evet. Ürün sayfalarında ve sepette gördüğünüz fiyatlar KDV dahil, ödeyeceğiniz nihai tutardır; ayrıca bir KDV eklenmez.",
     },
     {
       question: "İade veya değişim yapabilir miyim?",

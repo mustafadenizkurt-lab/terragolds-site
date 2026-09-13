@@ -1204,7 +1204,7 @@ export default function AdminClient({
                           </select>
                         </label>
                         <label className="admin-field">
-                          <span>Fiyat (TL)</span>
+                          <span>Fiyat (TL, KDV dahil)</span>
                           <input
                             type="number"
                             min="0"

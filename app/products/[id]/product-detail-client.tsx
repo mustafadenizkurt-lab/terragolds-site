@@ -58,7 +58,6 @@ const copy = {
     ratingNew: "Yeni",
     verifiedReviewCount: (count: number) => `${count} doğrulanmış yorum`,
     beFirstToReview: "İlk yorumu siz yapın",
-    vat: "+ KDV",
     carefulPackaging: "Özenli paketleme",
     carefulPackagingDetail: "Ürünü hasarsız ulaştıran güvenli gönderim",
     verifiedPiece: "Doğrulanmış parça",
@@ -128,7 +127,6 @@ const copy = {
     ratingNew: "New",
     verifiedReviewCount: (count: number) => `${count} verified reviews`,
     beFirstToReview: "Be the first to review",
-    vat: "+ VAT",
     carefulPackaging: "Careful packaging",
     carefulPackagingDetail: "Secure delivery, undamaged on arrival",
     verifiedPiece: "Verified piece",
@@ -458,7 +456,6 @@ export default function ProductDetailClient({
               <del>{money.format(product.price)}</del>
             )}
             <strong>{money.format(currentPrice)}</strong>
-            <small>{t.vat}</small>
           </div>
 
           <p className="product-profile-description">

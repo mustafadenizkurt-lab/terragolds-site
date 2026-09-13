@@ -210,13 +210,16 @@ export async function calculateCartQuote(
     freeShippingThreshold > 0 &&
     discountedSubtotal >= freeShippingThreshold;
   const shippingAmount = freeShipping ? 0 : shippingFee;
-  // `price` is now treated as VAT-exclusive: KDV is added on top here, on
-  // the discounted subtotal (net of any discount code - VAT is only owed
-  // on what the customer actually pays for the goods, not the pre-discount
-  // list price). Shipping is not taxed here (kept as its own line, matching
-  // the requested breakdown).
-  const vatAmount = Math.round(discountedSubtotal * VAT_RATE);
-  const totalAmount = discountedSubtotal + vatAmount + shippingAmount;
+  // `price` is VAT-inclusive (see calculatePrice.ts): the customer-facing
+  // sticker price already IS the amount they pay, so VAT is never added on
+  // top here - doing so would double-charge it. `vatAmount` instead reports
+  // the VAT portion already contained within the discounted subtotal (net of
+  // any discount code - VAT is only owed on what the customer actually pays
+  // for the goods), purely for display/invoicing. Shipping is not taxed.
+  const vatAmount = Math.round(
+    discountedSubtotal - discountedSubtotal / (1 + VAT_RATE),
+  );
+  const totalAmount = discountedSubtotal + shippingAmount;
   if (totalAmount <= 0 || totalAmount > 99_999_900) {
     throw new Error("Ödenecek sipariş tutarı geçersiz.");
   }

@@ -354,7 +354,7 @@ export default function SystemTestCenter({
                 <b>−{formatCents(result.details.quote.discountAmount)}</b>
               </div>
               <div>
-                <span>KDV (%20)</span>
+                <span>KDV (%20, dahil)</span>
                 <b>{formatCents(result.details.quote.vatAmount)}</b>
               </div>
               <div>

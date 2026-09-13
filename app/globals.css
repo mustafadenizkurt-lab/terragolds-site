@@ -3996,6 +3996,14 @@ footer {
 .cart-summary-row.discount strong {
   color: #2f7458;
 }
+.cart-summary-row.vat {
+  opacity: 0.7;
+}
+.cart-summary-row.vat strong {
+  font-size: 11px;
+  font-weight: 500;
+  color: #4f5d57;
+}
 .cart-summary-row.shipping strong {
   display: flex;
   align-items: center;
