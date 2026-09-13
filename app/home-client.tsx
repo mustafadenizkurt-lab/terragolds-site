@@ -109,10 +109,10 @@ const moneyWithCents = new Intl.NumberFormat("tr-TR", {
   maximumFractionDigits: 2,
 });
 
-const CATALOG_PRODUCTS_PER_PAGE = 15;
-const NEW_ARRIVALS_COUNT = 12;
+const CATALOG_PRODUCTS_PER_PAGE = 30;
+const NEW_ARRIVALS_COUNT = 30;
 const FEATURED_PRODUCTS_COUNT = 10;
-const DISCOUNT_SHOWCASE_COUNT = 10;
+const DISCOUNT_SHOWCASE_COUNT = 30;
 
 type NoticeState = {
   id: number;
