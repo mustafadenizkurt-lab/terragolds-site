@@ -16,6 +16,8 @@ import { useLanguage } from "../../../lib/language-client";
 import { uiUpper } from "../../../lib/i18n";
 import { decodeHtmlEntities } from "../../../lib/text-utils";
 import { optimizedImageUrl } from "../../../lib/image-transform";
+import { groupForCategory, categoryGroupLabel } from "../../../lib/category-groups";
+import { categoryToSlug } from "../../../lib/category-slugs";
 
 type Review = {
   id: number;
@@ -46,7 +48,6 @@ const copy = {
     notFoundTitle: "Ürün bulunamadı",
     continueShopping: "Alışverişe devam et",
     home: "Ana Sayfa",
-    products: "Ürünler",
     discount: (percent: number) => `%${percent} İndirim`,
     removeFavorite: "Favorilerden çıkar",
     addFavorite: "Favorilere ekle",
@@ -133,7 +134,6 @@ const copy = {
     notFoundTitle: "Product not found",
     continueShopping: "Continue shopping",
     home: "Home",
-    products: "Products",
     discount: (percent: number) => `${percent}% Off`,
     removeFavorite: "Remove from favorites",
     addFavorite: "Add to favorites",
@@ -415,6 +415,18 @@ export default function ProductDetailClient({
     averageRating: product.reviewAverage ?? 0,
     reviewCount: product.reviewCount ?? 0,
   };
+  // A real, explicit link back to this product's category - browser "back"
+  // isn't reliable enough on its own to depend on (bfcache/RSC navigation
+  // history quirks can land it on the homepage instead of the category the
+  // visitor actually came from), so the breadcrumb gives a correct one-tap
+  // way back regardless of how they arrived here.
+  const categoryGroup = groupForCategory(product.category);
+  const categoryHref = categoryGroup
+    ? `/kategori/${categoryGroup.slug}`
+    : `/kategori/${categoryToSlug(product.category)}`;
+  const categoryLabel = categoryGroup
+    ? categoryGroupLabel(categoryGroup, language)
+    : product.category;
 
   return (
     <main className="product-profile-page">
@@ -423,7 +435,7 @@ export default function ProductDetailClient({
       <div className="product-breadcrumb section-shell">
         <Link href="/">{t.home}</Link>
         <span>/</span>
-        <Link href="/#shop">{t.products}</Link>
+        <Link href={categoryHref}>{categoryLabel}</Link>
         <span>/</span>
         <b>{product.name}</b>
       </div>
