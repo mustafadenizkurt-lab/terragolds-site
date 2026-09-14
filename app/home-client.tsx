@@ -18,7 +18,12 @@ import { decodeHtmlEntities } from "../lib/text-utils";
 import { optimizedImageUrl } from "../lib/image-transform";
 import { useScrollRestoration } from "../lib/use-scroll-restoration";
 import { MATERIAL_FACETS, COLOR_FACETS, SORT_OPTIONS } from "../lib/product-facets";
-import { activeCategoryGroups, categoryGroupLabel, type CategoryGroup } from "../lib/category-groups";
+import {
+  activeCategoryGroups,
+  categoryGroupLabel,
+  groupForCategory,
+  type CategoryGroup,
+} from "../lib/category-groups";
 import {
   subgroupsForGroup,
   type CategorySubgroup,
@@ -344,6 +349,9 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
     newest: Product[];
     discount: Product[];
   }>({ featured: [], newest: [], discount: [] });
+  const [categoryShowcases, setCategoryShowcases] = useState<
+    Record<string, Product[]>
+  >({});
   const cart = useCart();
   const [liked, setLiked] = useState<number[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -446,6 +454,55 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
         });
       });
   }, []);
+
+  // Per-category showcase rows ("Kolyeler", "Küpeler", ...) - one small,
+  // D1-paginated fetch per active nav group (categorySummary already gives
+  // us every raw category name+count cheaply, without fetching the full
+  // catalog just to find which groups have products). Waits for
+  // categorySummary since a group's member categories aren't known before
+  // that arrives.
+  useEffect(() => {
+    if (categorySummary.length === 0) return;
+    const rawCategories = categorySummary.map((entry) => entry.name);
+    const groups = activeCategoryGroups(rawCategories);
+    const categoriesByGroup = new Map<string, string[]>();
+    for (const name of rawCategories) {
+      const slug = groupForCategory(name)?.slug;
+      if (!slug) continue;
+      categoriesByGroup.set(slug, [...(categoriesByGroup.get(slug) ?? []), name]);
+    }
+
+    const controller = new AbortController();
+    Promise.all(
+      groups.map((group) => {
+        const members = categoriesByGroup.get(group.slug) ?? [];
+        if (members.length === 0) return null;
+        const params = new URLSearchParams();
+        params.set("categories", members.join(","));
+        params.set("pageSize", "10");
+        params.set("sort", "yeni");
+        return fetch(`/api/products?${params.toString()}`, {
+          cache: "no-store",
+          signal: controller.signal,
+        })
+          .then((response) => response.json() as Promise<{ products?: Product[] }>)
+          .then(
+            (data) => [group.slug, data.products ?? []] as [string, Product[]],
+          )
+          .catch(() => [group.slug, []] as [string, Product[]]);
+      }),
+    ).then((results) => {
+      const next: Record<string, Product[]> = {};
+      for (const entry of results) {
+        if (!entry) continue;
+        const [slug, products] = entry;
+        if (products.length > 0) next[slug] = products;
+      }
+      setCategoryShowcases(next);
+    });
+
+    return () => controller.abort();
+  }, [categorySummary]);
 
   // Header search: results are scored server-side (readShowcaseProducts'
   // sibling, searchProducts() in lib/store-db.ts) over the small set of
@@ -1565,6 +1622,39 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
           </div>
         </section>
       )}
+
+      {activeCategoryGroups(categorySummary.map((entry) => entry.name))
+        .filter((group) => (categoryShowcases[group.slug]?.length ?? 0) > 0)
+        .map((group) => (
+          <section
+            className="featured-section section-shell"
+            aria-label={categoryGroupLabel(group, language)}
+            key={group.slug}
+          >
+            <div className="market-section-title">
+              <span aria-hidden="true">✦</span>
+              <div>
+                <small>{ui.categories}</small>
+                <h2>{categoryGroupLabel(group, language)}</h2>
+              </div>
+              <a className="market-section-view-all" href={`/kategori/${group.slug}`}>
+                {ui.viewAll}
+              </a>
+            </div>
+            <div className="featured-row">
+              {categoryShowcases[group.slug].map((product) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  ui={ui}
+                  isLiked={liked.includes(product.id)}
+                  onToggleLike={() => toggleLike(product.id)}
+                  onQuickView={() => setSelectedProduct(product)}
+                />
+              ))}
+            </div>
+          </section>
+        ))}
 
       <section className="shop section-shell" id="shop">
         <div className="market-section-title">

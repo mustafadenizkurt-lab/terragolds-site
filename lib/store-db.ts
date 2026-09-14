@@ -323,6 +323,8 @@ export type ReadProductsPageOptions = {
   color?: string;
   /** One of SORT_OPTIONS's keys (lib/product-facets.ts). Falls back to the curated default order. */
   sort?: string;
+  /** Match products.category against any of these exact raw category names (e.g. every category a curated nav group collapses) - independent of, and combinable with, `category`. */
+  categoryIn?: string[];
 };
 
 export type ProductsPage = {
@@ -371,6 +373,11 @@ export async function readProductsPage(
   if (options.category && options.category !== "Tümü") {
     conditions.push("products.category = ?");
     params.push(options.category);
+  }
+  if (options.categoryIn && options.categoryIn.length > 0) {
+    const placeholders = options.categoryIn.map(() => "?").join(", ");
+    conditions.push(`products.category IN (${placeholders})`);
+    params.push(...options.categoryIn);
   }
   if (options.q?.trim()) {
     const like = `%${options.q.trim().toLocaleLowerCase("tr-TR")}%`;

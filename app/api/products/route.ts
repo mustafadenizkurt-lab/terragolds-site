@@ -28,6 +28,7 @@ export async function GET(request: Request) {
     material: params.get("material") ?? undefined,
     color: params.get("color") ?? undefined,
     sort: params.get("sort") ?? undefined,
+    categoryIn: params.get("categories")?.split(",").map((c) => c.trim()).filter(Boolean),
   });
 
   return Response.json(data, { headers: { "cache-control": "no-store" } });

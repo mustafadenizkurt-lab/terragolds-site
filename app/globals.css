@@ -12572,6 +12572,18 @@ body:has(.market-theme)::before, body:has(.market-theme)::after, .market-theme .
   font-weight: 700;
   letter-spacing: 0;
 }
+.market-section-view-all {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--market-accent);
+  white-space: nowrap;
+}
+.market-section-view-all:hover {
+  text-decoration: underline;
+}
 .market-theme .catalog-trust-strip, .market-theme .collection-nav-top, .market-theme .gold-showcase, .market-theme .stone-showcase-dots {
   display: none !important;
 }
