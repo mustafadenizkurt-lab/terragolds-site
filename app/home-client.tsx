@@ -16,7 +16,7 @@ import { englishSiteContent, uiText, uiUpper, type Language } from "../lib/i18n"
 import { decodeHtmlEntities } from "../lib/text-utils";
 import { optimizedImageUrl } from "../lib/image-transform";
 import { useScrollRestoration } from "../lib/use-scroll-restoration";
-import { MATERIAL_FACETS, COLOR_FACETS } from "../lib/product-facets";
+import { MATERIAL_FACETS, COLOR_FACETS, SORT_OPTIONS } from "../lib/product-facets";
 import { activeCategoryGroups, categoryGroupLabel, type CategoryGroup } from "../lib/category-groups";
 import {
   subgroupsForGroup,
@@ -308,6 +308,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
   const [catalogDiscountOnly, setCatalogDiscountOnly] = useState(false);
   const [catalogMaterial, setCatalogMaterial] = useState("");
   const [catalogColor, setCatalogColor] = useState("");
+  const [catalogSort, setCatalogSort] = useState("");
   const [catalogPage, setCatalogPage] = useState(() => {
     if (typeof window === "undefined") return 1;
     const page = Number(new URLSearchParams(window.location.search).get("sayfa"));
@@ -693,6 +694,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
       if (catalogDiscountOnly) params.set("discountOnly", "true");
       if (catalogMaterial) params.set("material", catalogMaterial);
       if (catalogColor) params.set("color", catalogColor);
+      if (catalogSort) params.set("sort", catalogSort);
 
       fetch(`/api/products?${params.toString()}`, {
         cache: "no-store",
@@ -742,6 +744,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
     catalogDiscountOnly,
     catalogMaterial,
     catalogColor,
+    catalogSort,
     catalogPage,
   ]);
 
@@ -758,6 +761,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
     category,
     catalogMaterial,
     catalogColor,
+    catalogSort,
   ]);
 
   function catalogPageUrl(page: number) {
@@ -824,6 +828,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
     setCatalogDiscountOnly(false);
     setCatalogMaterial("");
     setCatalogColor("");
+    setCatalogSort("");
     setCategory(categories[0]);
   };
 
@@ -1760,6 +1765,27 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
               {catalogData.totalPages > 1 && (
                 <span>{ui.pageStatus(catalogData.page, catalogData.totalPages)}</span>
               )}
+              <label className="catalog-sort">
+                <span>{ui.sortBy}</span>
+                <select
+                  value={catalogSort}
+                  onChange={(event) => setCatalogSort(event.target.value)}
+                >
+                  <option value="">{ui.sortDefault}</option>
+                  {SORT_OPTIONS.filter((key) => key !== "varsayilan").map((key) => (
+                    <option key={key} value={key}>
+                      {
+                        {
+                          "fiyat-artan": ui.sortPriceAsc,
+                          "fiyat-azalan": ui.sortPriceDesc,
+                          yeni: ui.sortNewest,
+                          "isim-az": ui.sortNameAsc,
+                        }[key]
+                      }
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
             <div className="product-grid">
           {catalogData.products.map((product) => (

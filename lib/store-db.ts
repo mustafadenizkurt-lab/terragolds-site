@@ -8,7 +8,7 @@ import {
   type StoreSettings,
 } from "./store-data";
 import { pickRotatingShowcase } from "./rotating-showcase";
-import { facetKeywords, MATERIAL_FACETS, COLOR_FACETS } from "./product-facets";
+import { facetKeywords, MATERIAL_FACETS, COLOR_FACETS, type SortOption } from "./product-facets";
 
 type ProductRow = {
   id: number;
@@ -321,6 +321,8 @@ export type ReadProductsPageOptions = {
   /** MATERIAL_FACETS/COLOR_FACETS key from lib/product-facets.ts - matched against products.name. */
   material?: string;
   color?: string;
+  /** One of SORT_OPTIONS's keys (lib/product-facets.ts). Falls back to the curated default order. */
+  sort?: string;
 };
 
 export type ProductsPage = {
@@ -413,6 +415,17 @@ export async function readProductsPage(
 
   const whereClause = conditions.join(" AND ");
 
+  // Whitelisted, never built from options.sort directly - it's user input
+  // and gets interpolated into the query below.
+  const ORDER_BY_SQL: Record<SortOption, string> = {
+    varsayilan: "products.sort_order, products.id",
+    "fiyat-artan": `${DISCOUNTED_PRICE_SQL} ASC, products.id`,
+    "fiyat-azalan": `${DISCOUNTED_PRICE_SQL} DESC, products.id`,
+    yeni: "products.created_at DESC, products.id",
+    "isim-az": "products.name COLLATE NOCASE ASC, products.id",
+  };
+  const orderBy = ORDER_BY_SQL[options.sort as SortOption] ?? ORDER_BY_SQL.varsayilan;
+
   const countRow = await db
     .prepare(`SELECT COUNT(*) AS total FROM products WHERE ${whereClause}`)
     .bind(...params)
@@ -431,7 +444,7 @@ export async function readProductsPage(
        LEFT JOIN product_reviews ON product_reviews.product_id = products.id
        WHERE ${whereClause}
        GROUP BY products.id
-       ORDER BY products.sort_order, products.id
+       ORDER BY ${orderBy}
        LIMIT ? OFFSET ?`,
     )
     .bind(...params, pageSize, offset)

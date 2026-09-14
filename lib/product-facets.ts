@@ -1,3 +1,5 @@
+import { getDiscountedPrice, type Product } from "./store-data";
+
 /**
  * Material/color facets for product filtering.
  *
@@ -57,4 +59,33 @@ export function productMatchesFacet(
 /** SQL-side keyword list, for surfaces (like /api/products) that filter in D1. */
 export function facetKeywords(facetKey: string, facets: ProductFacet[]): string[] {
   return findFacet(facets, facetKey)?.keywords ?? [];
+}
+
+// Sort options shared between the D1-backed catalog (/api/products, see
+// store-db.ts's own ORDER BY mapping for these same keys) and the
+// category pages, which still sort an already-loaded JS array (see
+// resolveCategoryOrGroup in app/kategori/[slug]/page.tsx).
+export const SORT_OPTIONS = [
+  "varsayilan",
+  "fiyat-artan",
+  "fiyat-azalan",
+  "yeni",
+  "isim-az",
+] as const;
+export type SortOption = (typeof SORT_OPTIONS)[number];
+
+/** JS-side sort, for surfaces (like category pages) that sort an already-loaded product array. */
+export function sortProducts(products: Product[], sort?: string): Product[] {
+  switch (sort as SortOption | undefined) {
+    case "fiyat-artan":
+      return [...products].sort((a, b) => getDiscountedPrice(a) - getDiscountedPrice(b));
+    case "fiyat-azalan":
+      return [...products].sort((a, b) => getDiscountedPrice(b) - getDiscountedPrice(a));
+    case "yeni":
+      return [...products].sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
+    case "isim-az":
+      return [...products].sort((a, b) => a.name.localeCompare(b.name, "tr-TR"));
+    default:
+      return products;
+  }
 }

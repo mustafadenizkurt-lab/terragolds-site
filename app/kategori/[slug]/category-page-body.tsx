@@ -29,6 +29,12 @@ const copy = {
     material: "Malzeme",
     color: "Renk",
     all: "Tümü",
+    sortBy: "Sırala",
+    sortDefault: "Önerilen sıralama",
+    sortPriceAsc: "Fiyat: Düşükten Yükseğe",
+    sortPriceDesc: "Fiyat: Yüksekten Düşüğe",
+    sortNewest: "En Yeniler",
+    sortNameAsc: "İsim: A-Z",
   },
   en: {
     home: "Home",
@@ -48,6 +54,12 @@ const copy = {
     material: "Material",
     color: "Color",
     all: "All",
+    sortBy: "Sort by",
+    sortDefault: "Recommended order",
+    sortPriceAsc: "Price: Low to High",
+    sortPriceDesc: "Price: High to Low",
+    sortNewest: "Newest",
+    sortNameAsc: "Name: A-Z",
   },
 } as const;
 
@@ -62,6 +74,7 @@ export default function CategoryPageBody({
   alt,
   material,
   color,
+  sort,
 }: {
   title: string | null;
   titleEn?: string | null;
@@ -73,6 +86,7 @@ export default function CategoryPageBody({
   alt?: string;
   material?: string;
   color?: string;
+  sort?: string;
 }) {
   const [language] = useLanguage();
   const t = copy[language];
@@ -156,6 +170,25 @@ export default function CategoryPageBody({
               ))}
             </div>
           </div>
+          <form className="catalog-sort" action={`/kategori/${slug}`} method="get">
+            {alt && <input type="hidden" name="alt" value={alt} />}
+            {material && <input type="hidden" name="malzeme" value={material} />}
+            {color && <input type="hidden" name="renk" value={color} />}
+            <label>
+              <span>{t.sortBy}</span>
+              <select
+                name="sirala"
+                defaultValue={sort ?? ""}
+                onChange={(event) => event.currentTarget.form?.requestSubmit()}
+              >
+                <option value="">{t.sortDefault}</option>
+                <option value="fiyat-artan">{t.sortPriceAsc}</option>
+                <option value="fiyat-azalan">{t.sortPriceDesc}</option>
+                <option value="yeni">{t.sortNewest}</option>
+                <option value="isim-az">{t.sortNameAsc}</option>
+              </select>
+            </label>
+          </form>
           <div className="category-grid">
             {products.map((product, index) => {
               const imageLoading = index < 6 ? "eager" : "lazy";

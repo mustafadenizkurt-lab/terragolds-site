@@ -13444,6 +13444,22 @@ body:has(.market-theme)::before, body:has(.market-theme)::after, .market-theme .
   font-size: 12px;
   font-weight: 520;
 }
+.catalog-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.catalog-sort select {
+  min-height: 32px;
+  border: 1px solid rgba(180, 126, 37, 0.18);
+  border-radius: 999px;
+  padding: 0 12px;
+  background: #fff;
+  color: #24211c;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
 .catalog-pagination {
   display: flex;
   align-items: center;
