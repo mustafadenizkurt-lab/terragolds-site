@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Link2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import StoreSubpageHeader from "../../store-subpage-header";
 import SizeGuide from "./size-guide";
@@ -63,6 +64,12 @@ const copy = {
     carefulPackagingDetail: "Ürünü hasarsız ulaştıran güvenli gönderim",
     verifiedPiece: "Doğrulanmış parça",
     verifiedPieceDetail: "Görsellerdeki hâliyle aynı parça",
+    shareLabel: "Paylaş",
+    shareOnFacebook: (name: string) => `${name} ürününü Facebook'ta paylaş`,
+    shareOnX: (name: string) => `${name} ürününü X'te paylaş`,
+    shareOnPinterest: (name: string) => `${name} ürününü Pinterest'te paylaş`,
+    copyLink: (name: string) => `${name} bağlantısını kopyala`,
+    linkCopied: "Bağlantı kopyalandı",
     authenticityGuarantee: "Orijinallik Garantisi",
     authenticityGuaranteeTextBefore:
       "Her ürünümüz, mağazamıza eklenmeden önce doğallık ve kalite açısından ekibimizce incelenir. Ürün açıklamasına uygun bulunmayan parçalarda ",
@@ -132,6 +139,12 @@ const copy = {
     carefulPackagingDetail: "Secure delivery, undamaged on arrival",
     verifiedPiece: "Verified piece",
     verifiedPieceDetail: "The exact piece shown in the photos",
+    shareLabel: "Share",
+    shareOnFacebook: (name: string) => `Share ${name} on Facebook`,
+    shareOnX: (name: string) => `Share ${name} on X`,
+    shareOnPinterest: (name: string) => `Share ${name} on Pinterest`,
+    copyLink: (name: string) => `Copy link to ${name}`,
+    linkCopied: "Link copied",
     authenticityGuarantee: "Authenticity Guarantee",
     authenticityGuaranteeTextBefore:
       "Every product is inspected by our team for authenticity and quality before it's listed. If a piece doesn't match its description, you're covered under our ",
@@ -198,6 +211,7 @@ export default function ProductDetailClient({
   const [notFound, setNotFound] = useState(false);
   const [favorite, setFavorite] = useState(false);
   const [quantity, setQuantity] = useState(1);
+  const [linkCopied, setLinkCopied] = useState(false);
   const [reviewData, setReviewData] = useState<ReviewPayload | null>(null);
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewTitle, setReviewTitle] = useState("");
@@ -360,6 +374,13 @@ export default function ProductDetailClient({
   }
 
   const currentPrice = getDiscountedPrice(product);
+  // This page's own URL is already the canonical product link - no need to
+  // rebuild it from the slug/id.
+  const shareUrl = typeof window !== "undefined" ? window.location.href : "";
+  const shareImageUrl =
+    typeof window !== "undefined"
+      ? new URL(product.image, window.location.origin).toString()
+      : product.image;
   const productImages = [...new Set(
     [product.image, product.hoverImage].filter(
       (image): image is string => Boolean(image),
@@ -470,6 +491,51 @@ export default function ProductDetailClient({
           />
 
           <CompareToggleButton productId={product.id} productName={product.name} />
+
+          <div className="product-share">
+            <span>{t.shareLabel}</span>
+            <a
+              className="product-share-btn"
+              href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={t.shareOnFacebook(product.name)}
+            >
+              <img src="https://cdn.jsdelivr.net/npm/simple-icons@v16/icons/facebook.svg" alt="" />
+            </a>
+            <a
+              className="product-share-btn"
+              href={`https://x.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(product.name)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={t.shareOnX(product.name)}
+            >
+              <img src="https://cdn.jsdelivr.net/npm/simple-icons@v16/icons/x.svg" alt="" />
+            </a>
+            <a
+              className="product-share-btn"
+              href={`https://pinterest.com/pin/create/button/?url=${encodeURIComponent(shareUrl)}&media=${encodeURIComponent(shareImageUrl)}&description=${encodeURIComponent(product.name)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={t.shareOnPinterest(product.name)}
+            >
+              <img src="https://cdn.jsdelivr.net/npm/simple-icons@v16/icons/pinterest.svg" alt="" />
+            </a>
+            <button
+              type="button"
+              className="product-share-btn"
+              onClick={() => {
+                navigator.clipboard.writeText(shareUrl).then(() => {
+                  setLinkCopied(true);
+                  window.setTimeout(() => setLinkCopied(false), 2000);
+                });
+              }}
+              aria-label={t.copyLink(product.name)}
+            >
+              <Link2 aria-hidden="true" size={16} strokeWidth={2} />
+            </button>
+            {linkCopied && <small className="product-share-copied">{t.linkCopied}</small>}
+          </div>
 
           <div className="product-assurances">
             <span>
