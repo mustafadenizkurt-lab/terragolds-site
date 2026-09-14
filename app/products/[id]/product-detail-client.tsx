@@ -65,6 +65,7 @@ const copy = {
     verifiedPiece: "Doğrulanmış parça",
     verifiedPieceDetail: "Görsellerdeki hâliyle aynı parça",
     shareLabel: "Paylaş",
+    shareOnWhatsapp: (name: string) => `${name} ürününü WhatsApp'ta paylaş`,
     shareOnFacebook: (name: string) => `${name} ürününü Facebook'ta paylaş`,
     shareOnX: (name: string) => `${name} ürününü X'te paylaş`,
     shareOnPinterest: (name: string) => `${name} ürününü Pinterest'te paylaş`,
@@ -140,6 +141,7 @@ const copy = {
     verifiedPiece: "Verified piece",
     verifiedPieceDetail: "The exact piece shown in the photos",
     shareLabel: "Share",
+    shareOnWhatsapp: (name: string) => `Share ${name} on WhatsApp`,
     shareOnFacebook: (name: string) => `Share ${name} on Facebook`,
     shareOnX: (name: string) => `Share ${name} on X`,
     shareOnPinterest: (name: string) => `Share ${name} on Pinterest`,
@@ -494,6 +496,15 @@ export default function ProductDetailClient({
 
           <div className="product-share">
             <span>{t.shareLabel}</span>
+            <a
+              className="product-share-btn"
+              href={`https://wa.me/?text=${encodeURIComponent(`${product.name} ${shareUrl}`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={t.shareOnWhatsapp(product.name)}
+            >
+              <img src="https://cdn.jsdelivr.net/npm/simple-icons@v16/icons/whatsapp.svg" alt="" />
+            </a>
             <a
               className="product-share-btn"
               href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`}
