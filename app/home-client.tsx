@@ -402,23 +402,28 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
         // Same offline/dev fallback as /api/store above, computed the same
         // way readShowcaseProducts() does server-side.
         setShowcase({
-          featured: defaultProducts
-            .filter((product) => product.featured)
-            .slice(0, FEATURED_PRODUCTS_COUNT),
+          featured: pickRotatingShowcase(
+            defaultProducts.filter((product) => product.featured),
+            FEATURED_PRODUCTS_COUNT,
+            0,
+          ),
           newest: pickRotatingShowcase(
             defaultProducts.filter((product) => product.stock > 0),
             NEW_ARRIVALS_COUNT,
             1,
           ),
-          // "Günün Fırsatları" is admin-curated (isDailyDeal/dailyDealOrder),
-          // not a rotating pick - same rule as readShowcaseProducts() uses
-          // server-side, just applied to the offline demo catalog here.
-          discount: defaultProducts
-            .filter((product) => product.isDailyDeal && product.stock > 0)
-            .sort(
-              (a, b) => (a.dailyDealOrder ?? 0) - (b.dailyDealOrder ?? 0),
-            )
-            .slice(0, DISCOUNT_SHOWCASE_COUNT),
+          // "Günün Fırsatları"'nın havuzu admin-curated (isDailyDeal) - hangi
+          // gün hangi alt kümenin gösterileceği pickRotatingShowcase ile
+          // dönüyor, aynı readShowcaseProducts()'ın sunucu tarafında yaptığı gibi.
+          discount: pickRotatingShowcase(
+            defaultProducts
+              .filter((product) => product.isDailyDeal && product.stock > 0)
+              .sort(
+                (a, b) => (a.dailyDealOrder ?? 0) - (b.dailyDealOrder ?? 0),
+              ),
+            DISCOUNT_SHOWCASE_COUNT,
+            2,
+          ),
         });
       });
   }, []);

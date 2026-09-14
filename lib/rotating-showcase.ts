@@ -1,12 +1,11 @@
-const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
- * Changes every 6 hours, aligned to UTC 00/06/12/18 (same schedule as the XML
- * sync cron) since it buckets off the Unix epoch, which itself starts at
- * 00:00 UTC.
+ * Changes once every 24 hours, aligned to UTC midnight since it buckets off
+ * the Unix epoch, which itself starts at 00:00 UTC.
  */
-export function sixHourBucket(now: number = Date.now()): number {
-  return Math.floor(now / SIX_HOURS_MS);
+export function dayBucket(now: number = Date.now()): number {
+  return Math.floor(now / ONE_DAY_MS);
 }
 
 /** Deterministic PRNG (mulberry32) so the same seed always shuffles the same way. */
@@ -31,9 +30,9 @@ function seededShuffle<T>(items: readonly T[], seed: number): T[] {
 }
 
 /**
- * Picks `count` items from `pool`, rotating to a different selection every 6
- * hours. `salt` decorrelates multiple showcases (e.g. "new" vs "discounted")
- * so they don't rotate in lockstep.
+ * Picks `count` items from `pool`, rotating to a different selection every 24
+ * hours. `salt` decorrelates multiple showcases (e.g. "featured" vs "new" vs
+ * "discounted") so they don't rotate in lockstep.
  */
 export function pickRotatingShowcase<T>(
   pool: readonly T[],
@@ -41,6 +40,6 @@ export function pickRotatingShowcase<T>(
   salt = 0,
   now: number = Date.now(),
 ): T[] {
-  const seed = sixHourBucket(now) * 2654435761 + salt;
+  const seed = dayBucket(now) * 2654435761 + salt;
   return seededShuffle(pool, seed).slice(0, count);
 }
