@@ -12,6 +12,7 @@ import CompareToggleButton from "../../compare-toggle-button";
 import { optimizedImageUrl } from "../../../lib/image-transform";
 import { buildPageWindow } from "../../../lib/pagination";
 import { MATERIAL_FACETS, COLOR_FACETS } from "../../../lib/product-facets";
+import { useScrollRestoration } from "../../../lib/use-scroll-restoration";
 
 const copy = {
   tr: {
@@ -96,6 +97,9 @@ export default function CategoryPageBody({
   const [language] = useLanguage();
   const t = copy[language];
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
+  // Keyed by slug so browsing between categories never restores a scroll
+  // position saved on a different category's page.
+  useScrollRestoration(`terragolds-category-scroll-y:${slug}`);
   // Curated nav-group names have a real English label (titleEn); a raw,
   // supplier-entered single category doesn't, so it stays Turkish even in
   // English mode - see lib/i18n.ts's note on untranslated catalog data.
