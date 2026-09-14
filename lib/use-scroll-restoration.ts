@@ -32,9 +32,13 @@ export function useScrollRestoration(storageKey: string) {
     // because the listener itself survives the freeze/thaw - so the restore
     // logic lives entirely in this handler instead of the effect body.
     let cancelRestore: (() => void) | null = null;
-    const restore = () => {
+    const restore = (source: string) => {
       cancelRestore?.();
       const target = Number(window.sessionStorage.getItem(storageKey));
+      window.sessionStorage.setItem(
+        `${storageKey}-debug`,
+        JSON.stringify({ source, target, at: Date.now() }),
+      );
       if (!Number.isFinite(target) || target <= 0) return;
 
       // Keep re-asserting the saved position for several seconds while
@@ -76,14 +80,16 @@ export function useScrollRestoration(storageKey: string) {
       tick();
     };
 
-    restore();
-    window.addEventListener("pageshow", restore);
+    restore("mount");
+    const onPageshow = (event: PageTransitionEvent) =>
+      restore(event.persisted ? "pageshow-bfcache" : "pageshow-fresh");
+    window.addEventListener("pageshow", onPageshow);
 
     return () => {
       cancelRestore?.();
       window.removeEventListener("scroll", saveScroll);
       window.removeEventListener("pagehide", saveScroll);
-      window.removeEventListener("pageshow", restore);
+      window.removeEventListener("pageshow", onPageshow);
     };
   }, [storageKey]);
 }
