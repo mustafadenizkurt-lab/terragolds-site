@@ -65,16 +65,29 @@ export function useScrollRestoration(storageKey: string) {
 
       const start = Date.now();
       const MAX_DURATION_MS = 4000;
+      let tickCount = 0;
       const tick = () => {
-        if (cancelled) return;
+        if (cancelled) {
+          window.sessionStorage.setItem(
+            `${storageKey}-debug-end`,
+            JSON.stringify({ reason: "cancelled", tickCount, scrollY: window.scrollY, target }),
+          );
+          return;
+        }
         // The site sets `scroll-behavior: smooth` globally, which hijacks
         // even the plain (x, y) form of scrollTo - restarting a
         // smooth-scroll animation 60x/second overshoots wildly (confirmed:
         // lands at the very bottom of the page instead of the target).
         // "instant" bypasses that CSS entirely.
         window.scrollTo({ top: target, left: 0, behavior: "instant" });
+        tickCount++;
         if (Date.now() - start < MAX_DURATION_MS) {
           window.requestAnimationFrame(tick);
+        } else {
+          window.sessionStorage.setItem(
+            `${storageKey}-debug-end`,
+            JSON.stringify({ reason: "timeout", tickCount, scrollY: window.scrollY, target }),
+          );
         }
       };
       tick();
