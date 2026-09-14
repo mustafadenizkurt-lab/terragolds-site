@@ -71,6 +71,17 @@ const copy = {
     shareOnPinterest: (name: string) => `${name} ürününü Pinterest'te paylaş`,
     copyLink: (name: string) => `${name} bağlantısını kopyala`,
     linkCopied: "Bağlantı kopyalandı",
+    shippingInfoTitle: "Teslimat",
+    shippingInfoText:
+      "Türkiye genelinde kargo ile gönderim yapılır. Siparişiniz onaylandıktan sonra özenle paketlenip kargoya teslim edilir ve kargo takip bilginiz e-posta ile paylaşılır.",
+    returnsInfoTitle: "İade ve Değişim",
+    returnsInfoTextBefore:
+      "Siparişinizi teslim aldığınız tarihten itibaren 14 gün içinde, gerekçe göstermeksizin cayma hakkınızı kullanabilirsiniz. Ayrıntılar için ",
+    returnsInfoLink: "Teslimat ve İade sayfamızı",
+    returnsInfoTextAfter: " inceleyebilirsiniz.",
+    paymentInfoTitle: "Ödeme Seçenekleri",
+    paymentInfoText:
+      "Kredi/banka kartıyla, PayTR'nin lisanslı ve SSL şifreli ödeme altyapısı üzerinden güvenle ödeme yapabilirsiniz; kart bilgileriniz sunucularımızda saklanmaz. Sipariş adımında size uygun diğer ödeme seçenekleri de gösterilir.",
     authenticityGuarantee: "Orijinallik Garantisi",
     authenticityGuaranteeTextBefore:
       "Her ürünümüz, mağazamıza eklenmeden önce doğallık ve kalite açısından ekibimizce incelenir. Ürün açıklamasına uygun bulunmayan parçalarda ",
@@ -147,6 +158,17 @@ const copy = {
     shareOnPinterest: (name: string) => `Share ${name} on Pinterest`,
     copyLink: (name: string) => `Copy link to ${name}`,
     linkCopied: "Link copied",
+    shippingInfoTitle: "Shipping",
+    shippingInfoText:
+      "We ship nationwide across Turkey. Once your order is confirmed it's carefully packaged and handed to the courier, and your tracking details are sent by email.",
+    returnsInfoTitle: "Returns & Exchanges",
+    returnsInfoTextBefore:
+      "You can exercise your right of withdrawal within 14 days of receiving your order, with no need to give a reason. See our ",
+    returnsInfoLink: "Shipping & Returns page",
+    returnsInfoTextAfter: " for details.",
+    paymentInfoTitle: "Payment Options",
+    paymentInfoText:
+      "You can pay securely by credit/debit card via PayTR's licensed, SSL-encrypted payment infrastructure - your card details are never stored on our servers. Any other payment options available to you are shown at checkout.",
     authenticityGuarantee: "Authenticity Guarantee",
     authenticityGuaranteeTextBefore:
       "Every product is inspected by our team for authenticity and quality before it's listed. If a piece doesn't match its description, you're covered under our ",
@@ -566,6 +588,34 @@ export default function ProductDetailClient({
               <Link href="/teslimat-ve-iade">{t.returnPolicyLink}</Link>
               {t.authenticityGuaranteeTextAfter}
             </p>
+          </div>
+
+          <div className="faq-list product-info-accordion">
+            <details>
+              <summary>
+                {t.shippingInfoTitle}
+                <span aria-hidden="true">+</span>
+              </summary>
+              <p>{t.shippingInfoText}</p>
+            </details>
+            <details>
+              <summary>
+                {t.returnsInfoTitle}
+                <span aria-hidden="true">+</span>
+              </summary>
+              <p>
+                {t.returnsInfoTextBefore}
+                <Link href="/teslimat-ve-iade">{t.returnsInfoLink}</Link>
+                {t.returnsInfoTextAfter}
+              </p>
+            </details>
+            <details>
+              <summary>
+                {t.paymentInfoTitle}
+                <span aria-hidden="true">+</span>
+              </summary>
+              <p>{t.paymentInfoText}</p>
+            </details>
           </div>
 
           <div className="product-profile-purchase">
