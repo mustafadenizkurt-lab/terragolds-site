@@ -16,6 +16,7 @@ import { englishSiteContent, uiText, uiUpper, type Language } from "../lib/i18n"
 import { decodeHtmlEntities } from "../lib/text-utils";
 import { optimizedImageUrl } from "../lib/image-transform";
 import { useScrollRestoration } from "../lib/use-scroll-restoration";
+import { MATERIAL_FACETS, COLOR_FACETS } from "../lib/product-facets";
 import { activeCategoryGroups, categoryGroupLabel, type CategoryGroup } from "../lib/category-groups";
 import {
   subgroupsForGroup,
@@ -305,6 +306,8 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
   const [catalogMaxPrice, setCatalogMaxPrice] = useState("");
   const [catalogInStockOnly, setCatalogInStockOnly] = useState(false);
   const [catalogDiscountOnly, setCatalogDiscountOnly] = useState(false);
+  const [catalogMaterial, setCatalogMaterial] = useState("");
+  const [catalogColor, setCatalogColor] = useState("");
   const [catalogPage, setCatalogPage] = useState(() => {
     if (typeof window === "undefined") return 1;
     const page = Number(new URLSearchParams(window.location.search).get("sayfa"));
@@ -688,6 +691,8 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
       if (catalogMaxPrice) params.set("maxPrice", catalogMaxPrice);
       if (catalogInStockOnly) params.set("inStock", "true");
       if (catalogDiscountOnly) params.set("discountOnly", "true");
+      if (catalogMaterial) params.set("material", catalogMaterial);
+      if (catalogColor) params.set("color", catalogColor);
 
       fetch(`/api/products?${params.toString()}`, {
         cache: "no-store",
@@ -735,6 +740,8 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
     catalogMaxPrice,
     catalogInStockOnly,
     catalogDiscountOnly,
+    catalogMaterial,
+    catalogColor,
     catalogPage,
   ]);
 
@@ -749,6 +756,8 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
     catalogMinPrice,
     catalogQuery,
     category,
+    catalogMaterial,
+    catalogColor,
   ]);
 
   function catalogPageUrl(page: number) {
@@ -813,6 +822,8 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
     setCatalogMaxPrice("");
     setCatalogInStockOnly(false);
     setCatalogDiscountOnly(false);
+    setCatalogMaterial("");
+    setCatalogColor("");
     setCategory(categories[0]);
   };
 
@@ -1647,6 +1658,56 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
               <em>{categoryCounts.get(item) ?? 0}</em>
             </button>
           ))}
+              </div>
+            </div>
+
+            <div className="catalog-filter-group">
+              <span>{ui.material}</span>
+              <div className="filters" role="group" aria-label={ui.material}>
+                <button
+                  type="button"
+                  className={catalogMaterial === "" ? "filter active" : "filter"}
+                  onClick={() => setCatalogMaterial("")}
+                  aria-pressed={catalogMaterial === ""}
+                >
+                  <span>{ui.all}</span>
+                </button>
+                {MATERIAL_FACETS.map((facet) => (
+                  <button
+                    type="button"
+                    className={catalogMaterial === facet.key ? "filter active" : "filter"}
+                    key={facet.key}
+                    onClick={() => setCatalogMaterial(facet.key)}
+                    aria-pressed={catalogMaterial === facet.key}
+                  >
+                    <span>{facet.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="catalog-filter-group">
+              <span>{ui.color}</span>
+              <div className="filters" role="group" aria-label={ui.color}>
+                <button
+                  type="button"
+                  className={catalogColor === "" ? "filter active" : "filter"}
+                  onClick={() => setCatalogColor("")}
+                  aria-pressed={catalogColor === ""}
+                >
+                  <span>{ui.all}</span>
+                </button>
+                {COLOR_FACETS.map((facet) => (
+                  <button
+                    type="button"
+                    className={catalogColor === facet.key ? "filter active" : "filter"}
+                    key={facet.key}
+                    onClick={() => setCatalogColor(facet.key)}
+                    aria-pressed={catalogColor === facet.key}
+                  >
+                    <span>{facet.label}</span>
+                  </button>
+                ))}
               </div>
             </div>
 

@@ -25,6 +25,8 @@ export async function GET(request: Request) {
     maxPrice: parseNumber(params.get("maxPrice")),
     inStock: params.get("inStock") === "true",
     discountOnly: params.get("discountOnly") === "true",
+    material: params.get("material") ?? undefined,
+    color: params.get("color") ?? undefined,
   });
 
   return Response.json(data, { headers: { "cache-control": "no-store" } });

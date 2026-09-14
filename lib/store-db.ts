@@ -8,6 +8,7 @@ import {
   type StoreSettings,
 } from "./store-data";
 import { pickRotatingShowcase } from "./rotating-showcase";
+import { facetKeywords, MATERIAL_FACETS, COLOR_FACETS } from "./product-facets";
 
 type ProductRow = {
   id: number;
@@ -317,6 +318,9 @@ export type ReadProductsPageOptions = {
   maxPrice?: number;
   inStock?: boolean;
   discountOnly?: boolean;
+  /** MATERIAL_FACETS/COLOR_FACETS key from lib/product-facets.ts - matched against products.name. */
+  material?: string;
+  color?: string;
 };
 
 export type ProductsPage = {
@@ -387,6 +391,24 @@ export async function readProductsPage(
   if (options.maxPrice !== undefined) {
     conditions.push(`${DISCOUNTED_PRICE_SQL} <= ?`);
     params.push(options.maxPrice);
+  }
+  if (options.material) {
+    const keywords = facetKeywords(options.material, MATERIAL_FACETS);
+    if (keywords.length > 0) {
+      conditions.push(
+        `(${keywords.map(() => `${trLowerSql("products.name")} LIKE ?`).join(" OR ")})`,
+      );
+      params.push(...keywords.map((keyword) => `%${keyword.toLocaleLowerCase("tr-TR")}%`));
+    }
+  }
+  if (options.color) {
+    const keywords = facetKeywords(options.color, COLOR_FACETS);
+    if (keywords.length > 0) {
+      conditions.push(
+        `(${keywords.map(() => `${trLowerSql("products.name")} LIKE ?`).join(" OR ")})`,
+      );
+      params.push(...keywords.map((keyword) => `%${keyword.toLocaleLowerCase("tr-TR")}%`));
+    }
   }
 
   const whereClause = conditions.join(" AND ");

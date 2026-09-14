@@ -8,6 +8,7 @@ import FavoriteHeartButton from "../../favorite-heart-button";
 import CompareToggleButton from "../../compare-toggle-button";
 import { optimizedImageUrl } from "../../../lib/image-transform";
 import { buildPageWindow } from "../../../lib/pagination";
+import { MATERIAL_FACETS, COLOR_FACETS } from "../../../lib/product-facets";
 
 const copy = {
   tr: {
@@ -25,6 +26,9 @@ const copy = {
     previousPage: "Önceki",
     nextPage: "Sonraki",
     pageStatus: (page: number, total: number) => `${page}. sayfa / ${total}`,
+    material: "Malzeme",
+    color: "Renk",
+    all: "Tümü",
   },
   en: {
     home: "Home",
@@ -41,6 +45,9 @@ const copy = {
     previousPage: "Previous",
     nextPage: "Next",
     pageStatus: (page: number, total: number) => `Page ${page} / ${total}`,
+    material: "Material",
+    color: "Color",
+    all: "All",
   },
 } as const;
 
@@ -53,6 +60,8 @@ export default function CategoryPageBody({
   totalPages,
   slug,
   alt,
+  material,
+  color,
 }: {
   title: string | null;
   titleEn?: string | null;
@@ -62,6 +71,8 @@ export default function CategoryPageBody({
   totalPages: number;
   slug: string;
   alt?: string;
+  material?: string;
+  color?: string;
 }) {
   const [language] = useLanguage();
   const t = copy[language];
@@ -70,13 +81,23 @@ export default function CategoryPageBody({
   // English mode - see lib/i18n.ts's note on untranslated catalog data.
   const displayTitle = (language === "en" && titleEn ? titleEn : title) ?? null;
   const pageWindow = buildPageWindow(page, totalPages);
-  const pageHref = (targetPage: number) => {
+  const buildHref = (overrides: {
+    page?: number;
+    material?: string;
+    color?: string;
+  }) => {
     const params = new URLSearchParams();
     if (alt) params.set("alt", alt);
+    const nextMaterial = overrides.material !== undefined ? overrides.material : material;
+    const nextColor = overrides.color !== undefined ? overrides.color : color;
+    if (nextMaterial) params.set("malzeme", nextMaterial);
+    if (nextColor) params.set("renk", nextColor);
+    const targetPage = overrides.page ?? page;
     if (targetPage > 1) params.set("sayfa", String(targetPage));
     const query = params.toString();
     return `/kategori/${slug}${query ? `?${query}` : ""}`;
   };
+  const pageHref = (targetPage: number) => buildHref({ page: targetPage });
 
   return (
     <>
@@ -95,6 +116,46 @@ export default function CategoryPageBody({
 
       {title ? (
         <section className="category-products section-shell">
+          <div className="catalog-filter-group">
+            <span>{t.material}</span>
+            <div className="filters" role="group" aria-label={t.material}>
+              <Link
+                href={buildHref({ material: "", page: 1 })}
+                className={!material ? "filter active" : "filter"}
+              >
+                <span>{t.all}</span>
+              </Link>
+              {MATERIAL_FACETS.map((facet) => (
+                <Link
+                  key={facet.key}
+                  href={buildHref({ material: facet.key, page: 1 })}
+                  className={material === facet.key ? "filter active" : "filter"}
+                >
+                  <span>{facet.label}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+          <div className="catalog-filter-group">
+            <span>{t.color}</span>
+            <div className="filters" role="group" aria-label={t.color}>
+              <Link
+                href={buildHref({ color: "", page: 1 })}
+                className={!color ? "filter active" : "filter"}
+              >
+                <span>{t.all}</span>
+              </Link>
+              {COLOR_FACETS.map((facet) => (
+                <Link
+                  key={facet.key}
+                  href={buildHref({ color: facet.key, page: 1 })}
+                  className={color === facet.key ? "filter active" : "filter"}
+                >
+                  <span>{facet.label}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
           <div className="category-grid">
             {products.map((product, index) => {
               const imageLoading = index < 6 ? "eager" : "lazy";

@@ -10,6 +10,7 @@ import { subgroupsForGroup, tallyCategoryCounts } from "../../../lib/category-su
 import type { Product } from "../../../lib/store-data";
 import { readProducts, readSettings } from "../../../lib/store-db";
 import { breadcrumbSchema, toJsonLd } from "../../../lib/seo/structured-data";
+import { productMatchesFacet, MATERIAL_FACETS, COLOR_FACETS } from "../../../lib/product-facets";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +20,7 @@ const CATEGORY_PRODUCTS_PER_PAGE = 30;
 
 type CategoryPageProps = {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ alt?: string; sayfa?: string }>;
+  searchParams: Promise<{ alt?: string; sayfa?: string; malzeme?: string; renk?: string }>;
 };
 
 /**
@@ -120,7 +121,7 @@ export async function generateMetadata({
 
 export default async function CategoryPage({ params, searchParams }: CategoryPageProps) {
   const { slug } = await params;
-  const { alt, sayfa } = await searchParams;
+  const { alt, sayfa, malzeme, renk } = await searchParams;
   const [products, settings] = await Promise.all([
     readProducts(),
     readSettings(),
@@ -128,7 +129,12 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
   const resolved = resolveCategoryOrGroup(products, slug, alt);
   const title = resolved?.title ?? null;
   const titleEn = resolved?.titleEn ?? null;
-  const categoryProducts = resolved?.products ?? [];
+  const unfilteredCategoryProducts = resolved?.products ?? [];
+  const categoryProducts = unfilteredCategoryProducts.filter(
+    (product) =>
+      (!malzeme || productMatchesFacet(product.name, malzeme, MATERIAL_FACETS)) &&
+      (!renk || productMatchesFacet(product.name, renk, COLOR_FACETS)),
+  );
 
   const totalPages = Math.max(
     1,
@@ -175,6 +181,8 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
         totalPages={totalPages}
         slug={slug}
         alt={alt}
+        material={malzeme}
+        color={renk}
       />
 
       <StoreSiteFooter
