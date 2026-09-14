@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { Eye } from "lucide-react";
 import {
   defaultProducts,
   getDiscountedPrice,
@@ -29,6 +30,7 @@ import { useCart } from "../lib/cart-context";
 import StoreSiteFooter from "./store-site-footer";
 import FloatingSocialVisibility from "./floating-social-visibility";
 import QuickAddToCart from "./quick-add-to-cart";
+import QuickViewModal from "./quick-view-modal";
 import FAQSection from "./faq-section";
 import AISummaryBlock from "./ai-summary-block";
 
@@ -181,12 +183,14 @@ function ProductCard({
   ui,
   isLiked,
   onToggleLike,
+  onQuickView,
   loading = "lazy",
 }: {
   product: Product;
   ui: (typeof uiText)[Language];
   isLiked: boolean;
   onToggleLike: () => void;
+  onQuickView: () => void;
   loading?: "eager" | "lazy";
 }) {
   return (
@@ -222,6 +226,14 @@ function ProductCard({
           }
         >
           {isLiked ? "♥" : "♡"}
+        </button>
+        <button
+          type="button"
+          className="quick-view-btn"
+          onClick={onQuickView}
+          aria-label={ui.quickView(product.name)}
+        >
+          <Eye aria-hidden="true" size={17} strokeWidth={2} />
         </button>
         <a
           className={`product-image-button${
@@ -327,9 +339,6 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
     discount: Product[];
   }>({ featured: [], newest: [], discount: [] });
   const cart = useCart();
-  const [purchaseQuantities, setPurchaseQuantities] = useState<
-    Record<number, number>
-  >({});
   const [liked, setLiked] = useState<number[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -856,20 +865,6 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
     setSearchOpen(false);
     setSearchQuery("");
     window.location.href = `/products/${product.slug || product.id}`;
-  };
-
-  const getPurchaseQuantity = (product: Product) =>
-    Math.min(
-      Math.max(1, purchaseQuantities[product.id] ?? 1),
-      Math.max(1, Math.min(product.stock, 20)),
-    );
-
-  const setPurchaseQuantity = (product: Product, nextQuantity: number) => {
-    const maximum = Math.max(1, Math.min(product.stock, 20));
-    setPurchaseQuantities((current) => ({
-      ...current,
-      [product.id]: Math.min(maximum, Math.max(1, Math.round(nextQuantity) || 1)),
-    }));
   };
 
   const toggleLike = (id: number) => {
@@ -1450,6 +1445,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
                 ui={ui}
                 isLiked={liked.includes(product.id)}
                 onToggleLike={() => toggleLike(product.id)}
+                onQuickView={() => setSelectedProduct(product)}
                 loading={index < 6 ? "eager" : "lazy"}
               />
             ))}
@@ -1521,6 +1517,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
                 ui={ui}
                 isLiked={liked.includes(product.id)}
                 onToggleLike={() => toggleLike(product.id)}
+                onQuickView={() => setSelectedProduct(product)}
               />
             ))}
           </div>
@@ -1547,6 +1544,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
                 ui={ui}
                 isLiked={liked.includes(product.id)}
                 onToggleLike={() => toggleLike(product.id)}
+                onQuickView={() => setSelectedProduct(product)}
               />
             ))}
           </div>
@@ -1795,6 +1793,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
               ui={ui}
               isLiked={liked.includes(product.id)}
               onToggleLike={() => toggleLike(product.id)}
+              onQuickView={() => setSelectedProduct(product)}
             />
           ))}
             </div>
@@ -2001,122 +2000,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
 
 
       {selectedProduct && (
-        <div
-          className="overlay product-overlay"
-          role="presentation"
-          onMouseDown={() => setSelectedProduct(null)}
-        >
-          <section
-            className="product-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-label={ui.productDetails(selectedProduct.name)}
-            onMouseDown={(event) => event.stopPropagation()}
-          >
-            <button
-              className="modal-close"
-              type="button"
-              onClick={() => setSelectedProduct(null)}
-              aria-label={ui.close}
-            >
-              ×
-            </button>
-            <div className="modal-image">
-              {selectedProduct.discountPercent > 0 && (
-                <span className="modal-sale-badge">
-                  %{selectedProduct.discountPercent} {ui.discount} ·{" "}
-                  {selectedProduct.campaignLabel || ui.discountOpportunity}
-                </span>
-              )}
-              <img src={optimizedImageUrl(selectedProduct.image, 700)} alt={selectedProduct.name} />
-            </div>
-            <div className="modal-copy">
-              <p className="eyebrow">{selectedProduct.category}</p>
-              <h2>{selectedProduct.name}</h2>
-              <ProductPrice product={selectedProduct} className="modal-price" />
-              <p>{decodeHtmlEntities(selectedProduct.description)}</p>
-              <ul>
-                {ui.productBullets.map((bullet) => (
-                  <li key={bullet}>{bullet}</li>
-                ))}
-              </ul>
-              <div className="modal-purchase">
-                <div className="quantity-picker">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setPurchaseQuantity(
-                        selectedProduct,
-                        getPurchaseQuantity(selectedProduct) - 1,
-                      )
-                    }
-                    disabled={
-                      selectedProduct.stock <= 0 ||
-                      getPurchaseQuantity(selectedProduct) <= 1
-                    }
-                    aria-label={`${selectedProduct.name} adedini azalt`}
-                  >
-                    −
-                  </button>
-                  <input
-                    type="number"
-                    min="1"
-                    max={Math.min(selectedProduct.stock, 20)}
-                    value={getPurchaseQuantity(selectedProduct)}
-                    onFocus={(event) => event.currentTarget.select()}
-                    onChange={(event) =>
-                      setPurchaseQuantity(
-                        selectedProduct,
-                        Number(event.target.value),
-                      )
-                    }
-                    aria-label={`${selectedProduct.name} adedi`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setPurchaseQuantity(
-                        selectedProduct,
-                        getPurchaseQuantity(selectedProduct) + 1,
-                      )
-                    }
-                    disabled={
-                      selectedProduct.stock <= 0 ||
-                      getPurchaseQuantity(selectedProduct) >=
-                        Math.min(selectedProduct.stock, 20)
-                    }
-                    aria-label={`${selectedProduct.name} adedini artır`}
-                  >
-                    +
-                  </button>
-                </div>
-                <button
-                  className="button button-dark"
-                  type="button"
-                  onClick={() => {
-                    if (
-                      cart.addToCart(
-                        selectedProduct,
-                        getPurchaseQuantity(selectedProduct),
-                      )
-                    ) {
-                      setSelectedProduct(null);
-                    }
-                  }}
-                  disabled={
-                    selectedProduct.stock <= 0 || cart.addCooldownSeconds > 0
-                  }
-                >
-                  {selectedProduct.stock <= 0
-                    ? ui.outOfStock
-                    : cart.addCooldownSeconds > 0
-                      ? ui.waitSeconds(cart.addCooldownSeconds)
-                      : ui.addToCart}
-                </button>
-              </div>
-            </div>
-          </section>
-        </div>
+        <QuickViewModal product={selectedProduct} onClose={() => setSelectedProduct(null)} />
       )}
 
       <div

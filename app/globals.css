@@ -3018,6 +3018,27 @@ img {
 .heart.liked {
   color: #8a3f49;
 }
+.quick-view-btn {
+  position: absolute;
+  z-index: 3;
+  bottom: 10px;
+  right: 10px;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #ded8cc;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  color: #24211c;
+}
+.quick-view-btn:hover {
+  background: #24211c;
+  color: #fffaf0;
+  border-color: #24211c;
+}
 .product-certified-badge {
   position: absolute;
   z-index: 2;

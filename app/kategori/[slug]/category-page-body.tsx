@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
+import { Eye } from "lucide-react";
 import type { Product } from "../../../lib/store-data";
 import { useLanguage } from "../../../lib/language-client";
 import QuickAddToCart from "../../quick-add-to-cart";
+import QuickViewModal from "../../quick-view-modal";
 import FavoriteHeartButton from "../../favorite-heart-button";
 import CompareToggleButton from "../../compare-toggle-button";
 import { optimizedImageUrl } from "../../../lib/image-transform";
@@ -35,6 +38,7 @@ const copy = {
     sortPriceDesc: "Fiyat: Yüksekten Düşüğe",
     sortNewest: "En Yeniler",
     sortNameAsc: "İsim: A-Z",
+    quickView: (name: string) => `${name} ürününü hızlı görüntüle`,
   },
   en: {
     home: "Home",
@@ -60,6 +64,7 @@ const copy = {
     sortPriceDesc: "Price: High to Low",
     sortNewest: "Newest",
     sortNameAsc: "Name: A-Z",
+    quickView: (name: string) => `Quick view ${name}`,
   },
 } as const;
 
@@ -90,6 +95,7 @@ export default function CategoryPageBody({
 }) {
   const [language] = useLanguage();
   const t = copy[language];
+  const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
   // Curated nav-group names have a real English label (titleEn); a raw,
   // supplier-entered single category doesn't, so it stays Turkish even in
   // English mode - see lib/i18n.ts's note on untranslated catalog data.
@@ -196,6 +202,14 @@ export default function CategoryPageBody({
                 <article className="category-product-card" key={product.id}>
                   <div className="category-product-image-wrap">
                     <FavoriteHeartButton productId={product.id} productName={product.name} />
+                    <button
+                      type="button"
+                      className="quick-view-btn"
+                      onClick={() => setQuickViewProduct(product)}
+                      aria-label={t.quickView(product.name)}
+                    >
+                      <Eye aria-hidden="true" size={17} strokeWidth={2} />
+                    </button>
                     <Link
                       className={`category-product-image${
                         product.hoverImage ? " has-hover-image" : ""
@@ -302,6 +316,9 @@ export default function CategoryPageBody({
             {t.backToAllProducts}
           </Link>
         </section>
+      )}
+      {quickViewProduct && (
+        <QuickViewModal product={quickViewProduct} onClose={() => setQuickViewProduct(null)} />
       )}
     </>
   );
