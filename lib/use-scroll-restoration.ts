@@ -31,15 +31,15 @@ export function useScrollRestoration(storageKey: string) {
       };
     }
 
-    // Keep re-asserting the saved position while content (images in
-    // particular) is still streaming in and growing the page - a fixed
-    // short timeout isn't enough for grids with a dozen+ product photos,
-    // which can take longer than that to reach their final height, leaving
-    // the restore stuck wherever the page happened to be clamped to when
-    // the timeout gave up. Stop as soon as the target is actually reached,
-    // the visitor scrolls/touches on their own, or a generous safety cap
-    // elapses (a broken image or infinite layout shift shouldn't spin this
-    // forever).
+    // Keep re-asserting the saved position for several seconds while
+    // content (images in particular) is still streaming in and growing the
+    // page - grids with a dozen+ product photos can take a while to reach
+    // their final height, and stopping as soon as the target is briefly
+    // "reached" isn't safe either: a later image finishing (replacing a
+    // placeholder height with its real, usually smaller, size) can trigger
+    // the browser's own scroll anchoring and quietly drag the position back
+    // down afterwards. Keep correcting for the full window regardless, and
+    // stop only if the visitor scrolls/touches on their own.
     let cancelled = false;
     const stop = () => {
       cancelled = true;
@@ -48,7 +48,7 @@ export function useScrollRestoration(storageKey: string) {
     window.addEventListener("touchstart", stop, { once: true, passive: true });
 
     const start = Date.now();
-    const MAX_DURATION_MS = 6000;
+    const MAX_DURATION_MS = 4000;
     const tick = () => {
       if (cancelled) return;
       // The site sets `scroll-behavior: smooth` globally, which hijacks even
@@ -57,8 +57,7 @@ export function useScrollRestoration(storageKey: string) {
       // bottom of the page instead of the target). "instant" bypasses that
       // CSS entirely.
       window.scrollTo({ top: target, left: 0, behavior: "instant" });
-      const reached = Math.abs(window.scrollY - target) < 2;
-      if (!reached && Date.now() - start < MAX_DURATION_MS) {
+      if (Date.now() - start < MAX_DURATION_MS) {
         window.requestAnimationFrame(tick);
       }
     };
