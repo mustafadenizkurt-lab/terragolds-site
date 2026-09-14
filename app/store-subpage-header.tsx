@@ -41,7 +41,14 @@ function groupUrl(group: CategoryGroup) {
 type ContactSettings = {
   phone?: string;
   whatsapp?: string;
+  freeShippingThreshold?: string;
 };
+
+const shippingAmountFormat = new Intl.NumberFormat("tr-TR", {
+  style: "currency",
+  currency: "TRY",
+  maximumFractionDigits: 0,
+});
 
 function formatWhatsappContact(value: string) {
   let digits = value.replace(/\D/g, "");
@@ -240,6 +247,7 @@ export default function StoreSubpageHeader({
   const whatsapp = formatWhatsappContact(
     contact.whatsapp || contact.phone || "",
   );
+  const freeShippingThresholdAmount = Number(contact.freeShippingThreshold);
 
   return (
     <>
@@ -249,6 +257,17 @@ export default function StoreSubpageHeader({
         <span>{uiUpper(ui.trustSafePackaging, language)}</span>
         <i />
         <span>{uiUpper(ui.trustTurkeyDelivery, language)}</span>
+        {Number.isFinite(freeShippingThresholdAmount) && freeShippingThresholdAmount > 0 && (
+          <>
+            <i />
+            <span>
+              {uiUpper(
+                ui.freeShippingBanner(shippingAmountFormat.format(freeShippingThresholdAmount)),
+                language,
+              )}
+            </span>
+          </>
+        )}
       </div>
       <div className="market-utility-bar store-market-utility">
         <div className="market-utility-inner">

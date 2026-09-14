@@ -34,6 +34,12 @@ import QuickViewModal from "./quick-view-modal";
 import FAQSection from "./faq-section";
 import AISummaryBlock from "./ai-summary-block";
 
+const shippingAmountFormat = new Intl.NumberFormat("tr-TR", {
+  style: "currency",
+  currency: "TRY",
+  maximumFractionDigits: 0,
+});
+
 const heroStoneSlides = [
   {
     name: "Küpe",
@@ -879,16 +885,25 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
     <main className="market-theme">
       <div className="announcement">
         <div className="announcement-copy">
-          {settings.announcement
-            .split("•")
-            .map((item) => item.trim())
-            .filter(Boolean)
-            .map((item, index) => (
-              <span className="announcement-item" key={`${item}-${index}`}>
-                {index > 0 && <i className="announcement-dot" />}
-                {item}
-              </span>
-            ))}
+          {[
+            ...settings.announcement
+              .split("•")
+              .map((item) => item.trim())
+              .filter(Boolean),
+            ...(Number.isFinite(Number(settings.freeShippingThreshold)) &&
+            Number(settings.freeShippingThreshold) > 0
+              ? [
+                  ui.freeShippingBanner(
+                    shippingAmountFormat.format(Number(settings.freeShippingThreshold)),
+                  ),
+                ]
+              : []),
+          ].map((item, index) => (
+            <span className="announcement-item" key={`${item}-${index}`}>
+              {index > 0 && <i className="announcement-dot" />}
+              {item}
+            </span>
+          ))}
         </div>
         <nav className="announcement-social" aria-label="Sosyal medya ve iletişim">
           {settings.whatsapp && (
