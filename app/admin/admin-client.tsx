@@ -22,6 +22,7 @@ import SupplierImportPanel from "./supplier-import-panel";
 import XmlSuppliersPanel from "./xml-suppliers-panel";
 import ShopifySyncPanel from "./shopify-sync-panel";
 import TrendyolSyncPanel from "./trendyol-sync-panel";
+import HepsiburadaSyncPanel from "./hepsiburada-sync-panel";
 import XmlCodeBackfillPanel from "./xml-code-backfill-panel";
 import {
   defaultSettings,
@@ -50,6 +51,7 @@ type AdminView =
   | "xmlLogs"
   | "shopify"
   | "trendyol"
+  | "hepsiburada"
   | "skuBackfill"
   | "customers"
   | "partners"
@@ -569,6 +571,9 @@ export default function AdminClient({
           <button type="button" className={view === "trendyol" ? "active" : ""} onClick={() => setView("trendyol")}>
             <span>⇄</span> Trendyol senkronu
           </button>
+          <button type="button" className={view === "hepsiburada" ? "active" : ""} onClick={() => setView("hepsiburada")}>
+            <span>⇄</span> Hepsiburada senkronu
+          </button>
           <button type="button" className={view === "skuBackfill" ? "active" : ""} onClick={() => setView("skuBackfill")}>
             <span>#</span> Ürün Kodu Eşleştirme
           </button>
@@ -684,6 +689,7 @@ export default function AdminClient({
               {view === "xmlLogs" && "XML senkron geçmişi"}
               {view === "shopify" && "Shopify senkronu"}
               {view === "trendyol" && "Trendyol senkronu"}
+              {view === "hepsiburada" && "Hepsiburada senkronu"}
               {view === "skuBackfill" && "Ürün Kodu Eşleştirme"}
               {view === "shipping" && "Kargo yönetimi"}
               {view === "payments" && "Ödeme yöntemleri"}
@@ -1100,6 +1106,7 @@ export default function AdminClient({
             {view === "xmlLogs" && <XmlSuppliersPanel tab="logs" onNotice={flash} />}
             {view === "shopify" && <ShopifySyncPanel onNotice={flash} />}
             {view === "trendyol" && <TrendyolSyncPanel onNotice={flash} />}
+            {view === "hepsiburada" && <HepsiburadaSyncPanel onNotice={flash} />}
             {view === "skuBackfill" && <XmlCodeBackfillPanel onNotice={flash} />}
 
             {view === "operations" && (
@@ -1988,6 +1995,37 @@ export default function AdminClient({
                       </label>
                       <label className="admin-field">
                         <span>API Secret</span>
+                        <input disabled placeholder="Onay bekleniyor" />
+                      </label>
+                    </div>
+                  </section>
+
+                  <section className="admin-panel">
+                    <div className="admin-form-section-title">
+                      <span>07</span>
+                      <div>
+                        <h2>Hepsiburada Marketplace API</h2>
+                        <p>
+                          Hepsiburada onayı henüz gelmedi, bu yüzden alanlar
+                          pasif. Onay gelip Merchant ID/kullanıcı adı/şifre
+                          elimize geçtiğinde bu formdan değil, doğrudan
+                          Worker&apos;a güvenli ortam değişkeni (secret)
+                          olarak eklenecek - buradaki alanlar sadece hangi
+                          bilgilerin bekleniyor olduğunu göstermek için.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="admin-field-grid">
+                      <label className="admin-field">
+                        <span>Merchant ID</span>
+                        <input disabled placeholder="Onay bekleniyor" />
+                      </label>
+                      <label className="admin-field">
+                        <span>Kullanıcı adı</span>
+                        <input disabled placeholder="Onay bekleniyor" />
+                      </label>
+                      <label className="admin-field">
+                        <span>Şifre</span>
                         <input disabled placeholder="Onay bekleniyor" />
                       </label>
                     </div>

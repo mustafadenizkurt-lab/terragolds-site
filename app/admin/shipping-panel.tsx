@@ -296,6 +296,11 @@ export default function ShippingPanel({
                           Trendyol
                         </small>
                       )}
+                      {order.salesChannel === "hepsiburada" && (
+                        <small className="admin-order-channel-badge">
+                          Hepsiburada
+                        </small>
+                      )}
                       {order.giftWrap && (
                         <small className="admin-order-channel-badge gift">
                           🎁 Hediye

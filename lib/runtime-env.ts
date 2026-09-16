@@ -23,6 +23,12 @@ type RuntimeBindings = {
   TRENDYOL_SUPPLIER_ID?: string;
   TRENDYOL_API_KEY?: string;
   TRENDYOL_API_SECRET?: string;
+  // Aynı durum Hepsiburada için de geçerli - onay bekleniyor, henüz gerçek
+  // değer yok. Hepsiburada Trendyol'un aksine "API Key/Secret" değil,
+  // kendi Merchant ID + kullanıcı adı/şifre modelini kullanıyor.
+  HEPSIBURADA_MERCHANT_ID?: string;
+  HEPSIBURADA_USERNAME?: string;
+  HEPSIBURADA_PASSWORD?: string;
 };
 
 function runtimeBindings() {
