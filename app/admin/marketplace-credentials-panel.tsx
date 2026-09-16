@@ -159,6 +159,11 @@ export default function MarketplaceCredentialsPanel({
     );
   }
 
+  // credentialHint sadece bu alanın son 4 hanesinden üretiliyor (bkz.
+  // lib/marketplace-credentials.ts) - ipucunu SADECE bu alanda göstermek
+  // gerekiyor, yoksa her kutuda aynı metin tekrarlanıp kafa karıştırıyor.
+  const identifierFieldKey = summary.fields.find((field) => !field.secret)?.key;
+
   return (
     <div className="admin-panel">
       <div className="admin-panel-heading">
@@ -215,7 +220,9 @@ export default function MarketplaceCredentialsPanel({
                 }
                 placeholder={
                   summary.configured
-                    ? `${summary.credentialHint || "Kayıtlı"} · değiştirmek için yeni değer girin`
+                    ? field.key === identifierFieldKey
+                      ? `${summary.credentialHint || "Kayıtlı"} · değiştirmek için yeni değer girin`
+                      : "Kayıtlı · değiştirmek için yeni değer girin"
                     : field.placeholder
                 }
                 autoComplete="off"
