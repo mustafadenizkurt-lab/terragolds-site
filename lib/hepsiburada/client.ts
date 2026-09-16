@@ -27,14 +27,14 @@ async function hepsiburadaFetch<T>(
   path: string,
   init: { method?: string; body?: unknown } = {},
 ): Promise<T> {
-  const { merchantId, username, password } = getHepsiburadaCredentials();
+  const { merchantId, secretKey, integratorName } = getHepsiburadaCredentials();
 
   const response = await fetch(`${baseUrl}${path}`, {
     method: init.method ?? "GET",
     headers: {
       "content-type": "application/json",
-      authorization: buildHepsiburadaAuthHeader(username, password),
-      "user-agent": buildHepsiburadaUserAgent(merchantId),
+      authorization: buildHepsiburadaAuthHeader(merchantId, secretKey),
+      "user-agent": buildHepsiburadaUserAgent(integratorName),
     },
     body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
   });

@@ -2007,11 +2007,12 @@ export default function AdminClient({
                         <h2>Hepsiburada Marketplace API</h2>
                         <p>
                           Hepsiburada onayı henüz gelmedi, bu yüzden alanlar
-                          pasif. Onay gelip Merchant ID/kullanıcı adı/şifre
-                          elimize geçtiğinde bu formdan değil, doğrudan
-                          Worker&apos;a güvenli ortam değişkeni (secret)
-                          olarak eklenecek - buradaki alanlar sadece hangi
-                          bilgilerin bekleniyor olduğunu göstermek için.
+                          pasif. Onay gelip Merchant ID/Servis Anahtarı/
+                          Entegratör Adı elimize geçtiğinde bu formdan değil,
+                          doğrudan Worker&apos;a güvenli ortam değişkeni
+                          (secret) olarak eklenecek - buradaki alanlar sadece
+                          hangi bilgilerin bekleniyor olduğunu göstermek
+                          için.
                         </p>
                       </div>
                     </div>
@@ -2021,11 +2022,11 @@ export default function AdminClient({
                         <input disabled placeholder="Onay bekleniyor" />
                       </label>
                       <label className="admin-field">
-                        <span>Kullanıcı adı</span>
+                        <span>Servis Anahtarı (Secret Key)</span>
                         <input disabled placeholder="Onay bekleniyor" />
                       </label>
                       <label className="admin-field">
-                        <span>Şifre</span>
+                        <span>Entegratör Adı</span>
                         <input disabled placeholder="Onay bekleniyor" />
                       </label>
                     </div>

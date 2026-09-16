@@ -24,11 +24,14 @@ type RuntimeBindings = {
   TRENDYOL_API_KEY?: string;
   TRENDYOL_API_SECRET?: string;
   // Aynı durum Hepsiburada için de geçerli - onay bekleniyor, henüz gerçek
-  // değer yok. Hepsiburada Trendyol'un aksine "API Key/Secret" değil,
-  // kendi Merchant ID + kullanıcı adı/şifre modelini kullanıyor.
+  // değer yok. Hepsiburada'nın kendi destek ekibinden gelen bilgiye göre
+  // (developers.hepsiburada.com "Entegratöre Servis Anahtarı Ekleme"
+  // rehberi): Basic Auth kullanıcı adı = MerchantId (mağaza GUID'i), şifre
+  // = Servis Anahtarı (Secret Key). Entegratör adı ayrı bir alan - sadece
+  // User-Agent header'ında kullanılıyor, Basic Auth'a girmiyor.
   HEPSIBURADA_MERCHANT_ID?: string;
-  HEPSIBURADA_USERNAME?: string;
-  HEPSIBURADA_PASSWORD?: string;
+  HEPSIBURADA_SECRET_KEY?: string;
+  HEPSIBURADA_INTEGRATOR_NAME?: string;
 };
 
 function runtimeBindings() {

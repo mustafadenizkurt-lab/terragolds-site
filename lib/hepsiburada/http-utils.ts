@@ -4,15 +4,19 @@
 // kimlik bilgisi veya Cloudflare Workers ortamı gerektirmeden doğrudan
 // bunları import edip test edebiliyor.
 
-// Hepsiburada da (Trendyol gibi) düz HTTP Basic auth kullanıyor, ama
-// apiKey/apiSecret yerine merchant hesabının kullanıcı adı/şifresiyle
-// (username:password).
-export function buildHepsiburadaAuthHeader(username: string, password: string): string {
-  return `Basic ${btoa(`${username}:${password}`)}`;
+// Hepsiburada'nın 2024'te güncellenen entegratör kimlik doğrulama yapısı
+// (developers.hepsiburada.com, "Entegratöre Servis Anahtarı Ekleme"):
+// Basic Auth'ta kullanıcı adı olarak MerchantId (mağaza GUID'iniz), şifre
+// olarak da "Servis Anahtarı" (Secret Key, entegratör ekranında üretilen
+// 12 haneli alfanümerik değer) kullanılıyor - Trendyol'daki gibi ayrı bir
+// "kullanıcı adı" alanı YOK.
+export function buildHepsiburadaAuthHeader(merchantId: string, secretKey: string): string {
+  return `Basic ${btoa(`${merchantId}:${secretKey}`)}`;
 }
 
-// Hepsiburada da her istekte "{merchantId} - {entegrasyonAdı}" biçiminde bir
-// User-Agent bekliyor (Trendyol'daki zorunlulukla aynı).
-export function buildHepsiburadaUserAgent(merchantId: string): string {
-  return `${merchantId} - SelfIntegration`;
+// User-Agent header'ı Basic Auth'tan tamamen bağımsız: sadece Hepsiburada
+// "Entegratör bilgileri" ekranında kayıtlı entegratör adınızı (ör. "x_dev")
+// olduğu gibi taşıyor - MerchantId ile birleştirilmiyor.
+export function buildHepsiburadaUserAgent(integratorName: string): string {
+  return integratorName;
 }

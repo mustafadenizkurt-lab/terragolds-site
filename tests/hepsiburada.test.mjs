@@ -8,13 +8,16 @@ import { mapHepsiburadaOrderPayload } from "../lib/hepsiburada/order-mapping.ts"
 // da test edilebilen SAF fonksiyonları (auth header/user-agent üretimi,
 // sipariş yanıtı eşleme) doğruluyor. tests/trendyol.test.mjs ile aynı desen.
 
-test("buildHepsiburadaAuthHeader Base64 ile doğru Basic auth header'ı üretir", () => {
-  const header = buildHepsiburadaAuthHeader("myUsername", "myPassword");
-  assert.equal(header, `Basic ${Buffer.from("myUsername:myPassword").toString("base64")}`);
+test("buildHepsiburadaAuthHeader merchantId:secretKey ile doğru Basic auth header'ı üretir", () => {
+  const header = buildHepsiburadaAuthHeader("11111111-2222-3333-4444-555555555555", "aB3xQ9mZ7kLp");
+  assert.equal(
+    header,
+    `Basic ${Buffer.from("11111111-2222-3333-4444-555555555555:aB3xQ9mZ7kLp").toString("base64")}`,
+  );
 });
 
-test("buildHepsiburadaUserAgent Hepsiburada'nın beklediği formatı üretir", () => {
-  assert.equal(buildHepsiburadaUserAgent("654321"), "654321 - SelfIntegration");
+test("buildHepsiburadaUserAgent entegratör adını olduğu gibi döndürür", () => {
+  assert.equal(buildHepsiburadaUserAgent("x_dev"), "x_dev");
 });
 
 test("mapHepsiburadaOrderPayload örnek bir Hepsiburada siparişini doğru eşliyor", () => {
