@@ -8711,6 +8711,10 @@ footer {
   display: grid;
   gap: 20px;
 }
+.admin-marketplace-sync {
+  display: grid;
+  gap: 20px;
+}
 .admin-payment-hero {
   min-height: 245px;
   display: flex;

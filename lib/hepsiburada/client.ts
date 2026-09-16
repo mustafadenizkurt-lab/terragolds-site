@@ -27,7 +27,7 @@ async function hepsiburadaFetch<T>(
   path: string,
   init: { method?: string; body?: unknown } = {},
 ): Promise<T> {
-  const { merchantId, secretKey, integratorName } = getHepsiburadaCredentials();
+  const { merchantId, secretKey, integratorName } = await getHepsiburadaCredentials();
 
   const response = await fetch(`${baseUrl}${path}`, {
     method: init.method ?? "GET",
@@ -106,7 +106,7 @@ export async function getProducts(params: {
   limit?: number;
   merchantSku?: string;
 } = {}): Promise<{ items: HepsiburadaProduct[]; totalCount: number }> {
-  const { merchantId } = getHepsiburadaCredentials();
+  const { merchantId } = await getHepsiburadaCredentials();
   const query = new URLSearchParams();
   if (params.offset !== undefined) query.set("offset", String(params.offset));
   if (params.limit !== undefined) query.set("limit", String(params.limit));
@@ -163,7 +163,7 @@ export type HepsiburadaPriceAndInventoryItem = {
 export async function updateStockAndPrice(
   items: HepsiburadaPriceAndInventoryItem[],
 ): Promise<HepsiburadaBatchResult> {
-  const { merchantId } = getHepsiburadaCredentials();
+  const { merchantId } = await getHepsiburadaCredentials();
   return hepsiburadaFetch(
     HEPSIBURADA_LISTING_API_BASE,
     `/listings/merchantid/${merchantId}/price-inventory`,
@@ -209,7 +209,7 @@ export async function getOrders(params: {
   offset?: number;
   limit?: number;
 } = {}): Promise<{ items: HepsiburadaOrder[]; totalCount: number }> {
-  const { merchantId } = getHepsiburadaCredentials();
+  const { merchantId } = await getHepsiburadaCredentials();
   const query = new URLSearchParams();
   if (params.startDate) query.set("startDate", params.startDate);
   if (params.endDate) query.set("endDate", params.endDate);

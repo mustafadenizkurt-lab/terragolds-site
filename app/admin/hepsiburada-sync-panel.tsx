@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import MarketplaceCredentialsPanel from "./marketplace-credentials-panel";
 
 type SyncResult = {
   created: number;
@@ -21,13 +22,10 @@ type OrderSyncResult = {
   errors: string[];
 };
 
-// Hepsiburada onayı ve API kimlik bilgileri (Merchant ID, kullanıcı adı,
-// şifre) henüz elimizde değil - bu panel ve arkasındaki lib/hepsiburada/*
-// kodu altyapı hazırlığı olarak duruyor (lib/trendyol/* ile aynı desen).
-// Bu ekrandaki hiçbir buton şu an gerçek bir sonuç üretmeyecek; her biri
-// "HEPSIBURADA_MERCHANT_ID ortam değişkeni ayarlanmamış" gibi net bir hata
-// döndürecek, ta ki Ayarlar bölümündeki (şimdilik pasif) kimlik bilgileri
-// gerçek değerlerle doldurulup Worker secret olarak eklenene kadar.
+// Kimlik bilgileri bu ekranın en üstündeki MarketplaceCredentialsPanel'den
+// girilip D1'de şifreli saklanıyor - wrangler CLI gerekmiyor. Onay/gerçek
+// API bilgileri girilip "Senkronu etkinleştir" işaretlenmeden buradaki
+// butonlar "pazaryeri henüz yapılandırılmamış" gibi net bir hata döner.
 export default function HepsiburadaSyncPanel({
   onNotice,
 }: {
@@ -128,16 +126,18 @@ export default function HepsiburadaSyncPanel({
   };
 
   return (
-    <div className="admin-panel">
+    <div className="admin-marketplace-sync">
+      <MarketplaceCredentialsPanel provider="hepsiburada" onNotice={onNotice} />
+
+      <div className="admin-panel">
       <div className="admin-panel-heading">
         <div>
           <p className="admin-kicker">Hepsiburada Marketplace</p>
           <h2>Ürün senkronizasyonu</h2>
           <p>
-            Yayındaki ürünleri Hepsiburada&apos;ya gönderir. Hepsiburada
-            onayı ve API kimlik bilgileri henüz elimizde olmadığı için bu
-            buton şu an hata verecektir - bu beklenen bir durum, altyapı
-            hazır, sadece kimlik bilgileri eksik.
+            Yayındaki ürünleri Hepsiburada&apos;ya gönderir. Bağlantı
+            bilgileri henüz kaydedilip etkinleştirilmediyse bu buton hata
+            verir - önce yukarıdaki bağlantı bilgilerini kaydedin.
           </p>
         </div>
         <button
@@ -270,6 +270,7 @@ export default function HepsiburadaSyncPanel({
           </table>
         </div>
       )}
+      </div>
     </div>
   );
 }

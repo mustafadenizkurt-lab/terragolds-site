@@ -1969,69 +1969,6 @@ export default function AdminClient({
                     </div>
                   </section>
 
-                  <section className="admin-panel">
-                    <div className="admin-form-section-title">
-                      <span>06</span>
-                      <div>
-                        <h2>Trendyol Marketplace API</h2>
-                        <p>
-                          Trendyol onayı henüz gelmedi, bu yüzden alanlar
-                          pasif. Onay gelip Supplier ID/API Key/API Secret
-                          elimize geçtiğinde bu formdan değil, doğrudan
-                          Worker&apos;a güvenli ortam değişkeni (secret)
-                          olarak eklenecek - buradaki alanlar sadece hangi
-                          bilgilerin bekleniyor olduğunu göstermek için.
-                        </p>
-                      </div>
-                    </div>
-                    <div className="admin-field-grid">
-                      <label className="admin-field">
-                        <span>Supplier ID</span>
-                        <input disabled placeholder="Onay bekleniyor" />
-                      </label>
-                      <label className="admin-field">
-                        <span>API Key</span>
-                        <input disabled placeholder="Onay bekleniyor" />
-                      </label>
-                      <label className="admin-field">
-                        <span>API Secret</span>
-                        <input disabled placeholder="Onay bekleniyor" />
-                      </label>
-                    </div>
-                  </section>
-
-                  <section className="admin-panel">
-                    <div className="admin-form-section-title">
-                      <span>07</span>
-                      <div>
-                        <h2>Hepsiburada Marketplace API</h2>
-                        <p>
-                          Hepsiburada onayı henüz gelmedi, bu yüzden alanlar
-                          pasif. Onay gelip Merchant ID/Servis Anahtarı/
-                          Entegratör Adı elimize geçtiğinde bu formdan değil,
-                          doğrudan Worker&apos;a güvenli ortam değişkeni
-                          (secret) olarak eklenecek - buradaki alanlar sadece
-                          hangi bilgilerin bekleniyor olduğunu göstermek
-                          için.
-                        </p>
-                      </div>
-                    </div>
-                    <div className="admin-field-grid">
-                      <label className="admin-field">
-                        <span>Merchant ID</span>
-                        <input disabled placeholder="Onay bekleniyor" />
-                      </label>
-                      <label className="admin-field">
-                        <span>Servis Anahtarı (Secret Key)</span>
-                        <input disabled placeholder="Onay bekleniyor" />
-                      </label>
-                      <label className="admin-field">
-                        <span>Entegratör Adı</span>
-                        <input disabled placeholder="Onay bekleniyor" />
-                      </label>
-                    </div>
-                  </section>
-
                   <ShippingTrackingSettingsPanel onNotice={flash} />
                 </div>
 

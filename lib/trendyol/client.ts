@@ -20,7 +20,7 @@ async function trendyolFetch<T>(
   path: string,
   init: { method?: string; body?: unknown } = {},
 ): Promise<T> {
-  const { supplierId, apiKey, apiSecret } = getTrendyolCredentials();
+  const { supplierId, apiKey, apiSecret } = await getTrendyolCredentials();
 
   const response = await fetch(`${TRENDYOL_API_BASE}${path}`, {
     method: init.method ?? "GET",
@@ -102,7 +102,7 @@ export async function getProducts(params: {
   size?: number;
   barcode?: string;
 } = {}): Promise<{ content: TrendyolProduct[]; totalElements: number; totalPages: number }> {
-  const { supplierId } = getTrendyolCredentials();
+  const { supplierId } = await getTrendyolCredentials();
   const query = new URLSearchParams();
   if (params.page !== undefined) query.set("page", String(params.page));
   if (params.size !== undefined) query.set("size", String(params.size));
@@ -116,7 +116,7 @@ export async function getProducts(params: {
 export async function createProduct(
   products: TrendyolProduct[],
 ): Promise<TrendyolBatchRequestResult> {
-  const { supplierId } = getTrendyolCredentials();
+  const { supplierId } = await getTrendyolCredentials();
   return trendyolFetch(`/product/sellers/${supplierId}/v2/products`, {
     method: "POST",
     body: { items: products },
@@ -126,7 +126,7 @@ export async function createProduct(
 export async function updateProduct(
   products: TrendyolProduct[],
 ): Promise<TrendyolBatchRequestResult> {
-  const { supplierId } = getTrendyolCredentials();
+  const { supplierId } = await getTrendyolCredentials();
   // Trendyol'da ürün güncellemesi de aynı v2/products endpoint'i üzerinden,
   // PUT metoduyla ve barcode eşleştirmesiyle yapılıyor - ayrı bir "update"
   // endpoint'i yok.
@@ -154,7 +154,7 @@ export type TrendyolPriceAndInventoryItem = {
 export async function updateStockAndPrice(
   items: TrendyolPriceAndInventoryItem[],
 ): Promise<TrendyolBatchRequestResult> {
-  const { supplierId } = getTrendyolCredentials();
+  const { supplierId } = await getTrendyolCredentials();
   return trendyolFetch(
     `/inventory/sellers/${supplierId}/products/price-and-inventory`,
     { method: "POST", body: { items } },
@@ -165,7 +165,7 @@ export async function getBatchRequestResult(batchRequestId: string): Promise<{
   batchRequestId: string;
   items: { status: string; failureReasons?: string[] }[];
 }> {
-  const { supplierId } = getTrendyolCredentials();
+  const { supplierId } = await getTrendyolCredentials();
   return trendyolFetch(
     `/product/sellers/${supplierId}/products/batch-requests/${batchRequestId}`,
   );
@@ -211,7 +211,7 @@ export async function getOrders(params: {
   page?: number;
   size?: number;
 } = {}): Promise<{ content: TrendyolOrderPackage[]; totalElements: number; totalPages: number }> {
-  const { supplierId } = getTrendyolCredentials();
+  const { supplierId } = await getTrendyolCredentials();
   const query = new URLSearchParams();
   if (params.startDate !== undefined) query.set("startDate", String(params.startDate));
   if (params.endDate !== undefined) query.set("endDate", String(params.endDate));
@@ -231,7 +231,7 @@ export async function updateOrderStatus(
   shipmentPackageId: number,
   input: { status: "Shipped" | "Delivered"; trackingNumber?: string; cargoProviderName?: string },
 ): Promise<void> {
-  const { supplierId } = getTrendyolCredentials();
+  const { supplierId } = await getTrendyolCredentials();
   await trendyolFetch(
     `/order/sellers/${supplierId}/shipment-packages/${shipmentPackageId}`,
     {
