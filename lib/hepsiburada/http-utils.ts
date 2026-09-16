@@ -14,9 +14,14 @@ export function buildHepsiburadaAuthHeader(merchantId: string, secretKey: string
   return `Basic ${btoa(`${merchantId}:${secretKey}`)}`;
 }
 
-// User-Agent header'ı Basic Auth'tan tamamen bağımsız: sadece Hepsiburada
-// "Entegratör bilgileri" ekranında kayıtlı entegratör adınızı (ör. "x_dev")
-// olduğu gibi taşıyor - MerchantId ile birleştirilmiyor.
-export function buildHepsiburadaUserAgent(integratorName: string): string {
-  return integratorName;
+// developers.hepsiburada.com'un Ocak 2024 entegrasyon güncellemesine göre
+// User-Agent "{MerchantId} - {EntegratörAdı}" formatında olmalı - eski
+// Basic Auth'ta kullanılan kullanıcı adı bilgisinin artık User-Agent'a
+// taşınması gerekiyor. Sadece entegratör adını göndermek (önceki hatalı
+// halimiz) 401/403 ile reddediliyor.
+export function buildHepsiburadaUserAgent(
+  merchantId: string,
+  integratorName: string,
+): string {
+  return `${merchantId} - ${integratorName}`;
 }

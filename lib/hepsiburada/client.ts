@@ -34,7 +34,7 @@ async function hepsiburadaFetch<T>(
     headers: {
       "content-type": "application/json",
       authorization: buildHepsiburadaAuthHeader(merchantId, secretKey),
-      "user-agent": buildHepsiburadaUserAgent(integratorName),
+      "user-agent": buildHepsiburadaUserAgent(merchantId, integratorName),
     },
     body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
   });

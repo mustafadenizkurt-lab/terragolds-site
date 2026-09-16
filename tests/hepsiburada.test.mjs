@@ -16,8 +16,11 @@ test("buildHepsiburadaAuthHeader merchantId:secretKey ile doğru Basic auth head
   );
 });
 
-test("buildHepsiburadaUserAgent entegratör adını olduğu gibi döndürür", () => {
-  assert.equal(buildHepsiburadaUserAgent("x_dev"), "x_dev");
+test("buildHepsiburadaUserAgent \"{merchantId} - {entegratörAdı}\" formatını üretir", () => {
+  assert.equal(
+    buildHepsiburadaUserAgent("11111111-2222-3333-4444-555555555555", "x_dev"),
+    "11111111-2222-3333-4444-555555555555 - x_dev",
+  );
 });
 
 test("mapHepsiburadaOrderPayload örnek bir Hepsiburada siparişini doğru eşliyor", () => {
