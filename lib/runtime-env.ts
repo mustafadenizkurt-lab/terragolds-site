@@ -16,6 +16,13 @@ type RuntimeBindings = {
   ANTHROPIC_API_KEY?: string;
   SHOPIFY_CLIENT_ID?: string;
   SHOPIFY_CLIENT_SECRET?: string;
+  // Not set yet - Trendyol Marketplace onboarding is still pending approval.
+  // Referenced now so lib/trendyol/auth.ts's shape is ready; every call that
+  // needs them throws a clear "ortam değişkeni ayarlanmamış" error via
+  // getRequiredEnv until they're added as real Worker secrets.
+  TRENDYOL_SUPPLIER_ID?: string;
+  TRENDYOL_API_KEY?: string;
+  TRENDYOL_API_SECRET?: string;
 };
 
 function runtimeBindings() {

@@ -291,6 +291,11 @@ export default function ShippingPanel({
                           Shopify
                         </small>
                       )}
+                      {order.salesChannel === "trendyol" && (
+                        <small className="admin-order-channel-badge">
+                          Trendyol
+                        </small>
+                      )}
                       {order.giftWrap && (
                         <small className="admin-order-channel-badge gift">
                           🎁 Hediye

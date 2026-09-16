@@ -13,6 +13,8 @@ import { ensureOrderCheckoutColumns } from "../../../../lib/checkout-order";
 import { reverseEarnedPoints } from "../../../../lib/loyalty";
 import { ensureShopifyOrdersTable } from "../../../../lib/shopify/orders";
 import { fulfillShopifyOrder } from "../../../../lib/shopify/fulfillment";
+import { ensureTrendyolOrdersTable } from "../../../../lib/trendyol/orders";
+import { fulfillTrendyolOrder } from "../../../../lib/trendyol/fulfillment";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +31,7 @@ export async function GET(request: Request) {
   try {
     const db = getD1();
     await ensureShopifyOrdersTable(db);
+    await ensureTrendyolOrdersTable(db);
     await ensureOrderCheckoutColumns(db);
     await db
       .prepare(
@@ -42,7 +45,7 @@ export async function GET(request: Request) {
       )
       .run();
 
-    const [orders, items, trackingSettings, shopifyOrders] = await Promise.all([
+    const [orders, items, trackingSettings, shopifyOrders, trendyolOrders] = await Promise.all([
       db
         .prepare(
           `SELECT id, status, customer_first_name, customer_last_name,
@@ -116,6 +119,44 @@ export async function GET(request: Request) {
                   tracking_number, shipped_at, delivered_at, items_json,
                   created_at
            FROM shopify_orders
+           WHERE status IN ('pending', 'paid', 'shipped', 'delivered')
+           ORDER BY created_at DESC
+           LIMIT 150`,
+        )
+        .all<{
+          id: string;
+          status: string;
+          customer_first_name: string;
+          customer_last_name: string;
+          customer_email: string;
+          customer_phone: string;
+          shipping_address: string;
+          shipping_district: string;
+          shipping_city: string;
+          shipping_postcode: string;
+          subtotal_amount: number;
+          discount_amount: number;
+          shipping_amount: number;
+          total_amount: number;
+          currency: string;
+          customer_note: string;
+          shipping_carrier: string;
+          tracking_number: string;
+          shipped_at: string | null;
+          delivered_at: string | null;
+          items_json: string;
+          created_at: string;
+        }>(),
+      db
+        .prepare(
+          `SELECT id, status, customer_first_name, customer_last_name,
+                  customer_email, customer_phone, shipping_address,
+                  shipping_district, shipping_city, shipping_postcode,
+                  subtotal_amount, discount_amount, shipping_amount,
+                  total_amount, currency, customer_note, shipping_carrier,
+                  tracking_number, shipped_at, delivered_at, items_json,
+                  created_at
+           FROM trendyol_orders
            WHERE status IN ('pending', 'paid', 'shipped', 'delivered')
            ORDER BY created_at DESC
            LIMIT 150`,
@@ -267,7 +308,73 @@ export async function GET(request: Request) {
         };
       });
 
-    const combinedOrders = [...shippingOrders, ...shopifyShippingOrders].sort(
+    const trendyolShippingOrders: AdminShippingOrder[] =
+      trendyolOrders.results.map((order) => {
+        let parsedItems: AdminShippingOrder["items"] = [];
+        try {
+          parsedItems = (
+            JSON.parse(order.items_json) as {
+              name: string;
+              quantity: number;
+              unitPrice: number;
+            }[]
+          ).map((item) => ({
+            name: item.name,
+            quantity: Number(item.quantity),
+            unitPrice: Number(item.unitPrice),
+          }));
+        } catch {
+          parsedItems = [];
+        }
+        return {
+          id: order.id,
+          status: order.status,
+          customerName:
+            `${order.customer_first_name} ${order.customer_last_name}`.trim(),
+          email: order.customer_email,
+          phone: order.customer_phone,
+          address: [
+            order.shipping_address,
+            order.shipping_district,
+            order.shipping_city,
+            order.shipping_postcode,
+          ]
+            .filter(Boolean)
+            .join(", "),
+          subtotalAmount: Number(order.subtotal_amount) || 0,
+          discountAmount: Number(order.discount_amount) || 0,
+          shippingAmount: Number(order.shipping_amount) || 0,
+          discountCode: null,
+          totalAmount: Number(order.total_amount) || 0,
+          currency: order.currency,
+          paymentProvider: "trendyol",
+          salesChannel: "trendyol",
+          customerNote: order.customer_note,
+          giftWrap: false,
+          giftMessage: "",
+          isCod: false,
+          shippingCarrier: order.shipping_carrier,
+          trackingNumber: order.tracking_number,
+          trackingUrl: createShippingTrackingUrl({
+            carrier: order.shipping_carrier,
+            trackingNumber: order.tracking_number,
+          }),
+          autoDeliverAt:
+            order.status === "shipped"
+              ? createAutoDeliverAt(order.shipped_at)
+              : null,
+          shippedAt: order.shipped_at,
+          deliveredAt: order.delivered_at,
+          createdAt: order.created_at,
+          items: parsedItems,
+        };
+      });
+
+    const combinedOrders = [
+      ...shippingOrders,
+      ...shopifyShippingOrders,
+      ...trendyolShippingOrders,
+    ].sort(
       (a, b) => (a.createdAt < b.createdAt ? 1 : -1),
     );
 
@@ -315,9 +422,10 @@ export async function PATCH(request: Request) {
 
     const db = getD1();
     await ensureShopifyOrdersTable(db);
+    await ensureTrendyolOrdersTable(db);
     await ensureOrderCheckoutColumns(db);
 
-    let table: "orders" | "shopify_orders" = "orders";
+    let table: "orders" | "shopify_orders" | "trendyol_orders" = "orders";
     let current = await db
       .prepare("SELECT status FROM orders WHERE id = ? LIMIT 1")
       .bind(id)
@@ -326,6 +434,13 @@ export async function PATCH(request: Request) {
       table = "shopify_orders";
       current = await db
         .prepare("SELECT status FROM shopify_orders WHERE id = ? LIMIT 1")
+        .bind(id)
+        .first<{ status: string }>();
+    }
+    if (!current) {
+      table = "trendyol_orders";
+      current = await db
+        .prepare("SELECT status FROM trendyol_orders WHERE id = ? LIMIT 1")
         .bind(id)
         .first<{ status: string }>();
     }
@@ -399,6 +514,33 @@ export async function PATCH(request: Request) {
         return Response.json({
           ok: true,
           warning: `Sipariş güncellendi ama Shopify'a bildirilemedi: ${
+            error instanceof Error ? error.message : "bilinmeyen hata"
+          }`,
+        });
+      }
+    }
+
+    // Aynı tek yönlü kural: sadece Trendyol'a bildirir, D1'deki güncelleme
+    // (yukarıda zaten yazıldı) her koşulda geçerli kalır.
+    if (table === "trendyol_orders" && status === "shipped") {
+      try {
+        const row = await db
+          .prepare(
+            "SELECT trendyol_shipment_package_id AS shipmentPackageId FROM trendyol_orders WHERE id = ?",
+          )
+          .bind(id)
+          .first<{ shipmentPackageId: string | null }>();
+        if (row?.shipmentPackageId) {
+          await fulfillTrendyolOrder(
+            row.shipmentPackageId,
+            shippingCarrier,
+            trackingNumber,
+          );
+        }
+      } catch (error) {
+        return Response.json({
+          ok: true,
+          warning: `Sipariş güncellendi ama Trendyol'a bildirilemedi: ${
             error instanceof Error ? error.message : "bilinmeyen hata"
           }`,
         });

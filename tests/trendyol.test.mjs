@@ -1,0 +1,109 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { buildTrendyolAuthHeader, buildTrendyolUserAgent } from "../lib/trendyol/http-utils.ts";
+import { mapTrendyolOrderPayload } from "../lib/trendyol/order-mapping.ts";
+
+// Trendyol henüz API kimlik bilgilerimizi onaylamadı, o yüzden bu testler
+// gerçek bir API çağrısı yapmıyor - sadece kimlik bilgisi olmadan da test
+// edilebilen SAF fonksiyonları (auth header/user-agent üretimi, sipariş
+// yanıtı eşleme) doğruluyor. Örnek sipariş şekli Trendyol'un resmi Sipariş
+// Entegrasyonu dokümantasyonundaki yanıt alanlarına (orderNumber, lines,
+// shipmentAddress vb.) karşılık geliyor.
+
+test("buildTrendyolAuthHeader Base64 ile doğru Basic auth header'ı üretir", () => {
+  const header = buildTrendyolAuthHeader("myApiKey", "myApiSecret");
+  assert.equal(header, `Basic ${Buffer.from("myApiKey:myApiSecret").toString("base64")}`);
+});
+
+test("buildTrendyolUserAgent Trendyol'un beklediği formatı üretir", () => {
+  assert.equal(buildTrendyolUserAgent("123456"), "123456 - SelfIntegration");
+});
+
+test("mapTrendyolOrderPayload örnek bir Trendyol siparişini doğru eşliyor", () => {
+  // Trendyol'un GET /order/sellers/{supplierId}/orders örnek yanıtındaki
+  // "content" dizisinin bir elemanına karşılık gelen şekil.
+  const samplePackage = {
+    shipmentPackageId: 987654321,
+    orderNumber: "TY-2026-000123",
+    status: "Created",
+    grossAmount: 349.9,
+    totalDiscount: 20,
+    customerFirstName: "Ayşe",
+    customerLastName: "Yılmaz",
+    customerEmail: "ayse@example.com",
+    orderDate: 1750000000000,
+    shipmentAddress: {
+      address1: "Örnek Mahalle Örnek Sokak No:1",
+      district: "Kadıköy",
+      city: "İstanbul",
+      postalCode: "34710",
+      countryCode: "TR",
+      phone: "5551234567",
+    },
+    lines: [
+      {
+        barcode: "TG-42",
+        productName: "316L Çelik Gold Kolye",
+        quantity: 2,
+        price: 174.95,
+        productId: 42,
+      },
+    ],
+  };
+
+  const mapped = mapTrendyolOrderPayload(samplePackage);
+
+  assert.equal(mapped.orderNumber, "TY-2026-000123");
+  assert.equal(mapped.status, "paid");
+  assert.equal(mapped.customerFirstName, "Ayşe");
+  assert.equal(mapped.customerLastName, "Yılmaz");
+  assert.equal(mapped.customerEmail, "ayse@example.com");
+  assert.equal(mapped.customerPhone, "5551234567");
+  assert.equal(mapped.shippingAddress, "Örnek Mahalle Örnek Sokak No:1");
+  assert.equal(mapped.shippingDistrict, "Kadıköy");
+  assert.equal(mapped.shippingCity, "İstanbul");
+  assert.equal(mapped.shippingPostcode, "34710");
+  assert.equal(mapped.shippingCountry, "TR");
+  // 349.9 TL -> 34990 kuruş
+  assert.equal(mapped.totalAmount, 34990);
+  // 20 TL -> 2000 kuruş
+  assert.equal(mapped.discountAmount, 2000);
+  assert.equal(mapped.currency, "TRY");
+  assert.equal(mapped.items.length, 1);
+  assert.deepEqual(mapped.items[0], {
+    productId: 42,
+    name: "316L Çelik Gold Kolye",
+    quantity: 2,
+    // 174.95 TL -> 17495 kuruş
+    unitPrice: 17495,
+  });
+});
+
+test("mapTrendyolOrderPayload durum eşlemesi: Shipped/Delivered/Cancelled/Returned", () => {
+  const base = {
+    orderNumber: "TY-1",
+    grossAmount: 100,
+    totalDiscount: 0,
+    lines: [],
+  };
+  assert.equal(mapTrendyolOrderPayload({ ...base, status: "Shipped" }).status, "shipped");
+  assert.equal(mapTrendyolOrderPayload({ ...base, status: "Delivered" }).status, "delivered");
+  assert.equal(mapTrendyolOrderPayload({ ...base, status: "Cancelled" }).status, "cancelled");
+  assert.equal(mapTrendyolOrderPayload({ ...base, status: "Returned" }).status, "cancelled");
+  assert.equal(mapTrendyolOrderPayload({ ...base, status: "Created" }).status, "paid");
+});
+
+test("mapTrendyolOrderPayload eksik müşteri/adres alanlarında çökmüyor", () => {
+  const mapped = mapTrendyolOrderPayload({
+    orderNumber: "TY-2",
+    status: "Awaiting",
+    grossAmount: 0,
+    totalDiscount: 0,
+    lines: [],
+  });
+  assert.equal(mapped.customerFirstName, "");
+  assert.equal(mapped.shippingCity, "");
+  assert.equal(mapped.shippingCountry, "TR");
+  assert.equal(mapped.trackingNumber, "");
+  assert.deepEqual(mapped.items, []);
+});
