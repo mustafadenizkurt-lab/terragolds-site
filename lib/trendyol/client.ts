@@ -152,6 +152,28 @@ export function flattenTrendyolCategories(
   });
 }
 
+export type TrendyolCategoryAttribute = {
+  categoryId: number;
+  attribute: { id: number; name: string };
+  required: boolean;
+  allowCustom: boolean;
+  attributeValues: { id: number; name: string }[];
+};
+
+// Bir kategorinin zorunlu/opsiyonel özelliklerini (ör. Renk, Materyal)
+// döner (developers.trendyol.com "Kategori Özellik Listesi v2"). Ürün
+// gönderirken bu özelliklerden required=true olanlar attributes alanında
+// gönderilmezse Trendyol isteği reddediyor - 500 hatasının olası
+// nedenlerinden biri bu eksik alan olabilir.
+export async function getCategoryAttributes(
+  categoryId: number,
+): Promise<TrendyolCategoryAttribute[]> {
+  const result = await trendyolFetch<{
+    categoryAttributes: TrendyolCategoryAttribute[];
+  }>(`/product/categories/${categoryId}/attributes`);
+  return result.categoryAttributes ?? [];
+}
+
 export type TrendyolBrand = {
   id: number;
   name: string;

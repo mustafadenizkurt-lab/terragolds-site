@@ -77,6 +77,51 @@ export default function TrendyolSyncPanel({
     }
   };
 
+  const [attributeCategoryId, setAttributeCategoryId] = useState("");
+  const [attributeBusy, setAttributeBusy] = useState(false);
+  const [attributeError, setAttributeError] = useState("");
+  const [attributeResults, setAttributeResults] = useState<
+    {
+      id: number;
+      name: string;
+      required: boolean;
+      allowCustom: boolean;
+      values: { id: number; name: string }[];
+    }[] | null
+  >(null);
+
+  const searchAttributes = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setAttributeBusy(true);
+    setAttributeError("");
+    try {
+      const response = await fetch(
+        `/api/admin/trendyol/category-attributes?categoryId=${encodeURIComponent(attributeCategoryId)}`,
+        { cache: "no-store" },
+      );
+      const body = (await response.json()) as {
+        attributes?: {
+          id: number;
+          name: string;
+          required: boolean;
+          allowCustom: boolean;
+          values: { id: number; name: string }[];
+        }[];
+        error?: string;
+      };
+      if (!response.ok) throw new Error(body.error ?? "Kategori özellikleri alınamadı.");
+      setAttributeResults(body.attributes ?? []);
+    } catch (searchError) {
+      setAttributeError(
+        searchError instanceof Error
+          ? searchError.message
+          : "Kategori özellikleri alınamadı.",
+      );
+    } finally {
+      setAttributeBusy(false);
+    }
+  };
+
   const [brandQuery, setBrandQuery] = useState("");
   const [brandBusy, setBrandBusy] = useState(false);
   const [brandError, setBrandError] = useState("");
@@ -248,6 +293,77 @@ export default function TrendyolSyncPanel({
                   <tr key={category.id}>
                     <td>{category.path}</td>
                     <td>{category.id}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="admin-panel">
+        <div className="admin-panel-heading">
+          <div>
+            <p className="admin-kicker">Trendyol Marketplace</p>
+            <h2>Kategori özelliklerini gör</h2>
+            <p>
+              Bir kategori ID&apos;si için Trendyol&apos;un zorunlu tuttuğu
+              özellikleri (ör. Renk, Materyal) gösterir - ürün gönderirken
+              bu alanlardan zorunlu (Evet) olanlar eksikse istek
+              reddedilebilir.
+            </p>
+          </div>
+        </div>
+        <form className="admin-field-grid" onSubmit={searchAttributes}>
+          <label className="admin-field">
+            <span>Kategori ID</span>
+            <input
+              value={attributeCategoryId}
+              onChange={(event) => setAttributeCategoryId(event.target.value)}
+              placeholder="2853"
+              inputMode="numeric"
+              required
+            />
+          </label>
+          <button
+            className="admin-primary-button"
+            type="submit"
+            disabled={attributeBusy}
+            style={{ alignSelf: "flex-end" }}
+          >
+            {attributeBusy ? "Aranıyor…" : "Getir"}
+          </button>
+        </form>
+        {attributeError && (
+          <div className="admin-inline-error" role="alert">
+            {attributeError}
+          </div>
+        )}
+        {attributeResults && (
+          <div className="admin-supplier-table-wrap" style={{ marginTop: 16 }}>
+            <table className="admin-supplier-table">
+              <thead>
+                <tr>
+                  <th>Özellik</th>
+                  <th>Zorunlu</th>
+                  <th>Serbest metin</th>
+                  <th>Örnek değerler</th>
+                </tr>
+              </thead>
+              <tbody>
+                {attributeResults.length === 0 && (
+                  <tr>
+                    <td colSpan={4}>Bu kategoride tanımlı özellik yok.</td>
+                  </tr>
+                )}
+                {attributeResults.map((attribute) => (
+                  <tr key={attribute.id}>
+                    <td>{attribute.name}</td>
+                    <td>{attribute.required ? "Evet" : "Hayır"}</td>
+                    <td>{attribute.allowCustom ? "Evet" : "Hayır"}</td>
+                    <td>
+                      {attribute.values.map((value) => value.name).join(", ")}
+                    </td>
                   </tr>
                 ))}
               </tbody>
