@@ -73,7 +73,11 @@ type OrderItemRow = {
   quantity: number;
 };
 
-export async function GET(request: Request) {
+// Dokümanın cURL/PHP örnekleri POST, C# örneği GET kullanıyor (bkz.
+// orderStatus/paymentMethods) - ikisini de kabul ediyoruz. Tarih
+// aralığı/durum filtresinin body'de mi query'de mi geldiği henüz
+// doğrulanmadığından şimdilik sadece query parametreleri okunuyor.
+async function handle(request: Request) {
   if (!(await verifyBirfaturaRequest(request))) {
     return Response.json({ error: "Yetkisiz istek." }, { status: 401 });
   }
@@ -174,3 +178,6 @@ export async function GET(request: Request) {
     }),
   });
 }
+
+export const GET = handle;
+export const POST = handle;

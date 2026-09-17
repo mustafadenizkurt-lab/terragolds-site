@@ -9,7 +9,10 @@ export const dynamic = "force-dynamic";
 // endpoint'ten biri - mağaza kurulumu sırasında sitemizdeki ödeme
 // yöntemlerini çeker. Yanıt şeması dokümandaki örnekle birebir doğrulandı:
 // { "PaymentMethods": [{ "Id": number, "Value": string }, ...] }
-export async function GET(request: Request) {
+//
+// orderStatus'ta olduğu gibi dokümanın cURL/PHP örnekleri POST, C# örneği
+// GET kullanıyor - ikisini de kabul ediyoruz.
+async function handle(request: Request) {
   if (!(await verifyBirfaturaRequest(request))) {
     return Response.json({ error: "Yetkisiz istek." }, { status: 401 });
   }
@@ -20,3 +23,6 @@ export async function GET(request: Request) {
     ),
   });
 }
+
+export const GET = handle;
+export const POST = handle;

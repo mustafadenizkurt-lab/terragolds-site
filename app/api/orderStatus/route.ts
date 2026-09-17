@@ -10,7 +10,12 @@ export const dynamic = "force-dynamic";
 // sipariş durumlarını çeker. Request body yok, sadece "token" header'ı ile
 // kimlik doğrulanır. Yanıt şeması dokümandaki örnekle birebir doğrulandı:
 // { "OrderStatus": [{ "Id": number, "Value": string }, ...] }
-export async function GET(request: Request) {
+//
+// Dokümandaki cURL ve PHP örnekleri POST, C# örneği ise GET (GetAsync)
+// kullanıyor - dokümanın kendi içinde çelişkili. Body gerektirmediği için
+// ikisini de kabul etmek zararsız, bu yüzden hem GET hem POST'a aynı yanıtı
+// veriyoruz.
+async function handle(request: Request) {
   if (!(await verifyBirfaturaRequest(request))) {
     return Response.json({ error: "Yetkisiz istek." }, { status: 401 });
   }
@@ -22,3 +27,6 @@ export async function GET(request: Request) {
     })),
   });
 }
+
+export const GET = handle;
+export const POST = handle;
