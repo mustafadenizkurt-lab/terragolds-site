@@ -163,10 +163,13 @@ export type TrendyolBrand = {
 // (ör. "Genel Markalar" gibi kayıtlı markası olmayan satıcılar için
 // kullanılabilecek genel kategoriler).
 export async function getBrandsByName(name: string): Promise<TrendyolBrand[]> {
-  const result = await trendyolFetch<{ brands: TrendyolBrand[] }>(
+  // Trendyol'un bu servisin tam yanıt zarfını (categories gibi { brands: [] }
+  // mı, yoksa doğrudan [] mi döndürdüğünü) dokümantasyonda net
+  // doğrulayamadık - ikisini de kabul edecek şekilde yazıldı.
+  const result = await trendyolFetch<TrendyolBrand[] | { brands: TrendyolBrand[] }>(
     `/product/brands/by-name?name=${encodeURIComponent(name)}`,
   );
-  return result.brands;
+  return Array.isArray(result) ? result : (result.brands ?? []);
 }
 
 export async function createProduct(
