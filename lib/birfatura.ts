@@ -118,6 +118,16 @@ export const BIRFATURA_ORDER_STATUS_MAP: Record<
   failed: { id: 5, value: "Başarısız" },
 };
 
+// BirFatura /api/paymentMethods servisinden dönen sabit liste. Terragolds'ta
+// gerçek ödeme sağlayıcı (Shopier/PayTR/iyzico) fark etmeksizin müşteri
+// tarafında hepsi "kredi/banka kartı" olarak görünüyor - kapıda ödeme
+// (orders.is_cod) ayrı bir yöntem. /api/orders'ın PaymentMethodId alanı bu
+// ID'leri kullanacak.
+export const BIRFATURA_PAYMENT_METHOD_MAP = {
+  card: { id: 1, value: "Kredi Kartı" },
+  cod: { id: 2, value: "Kapıda Ödeme" },
+} as const;
+
 // BirFatura'nın resmi dokümantasyonuna göre (developers.birfatura.com/
 // dokuman/ozel-entegrasyon-api) token, "token" adlı düz bir header'da
 // gönderiliyor - Authorization/Bearer değil.
