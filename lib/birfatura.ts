@@ -100,6 +100,24 @@ export async function disableBirfaturaAccess(updatedBy: number) {
     .run();
 }
 
+// BirFatura /api/orderStatus servisinden dönen sabit liste - db'deki
+// orders.status (orders_status_check kısıtlaması: pending/paid/failed/
+// shipped/delivered/cancelled) değerlerini BirFatura'nın beklediği
+// {Id, Value} çiftlerine eşliyor. "pending" (henüz ödenmemiş, faturalanacak
+// bir şey yok) kasıtlı olarak listede yok. /api/orders servisi de bu
+// ID'leri OrderStatusId alanında kullanıyor - ikisi arasında tutarlı olması
+// dokümanda özellikle belirtiliyor.
+export const BIRFATURA_ORDER_STATUS_MAP: Record<
+  string,
+  { id: number; value: string }
+> = {
+  paid: { id: 1, value: "Ödendi" },
+  shipped: { id: 2, value: "Kargolandı" },
+  delivered: { id: 3, value: "Teslim Edildi" },
+  cancelled: { id: 4, value: "İptal Edildi" },
+  failed: { id: 5, value: "Başarısız" },
+};
+
 // BirFatura'nın resmi dokümantasyonuna göre (developers.birfatura.com/
 // dokuman/ozel-entegrasyon-api) token, "token" adlı düz bir header'da
 // gönderiliyor - Authorization/Bearer değil.
