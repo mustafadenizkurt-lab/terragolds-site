@@ -152,6 +152,23 @@ export function flattenTrendyolCategories(
   });
 }
 
+export type TrendyolBrand = {
+  id: number;
+  name: string;
+};
+
+// Trendyol markasız ürün kabul etmiyor - her ürün için geçerli bir brandId
+// gerekiyor (developers.trendyol.com "Trendyol Marka Listesi - getBrands").
+// name ile arama yapıldığında sadece o kelimeyi içeren markalar dönüyor
+// (ör. "Genel Markalar" gibi kayıtlı markası olmayan satıcılar için
+// kullanılabilecek genel kategoriler).
+export async function getBrandsByName(name: string): Promise<TrendyolBrand[]> {
+  const result = await trendyolFetch<{ brands: TrendyolBrand[] }>(
+    `/product/brands/by-name?name=${encodeURIComponent(name)}`,
+  );
+  return result.brands;
+}
+
 export async function createProduct(
   products: TrendyolProduct[],
 ): Promise<TrendyolBatchRequestResult> {

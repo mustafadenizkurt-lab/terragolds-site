@@ -77,6 +77,37 @@ export default function TrendyolSyncPanel({
     }
   };
 
+  const [brandQuery, setBrandQuery] = useState("");
+  const [brandBusy, setBrandBusy] = useState(false);
+  const [brandError, setBrandError] = useState("");
+  const [brandResults, setBrandResults] = useState<
+    { id: number; name: string }[] | null
+  >(null);
+
+  const searchBrands = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setBrandBusy(true);
+    setBrandError("");
+    try {
+      const response = await fetch(
+        `/api/admin/trendyol/brands?name=${encodeURIComponent(brandQuery)}`,
+        { cache: "no-store" },
+      );
+      const body = (await response.json()) as {
+        brands?: { id: number; name: string }[];
+        error?: string;
+      };
+      if (!response.ok) throw new Error(body.error ?? "Markalar alınamadı.");
+      setBrandResults(body.brands ?? []);
+    } catch (searchError) {
+      setBrandError(
+        searchError instanceof Error ? searchError.message : "Markalar alınamadı.",
+      );
+    } finally {
+      setBrandBusy(false);
+    }
+  };
+
   const sync = async () => {
     setBusy(true);
     setError("");
@@ -217,6 +248,69 @@ export default function TrendyolSyncPanel({
                   <tr key={category.id}>
                     <td>{category.path}</td>
                     <td>{category.id}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="admin-panel">
+        <div className="admin-panel-heading">
+          <div>
+            <p className="admin-kicker">Trendyol Marketplace</p>
+            <h2>Marka ara</h2>
+            <p>
+              Trendyol markasız ürün kabul etmiyor - her ürün için geçerli
+              bir brandId gerekiyor. Kayıtlı markanızı veya &quot;Genel
+              Markalar&quot; gibi genel bir seçeneği burada arayabilirsiniz.
+            </p>
+          </div>
+        </div>
+        <form className="admin-field-grid" onSubmit={searchBrands}>
+          <label className="admin-field">
+            <span>Aranacak kelime</span>
+            <input
+              value={brandQuery}
+              onChange={(event) => setBrandQuery(event.target.value)}
+              placeholder="Genel Markalar"
+              required
+            />
+          </label>
+          <button
+            className="admin-primary-button"
+            type="submit"
+            disabled={brandBusy}
+            style={{ alignSelf: "flex-end" }}
+          >
+            {brandBusy ? "Aranıyor…" : "Ara"}
+          </button>
+        </form>
+        {brandError && (
+          <div className="admin-inline-error" role="alert">
+            {brandError}
+          </div>
+        )}
+        {brandResults && (
+          <div className="admin-supplier-table-wrap" style={{ marginTop: 16 }}>
+            <table className="admin-supplier-table">
+              <thead>
+                <tr>
+                  <th>Marka adı</th>
+                  <th>ID</th>
+                </tr>
+              </thead>
+              <tbody>
+                {brandResults.length === 0 && (
+                  <tr>
+                    <td colSpan={2}>Eşleşen marka bulunamadı.</td>
+                  </tr>
+                )}
+                {brandResults.map((brand) => (
+                  <tr key={brand.id}>
+                    <td>{brand.name}</td>
+                    <td>{brand.id}</td>
                   </tr>
                 ))}
               </tbody>

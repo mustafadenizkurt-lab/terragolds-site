@@ -18,13 +18,17 @@ function barcodeFor(product: { id: number; xmlExternalId: string | null }): stri
   return product.xmlExternalId || `TG-${product.id}`;
 }
 
-// NOT (bilinen eksik): Trendyol her üründe geçerli bir kategori ve marka ID
-// bekliyor (kendi kategori/marka listesinden - getCategories/getBrands
-// endpoint'leri, bu iskelette henüz yok). categoryId/brandId burada 0 ile
-// dolduruluyor; gerçek senkron çalışmadan önce site kategorilerimizi
-// (lib/category-groups.ts) Trendyol'un kategori ağacına eşleyen bir tablo/
-// fonksiyon eklenmesi gerekecek - kimlik bilgileri gelip gerçek API
-// yanıtlarını görebildiğimizde netleştirilecek.
+// GEÇİCİ VARSAYILAN: Trendyol'un kendi kategori ağacında admin panelindeki
+// "Kategori ara" ile bulunan "Aksesuar > Takı & Mücevher > Kolye > Çelik
+// Kolye" ID'si. Şu an TÜM ürünler bu tek kategoriye gönderiliyor - bu sadece
+// ilk canlı testi (auth/header/brandId sorunlarını ayıklamak için) mümkün
+// kılmak amaçlı bir geçici çözüm. Gerçek kullanımda her site kategorisinin
+// (lib/category-groups.ts) kendi Trendyol categoryId'sine eşlenmesi gerekir.
+const TRENDYOL_DEFAULT_CATEGORY_ID = 2853;
+
+// NOT (bilinen eksik): Trendyol markasız ürün kabul etmiyor, geçerli bir
+// brandId gerekiyor (admin panelindeki "Marka ara" ile bulunabilir - ör.
+// "Genel Markalar"). Bulununca burada 0 yerine kullanılacak.
 function toTrendyolProduct(product: PendingProduct): TrendyolProduct {
   const imageUrl = toAbsoluteImageUrl(product.image);
   return {
@@ -32,7 +36,7 @@ function toTrendyolProduct(product: PendingProduct): TrendyolProduct {
     title: product.name,
     productMainId: barcodeFor(product),
     brandId: 0,
-    categoryId: 0,
+    categoryId: TRENDYOL_DEFAULT_CATEGORY_ID,
     quantity: product.stock,
     stockCode: barcodeFor(product),
     listPrice: product.price,
