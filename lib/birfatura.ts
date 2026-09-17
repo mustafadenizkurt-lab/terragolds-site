@@ -17,13 +17,10 @@ async function sha256Hex(value: string): Promise<string> {
     .join("");
 }
 
+// BirFatura'nın kendi dokümantasyonuna göre token bir GUID olmalı - Web
+// Crypto'nun randomUUID()'si zaten bunu üretiyor.
 function randomApiKey(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(24));
-  const base64 = btoa(String.fromCharCode(...bytes))
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-  return `tg_bf_${base64}`;
+  return crypto.randomUUID();
 }
 
 export async function ensureBirfaturaTable(db: D1Database) {
