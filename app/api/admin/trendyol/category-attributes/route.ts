@@ -19,11 +19,11 @@ export async function GET(request: Request) {
     const attributes = await getCategoryAttributes(categoryId);
     return Response.json({
       attributes: attributes.map((attribute) => ({
-        id: attribute.attribute.id,
-        name: attribute.attribute.name,
-        required: attribute.required,
-        allowCustom: attribute.allowCustom,
-        values: attribute.attributeValues.slice(0, 20).map((value) => ({
+        id: attribute.attribute?.id ?? 0,
+        name: attribute.attribute?.name ?? "",
+        required: Boolean(attribute.required),
+        allowCustom: Boolean(attribute.allowCustom),
+        values: (attribute.attributeValues ?? []).slice(0, 20).map((value) => ({
           id: value.id,
           name: value.name,
         })),
