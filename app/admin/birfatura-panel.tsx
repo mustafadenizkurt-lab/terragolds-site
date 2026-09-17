@@ -97,8 +97,11 @@ export default function BirfaturaPanel({
     }
   };
 
-  const ordersUrl =
-    typeof window !== "undefined" ? `${window.location.origin}/api/birfatura/orders` : "";
+  // BirFatura'nın dokümantasyonuna göre (developers.birfatura.com/dokuman/
+  // ozel-entegrasyon-api) "Web Sitenizin Adresi" alanına sadece kök domain
+  // girilir - /api/orders, /api/orderStatus vb. yolları BirFatura kendisi
+  // ekliyor.
+  const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
 
   return (
     <div className="admin-panel">
@@ -145,8 +148,8 @@ export default function BirfaturaPanel({
         <>
           <div className="admin-field-grid">
             <label className="admin-field full">
-              <span>Sipariş listesi adresi (BirFatura&apos;daki &quot;Web Sitenizin Adresi&quot; yerine bunu girin)</span>
-              <input value={ordersUrl} readOnly onClick={(event) => event.currentTarget.select()} />
+              <span>BirFatura&apos;daki &quot;Web Sitenizin Adresi&quot; (Base URL) alanına bunu girin</span>
+              <input value={baseUrl} readOnly onClick={(event) => event.currentTarget.select()} />
             </label>
           </div>
 

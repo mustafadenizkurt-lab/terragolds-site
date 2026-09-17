@@ -1,19 +1,16 @@
-import { getD1 } from "../../../../lib/store-db";
-import { verifyBirfaturaRequest } from "../../../../lib/birfatura";
+import { getD1 } from "../../../lib/store-db";
+import { verifyBirfaturaRequest } from "../../../lib/birfatura";
 
 export const dynamic = "force-dynamic";
 
-// BirFatura'nın (veya "Kendi Altyapım" seçeneğiyle bağlanan herhangi bir
-// e-fatura entegratörünün) sitemizden siparişleri çekmesi için. Trendyol/
-// Hepsiburada entegrasyonlarının tersi yönde çalışıyor - orada biz istek
-// atıyorduk, burada dışarıdan bize istek geliyor, o yüzden Authorization
-// header'ı ile kimlik doğrulaması (lib/birfatura.ts) gerekiyor.
+// BirFatura'nın "Özel Entegrasyon API" dokümantasyonuna göre zorunlu 3
+// endpoint'ten biri (/api/orders) - kimlik doğrulaması "token" header'ıyla
+// yapılıyor (lib/birfatura.ts).
 //
-// NOT: BirFatura'nın gerçek beklediği response şeması/parametre adları
-// henüz resmi dokümantasyonla doğrulanmadı - bu, en yaygın Türkiye e-ticaret
-// entegratör kalıplarına (Ticimax/WooCommerce tipi sipariş listeleme)
-// dayanan makul bir ilk sürüm. BirFatura tarafında bir hata/uyumsuzluk
-// çıkarsa (400/422 gibi) bu route'un alan adları buna göre güncellenmeli.
+// NOT: Bu route'un tam alan adları/response şekli, dokümandaki /api/orders
+// sayfasının kendi örnek JSON'ıyla henüz birebir doğrulanmadı - şu anki
+// hâli makul bir taslak. Gerçek dokümanın örnek response'u görülünce alan
+// adları (büyük/küçük harf dahil) buna göre kesinleştirilmeli.
 type OrderRow = {
   id: string;
   status: string;
@@ -46,10 +43,11 @@ type OrderItemRow = {
   quantity: number;
 };
 
-// D1'de tüm tutarlar kuruş cinsinden (integer) saklanıyor - faturaya
-// aktarılırken standart ondalıklı TL'ye çevriliyor.
+// D1'de tüm tutarlar kuruş cinsinden (integer) saklanıyor - dokümanda
+// "ondalıklı tutarlar yuvarlanmamalı, hassasiyet korunmalı" dendiği için
+// faturaya aktarılırken tam ondalıklı TL'ye çevriliyor (yuvarlama yok).
 function kurusToTl(kurus: number): number {
-  return Math.round(kurus) / 100;
+  return kurus / 100;
 }
 
 export async function GET(request: Request) {

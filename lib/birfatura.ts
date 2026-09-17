@@ -100,13 +100,11 @@ export async function disableBirfaturaAccess(updatedBy: number) {
     .run();
 }
 
-// BirFatura'dan gelen isteklerde Authorization header'ını doğrular -
-// "Bearer <anahtar>" veya çıplak anahtar kabul ediyor (BirFatura'nın tam
-// olarak hangi formatı göndereceği henüz netleşmedi, ikisi de destekleniyor).
+// BirFatura'nın resmi dokümantasyonuna göre (developers.birfatura.com/
+// dokuman/ozel-entegrasyon-api) token, "token" adlı düz bir header'da
+// gönderiliyor - Authorization/Bearer değil.
 export async function verifyBirfaturaRequest(request: Request): Promise<boolean> {
-  const header = request.headers.get("authorization") ?? request.headers.get("x-api-key");
-  if (!header) return false;
-  const provided = header.replace(/^Bearer\s+/i, "").trim();
+  const provided = request.headers.get("token")?.trim();
   if (!provided) return false;
 
   const db = getD1();
