@@ -44,6 +44,39 @@ export default function TrendyolSyncPanel({
   const [orderError, setOrderError] = useState("");
   const [lastOrderResult, setLastOrderResult] = useState<OrderSyncResult | null>(null);
 
+  const [categoryQuery, setCategoryQuery] = useState("");
+  const [categoryBusy, setCategoryBusy] = useState(false);
+  const [categoryError, setCategoryError] = useState("");
+  const [categoryResults, setCategoryResults] = useState<
+    { id: number; path: string }[] | null
+  >(null);
+
+  const searchCategories = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setCategoryBusy(true);
+    setCategoryError("");
+    try {
+      const response = await fetch(
+        `/api/admin/trendyol/categories?name=${encodeURIComponent(categoryQuery)}`,
+        { cache: "no-store" },
+      );
+      const body = (await response.json()) as {
+        categories?: { id: number; path: string }[];
+        error?: string;
+      };
+      if (!response.ok) throw new Error(body.error ?? "Kategoriler alınamadı.");
+      setCategoryResults(body.categories ?? []);
+    } catch (searchError) {
+      setCategoryError(
+        searchError instanceof Error
+          ? searchError.message
+          : "Kategoriler alınamadı.",
+      );
+    } finally {
+      setCategoryBusy(false);
+    }
+  };
+
   const sync = async () => {
     setBusy(true);
     setError("");
@@ -128,6 +161,69 @@ export default function TrendyolSyncPanel({
   return (
     <div className="admin-marketplace-sync">
       <MarketplaceCredentialsPanel provider="trendyol" onNotice={onNotice} />
+
+      <div className="admin-panel">
+        <div className="admin-panel-heading">
+          <div>
+            <p className="admin-kicker">Trendyol Marketplace</p>
+            <h2>Kategori ara</h2>
+            <p>
+              Ürün gönderirken gereken categoryId&apos;yi bulmak için
+              Trendyol&apos;un kendi kategori ağacında arama yapar (ör.
+              &quot;Kolye&quot;, &quot;Yüzük&quot;).
+            </p>
+          </div>
+        </div>
+        <form className="admin-field-grid" onSubmit={searchCategories}>
+          <label className="admin-field">
+            <span>Aranacak kelime</span>
+            <input
+              value={categoryQuery}
+              onChange={(event) => setCategoryQuery(event.target.value)}
+              placeholder="Kolye"
+              required
+            />
+          </label>
+          <button
+            className="admin-primary-button"
+            type="submit"
+            disabled={categoryBusy}
+            style={{ alignSelf: "flex-end" }}
+          >
+            {categoryBusy ? "Aranıyor…" : "Ara"}
+          </button>
+        </form>
+        {categoryError && (
+          <div className="admin-inline-error" role="alert">
+            {categoryError}
+          </div>
+        )}
+        {categoryResults && (
+          <div className="admin-supplier-table-wrap" style={{ marginTop: 16 }}>
+            <table className="admin-supplier-table">
+              <thead>
+                <tr>
+                  <th>Kategori yolu</th>
+                  <th>ID</th>
+                </tr>
+              </thead>
+              <tbody>
+                {categoryResults.length === 0 && (
+                  <tr>
+                    <td colSpan={2}>Eşleşen kategori bulunamadı.</td>
+                  </tr>
+                )}
+                {categoryResults.map((category) => (
+                  <tr key={category.id}>
+                    <td>{category.path}</td>
+                    <td>{category.id}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       <div className="admin-panel">
       <div className="admin-panel-heading">

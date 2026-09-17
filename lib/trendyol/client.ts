@@ -117,6 +117,41 @@ export async function getProducts(params: {
   );
 }
 
+export type TrendyolCategory = {
+  id: number;
+  name: string;
+  parentId: number | null;
+  subCategories: TrendyolCategory[];
+};
+
+// Seller'a özel değil, Trendyol'un tüm kategori ağacını döner - ürün
+// gönderirken gereken categoryId'yi bulmak için kullanılıyor
+// (developers.trendyol.com "Trendyol Kategori Listesi - getCategoryTree").
+// name verilirse Trendyol o kelimeyi içeren kategorileri (her seviyede)
+// filtreleyip döner.
+export async function getCategories(name?: string): Promise<TrendyolCategory[]> {
+  const search = name ? `?name=${encodeURIComponent(name)}` : "";
+  const result = await trendyolFetch<{ categories: TrendyolCategory[] }>(
+    `/product/product-categories${search}`,
+  );
+  return result.categories;
+}
+
+// Kategori ağacını düz bir listeye çevirir (id + tam yol) - admin panelinde
+// aranabilir hâle getirmek için.
+export function flattenTrendyolCategories(
+  categories: TrendyolCategory[],
+  parentPath = "",
+): { id: number; path: string }[] {
+  return categories.flatMap((category) => {
+    const path = parentPath ? `${parentPath} > ${category.name}` : category.name;
+    return [
+      { id: category.id, path },
+      ...flattenTrendyolCategories(category.subCategories, path),
+    ];
+  });
+}
+
 export async function createProduct(
   products: TrendyolProduct[],
 ): Promise<TrendyolBatchRequestResult> {
