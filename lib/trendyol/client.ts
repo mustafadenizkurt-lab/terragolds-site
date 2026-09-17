@@ -28,6 +28,10 @@ async function trendyolFetch<T>(
       "content-type": "application/json",
       authorization: buildTrendyolAuthHeader(apiKey, apiSecret),
       "user-agent": buildTrendyolUserAgent(supplierId),
+      // Trendyol'un Product V2 API'sinde zorunlu hale gelen header - Türkiye
+      // yerel mağazası için "TR" (bkz. developers.trendyol.com Product V2
+      // dokümantasyonu, "storeFrontCode" header parametresi).
+      "storefrontcode": "TR",
     },
     body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
   });
