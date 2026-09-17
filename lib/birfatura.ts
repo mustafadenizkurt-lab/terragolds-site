@@ -23,6 +23,24 @@ function randomApiKey(): string {
   return crypto.randomUUID();
 }
 
+// BirFatura'nın opsiyonel invoiceLinkUpdate servisi faturayı kestikten sonra
+// PDF linkini/numarasını/tarihini bize geri yazıyor - orders tablosunda bu
+// bilgiyi tutacak kolon yoktu, lib/checkout-order.ts'teki
+// ensureOrderCheckoutColumns ile aynı "yoksa ekle" düzenine göre ekleniyor.
+export async function ensureInvoiceColumns(db: D1Database) {
+  const columns = await db.prepare("PRAGMA table_info(orders)").all<{ name: string }>();
+  const names = new Set(columns.results.map((column) => column.name));
+  if (!names.has("invoice_url")) {
+    await db.prepare("ALTER TABLE orders ADD COLUMN invoice_url TEXT").run();
+  }
+  if (!names.has("invoice_no")) {
+    await db.prepare("ALTER TABLE orders ADD COLUMN invoice_no TEXT").run();
+  }
+  if (!names.has("invoice_date")) {
+    await db.prepare("ALTER TABLE orders ADD COLUMN invoice_date TEXT").run();
+  }
+}
+
 export async function ensureBirfaturaTable(db: D1Database) {
   await db
     .prepare(
