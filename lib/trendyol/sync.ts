@@ -1,5 +1,6 @@
 import { ensureTrendyolColumns, createProduct, updateStockAndPrice, type TrendyolProduct } from "./client";
 import { toAbsoluteImageUrl } from "../shopify/client";
+import { groupForCategory } from "../category-groups";
 
 type PendingProduct = {
   id: number;
@@ -8,6 +9,7 @@ type PendingProduct = {
   price: number;
   stock: number;
   image: string;
+  category: string;
   xmlExternalId: string | null;
 };
 
@@ -18,17 +20,30 @@ function barcodeFor(product: { id: number; xmlExternalId: string | null }): stri
   return product.xmlExternalId || `TG-${product.id}`;
 }
 
-// GEÇİCİ VARSAYILAN: Trendyol'un kendi kategori ağacında admin panelindeki
-// "Kategori ara" ile bulunan "Aksesuar > Takı & Mücevher > Kolye > Çelik
-// Kolye" ID'si. Şu an TÜM ürünler bu tek kategoriye gönderiliyor - bu sadece
-// ilk canlı testi (auth/header/brandId sorunlarını ayıklamak için) mümkün
-// kılmak amaçlı bir geçici çözüm. Gerçek kullanımda her site kategorisinin
-// (lib/category-groups.ts) kendi Trendyol categoryId'sine eşlenmesi gerekir.
-const TRENDYOL_DEFAULT_CATEGORY_ID = 2853;
+// Site kategori grubu (lib/category-groups.ts slug'ı) -> Trendyol'un kendi
+// kategori ağacındaki ID'si. Admin panelindeki "Kategori ara" ile bulundu;
+// hepsi mümkün olduğunda "Çelik ..." (paslanmaz çelik/gold kaplama)
+// alt kategorisi - Terragolds'un asıl sattığı ürün tipiyle eşleşiyor.
+// "antika-vintage", "saat-kombin" ve "aksesuar" grupları için henüz uygun
+// bir Trendyol kategorisi netleştirilmedi, o yüzden şimdilik Kolye'yle aynı
+// varsayılana düşüyorlar - gerçek ID'ler bulununca burada güncellenmeli.
+const TRENDYOL_CATEGORY_BY_GROUP_SLUG: Record<string, number> = {
+  yuzuk: 2841, // Çelik Yüzük
+  kolyeler: 2853, // Çelik Kolye
+  kupeler: 2846, // Çelik Küpe
+  bileklik: 2845, // Çelik Bileklik
+  "sahmeran-halhal": 3500, // Bijuteri Halhal (çelik seçeneği yok)
+};
+const TRENDYOL_FALLBACK_CATEGORY_ID = 2853; // Çelik Kolye - eşleşmeyen/bilinmeyen gruplar için
 
 // Trendyol markasız ürün kabul etmiyor - admin panelindeki "Marka ara" ile
 // bulunan, tescilli marka bekletmeyen "Genel Markalar" kaydının ID'si.
 const TRENDYOL_DEFAULT_BRAND_ID = 1041874;
+
+function categoryIdFor(product: { category: string }): number {
+  const group = groupForCategory(product.category);
+  return (group && TRENDYOL_CATEGORY_BY_GROUP_SLUG[group.slug]) || TRENDYOL_FALLBACK_CATEGORY_ID;
+}
 
 function toTrendyolProduct(product: PendingProduct): TrendyolProduct {
   const imageUrl = toAbsoluteImageUrl(product.image);
@@ -37,7 +52,7 @@ function toTrendyolProduct(product: PendingProduct): TrendyolProduct {
     title: product.name,
     productMainId: barcodeFor(product),
     brandId: TRENDYOL_DEFAULT_BRAND_ID,
-    categoryId: TRENDYOL_DEFAULT_CATEGORY_ID,
+    categoryId: categoryIdFor(product),
     quantity: product.stock,
     stockCode: barcodeFor(product),
     listPrice: product.price,
@@ -70,7 +85,7 @@ export async function syncProductsToTrendyol(
 
   const pending = await db
     .prepare(
-      `SELECT id, name, description, price, stock, image,
+      `SELECT id, name, description, price, stock, image, category,
               xml_external_id AS xmlExternalId
        FROM products
        WHERE status = 'published' AND trendyol_listing_id IS NULL
