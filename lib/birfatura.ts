@@ -128,6 +128,30 @@ export const BIRFATURA_PAYMENT_METHOD_MAP = {
   cod: { id: 2, value: "Kapıda Ödeme" },
 } as const;
 
+// orders/orderCargoUpdate ikisinin de OrderStatusId <-> orders.status
+// eşlemesine ihtiyacı var - tek yerden.
+export function statusForOrderStatusId(orderStatusId: number): string | null {
+  for (const [status, entry] of Object.entries(BIRFATURA_ORDER_STATUS_MAP)) {
+    if (entry.id === orderStatusId) return status;
+  }
+  return null;
+}
+
+// BirFatura: "01.07.2026 00:00:00" -> D1: "2026-07-01 00:00:00"
+export function fromBirfaturaDate(birfaturaTimestamp: string): string | null {
+  const [datePart, timePart] = birfaturaTimestamp.split(" ");
+  const [day, month, year] = (datePart ?? "").split(".");
+  if (!day || !month || !year) return null;
+  return `${year}-${month}-${day} ${timePart ?? "00:00:00"}`;
+}
+
+// D1: "2026-07-16 10:30:00" -> BirFatura: "16.07.2026 10:30:00"
+export function toBirfaturaDate(sqliteTimestamp: string): string {
+  const [datePart, timePart] = sqliteTimestamp.split(" ");
+  const [year, month, day] = datePart.split("-");
+  return `${day}.${month}.${year} ${timePart ?? "00:00:00"}`;
+}
+
 // BirFatura'nın resmi dokümantasyonuna göre (developers.birfatura.com/
 // dokuman/ozel-entegrasyon-api) token, "token" adlı düz bir header'da
 // gönderiliyor - Authorization/Bearer değil.

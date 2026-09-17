@@ -2,6 +2,9 @@ import { getD1 } from "../../../lib/store-db";
 import {
   BIRFATURA_ORDER_STATUS_MAP,
   BIRFATURA_PAYMENT_METHOD_MAP,
+  fromBirfaturaDate,
+  statusForOrderStatusId,
+  toBirfaturaDate,
   verifyBirfaturaRequest,
 } from "../../../lib/birfatura";
 
@@ -38,12 +41,11 @@ function excludingTax(includingTl: number): number {
 // vergisiz olduğundan totalAmount - vatAmount, hem ürün toplamı hem de
 // kargo dahil ödenen tutar için doğru "TaxExcluding" değerini verir.
 
-// D1: "2026-07-16 10:30:00" -> BirFatura: "16.07.2026 10:30:00"
-function toBirfaturaDate(sqliteTimestamp: string): string {
-  const [datePart, timePart] = sqliteTimestamp.split(" ");
-  const [year, month, day] = datePart.split("-");
-  return `${day}.${month}.${year} ${timePart ?? "00:00:00"}`;
-}
+type OrdersRequestBody = {
+  orderStatusId?: number;
+  startDateTime?: string;
+  endDateTime?: string;
+};
 
 type OrderRow = {
   rowid: number;
@@ -73,18 +75,47 @@ type OrderItemRow = {
   quantity: number;
 };
 
-// Dokümanın cURL/PHP örnekleri POST, C# örneği GET kullanıyor (bkz.
-// orderStatus/paymentMethods) - ikisini de kabul ediyoruz. Tarih
-// aralığı/durum filtresinin body'de mi query'de mi geldiği henüz
-// doğrulanmadığından şimdilik sadece query parametreleri okunuyor.
-async function handle(request: Request) {
+// Dokümandaki cURL/C#/PHP örneklerinin üçü de aynı: POST + JSON body
+// { "orderStatusId": number, "startDateTime": "dd.MM.yyyy HH:mm:ss",
+// "endDateTime": "dd.MM.yyyy HH:mm:ss" } - camelCase, orderStatus/
+// paymentMethods'un aksine burada GET örneği yok.
+export async function POST(request: Request) {
   if (!(await verifyBirfaturaRequest(request))) {
     return Response.json({ error: "Yetkisiz istek." }, { status: 401 });
   }
 
-  const { searchParams } = new URL(request.url);
-  const limit = Math.min(Number(searchParams.get("limit")) || 50, 200);
-  const since = searchParams.get("since"); // ISO tarih - opsiyonel, verilirse sadece bu tarihten sonra güncellenen siparişler
+  let body: OrdersRequestBody = {};
+  try {
+    body = (await request.json()) as OrdersRequestBody;
+  } catch {
+    body = {};
+  }
+
+  const status =
+    typeof body.orderStatusId === "number"
+      ? statusForOrderStatusId(body.orderStatusId)
+      : null;
+  const startDate = body.startDateTime
+    ? fromBirfaturaDate(body.startDateTime)
+    : null;
+  const endDate = body.endDateTime ? fromBirfaturaDate(body.endDateTime) : null;
+
+  const conditions: string[] = [];
+  const params: (string | number)[] = [];
+  if (status) {
+    conditions.push("status = ?");
+    params.push(status);
+  } else {
+    conditions.push("status != 'pending'");
+  }
+  if (startDate) {
+    conditions.push("created_at >= ?");
+    params.push(startDate);
+  }
+  if (endDate) {
+    conditions.push("created_at <= ?");
+    params.push(endDate);
+  }
 
   const db = getD1();
   const orders = await db
@@ -98,12 +129,11 @@ async function handle(request: Request) {
               total_amount AS totalAmount, currency,
               created_at AS createdAt
        FROM orders
-       WHERE status != 'pending'
-         ${since ? "AND updated_at > ?" : ""}
+       WHERE ${conditions.join(" AND ")}
        ORDER BY created_at DESC
-       LIMIT ?`,
+       LIMIT 500`,
     )
-    .bind(...(since ? [since, limit] : [limit]))
+    .bind(...params)
     .all<OrderRow>();
 
   if (orders.results.length === 0) {
@@ -178,6 +208,3 @@ async function handle(request: Request) {
     }),
   });
 }
-
-export const GET = handle;
-export const POST = handle;
