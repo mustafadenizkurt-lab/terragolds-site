@@ -170,22 +170,81 @@ export function toBirfaturaDate(sqliteTimestamp: string): string {
   return `${day}.${month}.${year} ${timePart ?? "00:00:00"}`;
 }
 
+// BirFatura'nın panelinden "TEST ET" ile attığı isteğin bize gerçekten
+// ulaşıp ulaşmadığını (Cloudflare seviyesinde mi engelleniyor, yoksa bize
+// ulaşıp burada mı reddediliyor) görebilmek için her çağrıyı kaydediyoruz.
+// Token'ın kendisi ASLA loglanmıyor, sadece var/yok ve doğrulanıp
+// doğrulanmadığı bilgisi.
+async function ensureBirfaturaLogTable(db: D1Database) {
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS birfatura_request_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        method TEXT NOT NULL,
+        path TEXT NOT NULL,
+        has_token INTEGER NOT NULL,
+        authorized INTEGER NOT NULL,
+        source_ip TEXT,
+        user_agent TEXT
+      )`,
+    )
+    .run();
+}
+
+async function logBirfaturaRequest(
+  db: D1Database,
+  request: Request,
+  hasToken: boolean,
+  authorized: boolean,
+) {
+  try {
+    await ensureBirfaturaLogTable(db);
+    const { pathname } = new URL(request.url);
+    await db
+      .prepare(
+        `INSERT INTO birfatura_request_log (method, path, has_token, authorized, source_ip, user_agent)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(
+        request.method,
+        pathname,
+        hasToken ? 1 : 0,
+        authorized ? 1 : 0,
+        request.headers.get("cf-connecting-ip") ?? "",
+        request.headers.get("user-agent") ?? "",
+      )
+      .run();
+  } catch {
+    // Loglama başarısız olsa bile asıl isteği engellememeli.
+  }
+}
+
 // BirFatura'nın resmi dokümantasyonuna göre (developers.birfatura.com/
 // dokuman/ozel-entegrasyon-api) token, "token" adlı düz bir header'da
 // gönderiliyor - Authorization/Bearer değil.
 export async function verifyBirfaturaRequest(request: Request): Promise<boolean> {
-  const provided = request.headers.get("token")?.trim();
-  if (!provided) return false;
-
   const db = getD1();
+  const provided = request.headers.get("token")?.trim();
+
+  if (!provided) {
+    await logBirfaturaRequest(db, request, false, false);
+    return false;
+  }
+
   await ensureBirfaturaTable(db);
   const row = await db
     .prepare(
       "SELECT enabled, api_key_hash AS apiKeyHash FROM birfatura_settings WHERE id = 1",
     )
     .first<{ enabled: number; apiKeyHash: string }>();
-  if (!row?.enabled || !row.apiKeyHash) return false;
+  if (!row?.enabled || !row.apiKeyHash) {
+    await logBirfaturaRequest(db, request, true, false);
+    return false;
+  }
 
   const providedHash = await sha256Hex(provided);
-  return providedHash === row.apiKeyHash;
+  const authorized = providedHash === row.apiKeyHash;
+  await logBirfaturaRequest(db, request, true, authorized);
+  return authorized;
 }
