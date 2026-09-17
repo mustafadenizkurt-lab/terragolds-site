@@ -26,16 +26,17 @@ function barcodeFor(product: { id: number; xmlExternalId: string | null }): stri
 // (lib/category-groups.ts) kendi Trendyol categoryId'sine eşlenmesi gerekir.
 const TRENDYOL_DEFAULT_CATEGORY_ID = 2853;
 
-// NOT (bilinen eksik): Trendyol markasız ürün kabul etmiyor, geçerli bir
-// brandId gerekiyor (admin panelindeki "Marka ara" ile bulunabilir - ör.
-// "Genel Markalar"). Bulununca burada 0 yerine kullanılacak.
+// Trendyol markasız ürün kabul etmiyor - admin panelindeki "Marka ara" ile
+// bulunan, tescilli marka bekletmeyen "Genel Markalar" kaydının ID'si.
+const TRENDYOL_DEFAULT_BRAND_ID = 1041874;
+
 function toTrendyolProduct(product: PendingProduct): TrendyolProduct {
   const imageUrl = toAbsoluteImageUrl(product.image);
   return {
     barcode: barcodeFor(product),
     title: product.name,
     productMainId: barcodeFor(product),
-    brandId: 0,
+    brandId: TRENDYOL_DEFAULT_BRAND_ID,
     categoryId: TRENDYOL_DEFAULT_CATEGORY_ID,
     quantity: product.stock,
     stockCode: barcodeFor(product),
