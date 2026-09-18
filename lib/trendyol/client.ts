@@ -230,21 +230,25 @@ export type TrendyolCategoryAttribute = {
 };
 
 // Bir kategorinin zorunlu/opsiyonel özelliklerini (ör. Renk, Materyal)
-// döner (developers.trendyol.com "Kategori Özellik Listesi v2"). Ürün
+// döner (developers.trendyol.com "Category Attribute List v2"). Ürün
 // gönderirken bu özelliklerden required=true olanlar attributes alanında
 // gönderilmezse Trendyol isteği reddediyor - 500 hatasının olası
 // nedenlerinden biri bu eksik alan olabilir.
 //
-// NOT: Yol getCategories() ile aynı "product-categories" segmentini
-// kullanmalı - önceki "/product/categories/..." (product-categories değil)
-// yanlış/eski bir endpoint'e düşüyordu ve attributeValues'ı hiç
-// döndürmüyordu (ham yanıtla doğrulandı, bkz. git geçmişi).
+// NOT: Bu, getCategories()'in kullandığı "product-categories" (kategori
+// AĞACI, hâlâ geçerli) ile AYNI segment DEĞİL - sadece bu attributes
+// endpoint'i v2'de "categories" olarak yeniden adlandırıldı. Eski
+// "/product/product-categories/{id}/attributes" (v1) artık planlanmış bir
+// brownout nedeniyle 426 döndürüyor ("bu endpoint geçici olarak
+// kullanılamıyor, Product v2'ye taşıyın" mesajıyla) - developers.trendyol.com
+// "Category Attribute List v2" dokümantasyonuna göre doğru yol
+// "/product/categories/{id}/attributes".
 export async function getCategoryAttributes(
   categoryId: number,
 ): Promise<TrendyolCategoryAttribute[]> {
   const result = await trendyolFetch<{
     categoryAttributes: TrendyolCategoryAttribute[];
-  }>(`/product/product-categories/${categoryId}/attributes`);
+  }>(`/product/categories/${categoryId}/attributes`);
   return result.categoryAttributes ?? [];
 }
 
@@ -252,7 +256,7 @@ export async function getCategoryAttributes(
 // doğru olup olmadığını doğrulamak için Trendyol'un işlenmemiş yanıtını
 // olduğu gibi döner.
 export async function getCategoryAttributesRaw(categoryId: number): Promise<unknown> {
-  return trendyolFetch(`/product/product-categories/${categoryId}/attributes`);
+  return trendyolFetch(`/product/categories/${categoryId}/attributes`);
 }
 
 export type TrendyolBrand = {
