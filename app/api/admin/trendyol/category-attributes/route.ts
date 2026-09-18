@@ -57,20 +57,34 @@ export async function GET(request: Request) {
   }
 
   // Geçici teşhis modu: Trendyol'un işlenmemiş yanıtını olduğu gibi döner.
-  // attributeId de verilmişse, o özelliğin DEĞER listesini (Kategori Özellik
-  // Değerleri Listesi v2) döner - kategori özellik listesi (aşağıdaki)
-  // sadece özellik adlarını/zorunluluğunu içeriyor, gerçek değerler ayrı bir
-  // sayfalı serviste. Yanıt mobil ekranda kopyalanamayacak kadar büyük
+  // attributeIds (virgülle ayrılmış, birden fazla olabilir) verilmişse, her
+  // biri için DEĞER listesini (Kategori Özellik Değerleri Listesi v2) tek
+  // istekte toplar - kategori özellik listesi (aşağıdaki) sadece özellik
+  // adlarını/zorunluluğunu içeriyor, gerçek değerler ayrı bir sayfalı
+  // serviste. Yanıt mobil ekranda kopyalanamayacak kadar büyük
   // olabileceğinden D1'e de yazılıyor.
   if (searchParams.get("raw") === "1") {
-    const attributeId = Number(searchParams.get("attributeId")) || 0;
+    const attributeIdsParam = searchParams.get("attributeIds") ?? searchParams.get("attributeId");
+    const attributeIds = (attributeIdsParam ?? "")
+      .split(",")
+      .map((value) => Number(value.trim()))
+      .filter((value) => value > 0);
+
+    const db = getD1();
     try {
-      const raw = attributeId
-        ? await getCategoryAttributeValuesRaw(categoryId, attributeId)
-        : await getCategoryAttributesRaw(categoryId);
-      const db = getD1();
-      await writeDiagnostics(db, categoryId, attributeId, raw);
-      return Response.json(raw);
+      if (attributeIds.length === 0) {
+        const raw = await getCategoryAttributesRaw(categoryId);
+        await writeDiagnostics(db, categoryId, 0, raw);
+        return Response.json(raw);
+      }
+
+      const byAttributeId: Record<string, unknown> = {};
+      for (const attributeId of attributeIds) {
+        const raw = await getCategoryAttributeValuesRaw(categoryId, attributeId);
+        await writeDiagnostics(db, categoryId, attributeId, raw);
+        byAttributeId[attributeId] = raw;
+      }
+      return Response.json(byAttributeId);
     } catch (error) {
       return Response.json(
         { error: error instanceof Error ? error.message : "Trendyol isteği başarısız." },
