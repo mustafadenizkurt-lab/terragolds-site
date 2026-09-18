@@ -1,4 +1,4 @@
-import { ensureTrendyolColumns, createProduct, updateStockAndPrice, type TrendyolProduct } from "./client";
+import { ensureTrendyolColumns, createProduct, updateStockAndPrice, type TrendyolProduct, type TrendyolProductAttribute } from "./client";
 import { toAbsoluteImageUrl } from "../shopify/client";
 import { groupForCategory } from "../category-groups";
 
@@ -45,6 +45,47 @@ function categoryIdFor(product: { category: string }): number {
   return (group && TRENDYOL_CATEGORY_BY_GROUP_SLUG[group.slug]) || TRENDYOL_FALLBACK_CATEGORY_ID;
 }
 
+// Admin panelindeki "Kategori özellikleri" teşhis aracıyla (developers.trendyol.com
+// "Kategori Özellik Listesi v2" + "Kategori Özellik Değerleri Listesi v2")
+// her 5 kategori tek tek sorgulanarak bulundu - zorunlu attributeId'ler
+// kategoriye göre değişiyor (ör. Küpe'de Beden yerine Model isteniyor), ama
+// gönderdiğimiz attributeValueId'ler Trendyol'un global özellik değerleri
+// olduğu için tüm kategorilerde aynı.
+//
+// Tüm 5 kategoride ortak zorunlu (Cinsiyet, Materyal, Menşei, Web Color) ve
+// her yerde var olan opsiyonel (Taş Cinsi) alanlar - ürünlerimizde bu
+// verileri ayrı ayrı takip etmediğimiz için sabit, jewelry'ye uygun bir
+// varsayılan kullanılıyor.
+const TRENDYOL_COMMON_ATTRIBUTES: TrendyolProductAttribute[] = [
+  { attributeId: 343, attributeValueId: 4296 }, // Cinsiyet: Unisex
+  { attributeId: 14, attributeValueId: 688 }, // Materyal: Paslanmaz Çelik
+  { attributeId: 1192, attributeValueId: 10617344 }, // Menşei: TR
+  { attributeId: 348, attributeValueId: 7000 }, // Web Color: Gümüş
+  { attributeId: 260, attributeValueId: 1209593 }, // Taş Cinsi: Yok
+  { attributeId: 47, customAttributeValue: "Gümüş" }, // Renk (allowCustom)
+];
+
+// Kategoriye özgü ek zorunlu alan - grup slug'ına göre (bkz.
+// TRENDYOL_CATEGORY_BY_GROUP_SLUG). Kolye/Yüzük/Bileklik "Beden", Küpe
+// "Model", Halhal "Yaş Grubu" istiyor; eşleşmeyen/bilinmeyen gruplar
+// TRENDYOL_FALLBACK_CATEGORY_ID (Kolye) ile aynı "Beden" alanına düşer.
+const TRENDYOL_EXTRA_ATTRIBUTE_BY_GROUP_SLUG: Record<string, TrendyolProductAttribute> = {
+  yuzuk: { attributeId: 338, attributeValueId: 144271 }, // Beden: Standart
+  kolyeler: { attributeId: 338, attributeValueId: 144271 }, // Beden: Standart
+  bileklik: { attributeId: 338, attributeValueId: 144271 }, // Beden: Standart
+  kupeler: { attributeId: 32, attributeValueId: 870 }, // Model: Standart
+  "sahmeran-halhal": { attributeId: 346, attributeValueId: 4293 }, // Yaş Grubu: Yetişkin
+};
+const TRENDYOL_FALLBACK_EXTRA_ATTRIBUTE = TRENDYOL_EXTRA_ATTRIBUTE_BY_GROUP_SLUG.kolyeler;
+
+function attributesFor(product: { category: string }): TrendyolProductAttribute[] {
+  const group = groupForCategory(product.category);
+  const extra =
+    (group && TRENDYOL_EXTRA_ATTRIBUTE_BY_GROUP_SLUG[group.slug]) ||
+    TRENDYOL_FALLBACK_EXTRA_ATTRIBUTE;
+  return [...TRENDYOL_COMMON_ATTRIBUTES, extra];
+}
+
 function toTrendyolProduct(product: PendingProduct): TrendyolProduct {
   const imageUrl = toAbsoluteImageUrl(product.image);
   return {
@@ -60,6 +101,7 @@ function toTrendyolProduct(product: PendingProduct): TrendyolProduct {
     description: product.description,
     images: imageUrl ? [{ url: imageUrl }] : [],
     vatRate: 20,
+    attributes: attributesFor(product),
   };
 }
 

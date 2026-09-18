@@ -150,6 +150,15 @@ export async function ensureTrendyolColumns(db: D1Database) {
 // --- Product Integration ---
 // https://developers.trendyol.com/docs/marketplace/urun-entegrasyonu
 
+export type TrendyolProductAttribute = {
+  attributeId: number;
+  attributeValueId?: number;
+  // allowCustom=true olan özellikler (ör. Renk) için attributeValueId yerine
+  // serbest metin gönderilebiliyor (developers.trendyol.com "Kategori Özellik
+  // Değerleri Listesi v2").
+  customAttributeValue?: string;
+};
+
 export type TrendyolProduct = {
   barcode: string;
   title: string;
@@ -164,6 +173,7 @@ export type TrendyolProduct = {
   images: { url: string }[];
   vatRate: number;
   cargoCompanyId?: number;
+  attributes?: TrendyolProductAttribute[];
 };
 
 type TrendyolBatchRequestResult = {
