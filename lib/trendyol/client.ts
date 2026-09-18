@@ -259,6 +259,55 @@ export async function getCategoryAttributesRaw(categoryId: number): Promise<unkn
   return trendyolFetch(`/product/categories/${categoryId}/attributes`);
 }
 
+export type TrendyolCategoryAttributeValue = {
+  attributeValueId: number;
+  attributeValue: string;
+};
+
+type TrendyolAttributeValuesPage = {
+  totalElements: number;
+  totalPages: number;
+  page: number;
+  size: number;
+  content: TrendyolCategoryAttributeValue[];
+};
+
+// getCategoryAttributes() sadece özelliklerin adını/zorunluluğunu döner,
+// gerçek değerler ("Kadın"/"Erkek" gibi) AYRI bir sayfalı servisten geliyor
+// (developers.trendyol.com "Kategori Özellik Değerleri Listesi v2") -
+// allowCustom=false olan zorunlu özellikler (Cinsiyet, Materyal, Beden vb.)
+// için ürün gönderirken geçerli bir attributeValueId burada bulunmalı.
+export async function getCategoryAttributeValues(
+  categoryId: number,
+  attributeId: number,
+): Promise<TrendyolCategoryAttributeValue[]> {
+  const values: TrendyolCategoryAttributeValue[] = [];
+  let page = 0;
+  // Güvenlik için tavan - hiçbir zorunlu özelliğin binlerce değeri olmaz,
+  // sonsuz döngüye karşı bir sınır.
+  const MAX_PAGES = 20;
+  while (page < MAX_PAGES) {
+    const result = await trendyolFetch<TrendyolAttributeValuesPage>(
+      `/product/categories/${categoryId}/attributes/${attributeId}/values?page=${page}&size=100`,
+    );
+    values.push(...(result.content ?? []));
+    if (page >= (result.totalPages ?? 1) - 1) break;
+    page += 1;
+  }
+  return values;
+}
+
+// Geçici teşhis yardımcısı: yukarıdaki eşlememizi doğrulamak için Trendyol'un
+// bir özellik değeri sayfasının işlenmemiş yanıtını olduğu gibi döner.
+export async function getCategoryAttributeValuesRaw(
+  categoryId: number,
+  attributeId: number,
+): Promise<unknown> {
+  return trendyolFetch(
+    `/product/categories/${categoryId}/attributes/${attributeId}/values?page=0&size=100`,
+  );
+}
+
 export type TrendyolBrand = {
   id: number;
   name: string;

@@ -2,22 +2,48 @@ import {
   getAuthorizedAdmin,
   unauthorizedAdminResponse,
 } from "../../../../../lib/admin-auth";
-import { getCategoryAttributes, getCategoryAttributesRaw } from "../../../../../lib/trendyol/client";
+import {
+  getCategoryAttributes,
+  getCategoryAttributesRaw,
+  getCategoryAttributeValuesRaw,
+} from "../../../../../lib/trendyol/client";
 import { getD1 } from "../../../../../lib/store-db";
 
 export const dynamic = "force-dynamic";
 
 // Geçici teşhis tablosu - ham Trendyol yanıtları mobil ekranda kopyalanamayacak
 // kadar büyük olabildiği için buraya yazılıyor, D1'den doğrudan okunuyor.
+// attribute_id, kategori özellik LİSTESİ için 0 (özellik adları/zorunluluk),
+// belirli bir özelliğin DEĞER listesi için gerçek attributeId.
 async function ensureDiagnosticsTable(db: D1Database) {
   await db
     .prepare(
-      `CREATE TABLE IF NOT EXISTS trendyol_diagnostics (
-        category_id INTEGER PRIMARY KEY,
+      `CREATE TABLE IF NOT EXISTS trendyol_diagnostics_v2 (
+        category_id INTEGER NOT NULL,
+        attribute_id INTEGER NOT NULL DEFAULT 0,
         response TEXT NOT NULL,
-        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (category_id, attribute_id)
       )`,
     )
+    .run();
+}
+
+async function writeDiagnostics(
+  db: D1Database,
+  categoryId: number,
+  attributeId: number,
+  raw: unknown,
+) {
+  await ensureDiagnosticsTable(db);
+  await db
+    .prepare(
+      `INSERT INTO trendyol_diagnostics_v2 (category_id, attribute_id, response, created_at)
+       VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+       ON CONFLICT(category_id, attribute_id) DO UPDATE SET
+         response = excluded.response, created_at = CURRENT_TIMESTAMP`,
+    )
+    .bind(categoryId, attributeId, JSON.stringify(raw))
     .run();
 }
 
@@ -30,24 +56,20 @@ export async function GET(request: Request) {
     return Response.json({ error: "Geçerli bir kategori ID gerekli." }, { status: 400 });
   }
 
-  // Geçici teşhis modu: Trendyol'un işlenmemiş yanıtını olduğu gibi döner -
-  // attributeValues'ın gerçek şeklini (boş mu geliyor yoksa bizim eşleme
-  // kodumuz mu yanlış okuyor) doğrulamak için. Yanıt mobil ekranda
-  // kopyalanamayacak kadar büyük olabileceğinden D1'e de yazılıyor.
+  // Geçici teşhis modu: Trendyol'un işlenmemiş yanıtını olduğu gibi döner.
+  // attributeId de verilmişse, o özelliğin DEĞER listesini (Kategori Özellik
+  // Değerleri Listesi v2) döner - kategori özellik listesi (aşağıdaki)
+  // sadece özellik adlarını/zorunluluğunu içeriyor, gerçek değerler ayrı bir
+  // sayfalı serviste. Yanıt mobil ekranda kopyalanamayacak kadar büyük
+  // olabileceğinden D1'e de yazılıyor.
   if (searchParams.get("raw") === "1") {
+    const attributeId = Number(searchParams.get("attributeId")) || 0;
     try {
-      const raw = await getCategoryAttributesRaw(categoryId);
+      const raw = attributeId
+        ? await getCategoryAttributeValuesRaw(categoryId, attributeId)
+        : await getCategoryAttributesRaw(categoryId);
       const db = getD1();
-      await ensureDiagnosticsTable(db);
-      await db
-        .prepare(
-          `INSERT INTO trendyol_diagnostics (category_id, response, created_at)
-           VALUES (?, ?, CURRENT_TIMESTAMP)
-           ON CONFLICT(category_id) DO UPDATE SET
-             response = excluded.response, created_at = CURRENT_TIMESTAMP`,
-        )
-        .bind(categoryId, JSON.stringify(raw))
-        .run();
+      await writeDiagnostics(db, categoryId, attributeId, raw);
       return Response.json(raw);
     } catch (error) {
       return Response.json(
