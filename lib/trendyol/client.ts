@@ -226,7 +226,7 @@ export type TrendyolCategoryAttribute = {
   attribute: { id: number; name: string };
   required: boolean;
   allowCustom: boolean;
-  attributeValues: { id: number; name: string }[];
+  attributeValues?: { id: number; name: string }[];
 };
 
 // Bir kategorinin zorunlu/opsiyonel özelliklerini (ör. Renk, Materyal)
@@ -234,12 +234,17 @@ export type TrendyolCategoryAttribute = {
 // gönderirken bu özelliklerden required=true olanlar attributes alanında
 // gönderilmezse Trendyol isteği reddediyor - 500 hatasının olası
 // nedenlerinden biri bu eksik alan olabilir.
+//
+// NOT: Yol getCategories() ile aynı "product-categories" segmentini
+// kullanmalı - önceki "/product/categories/..." (product-categories değil)
+// yanlış/eski bir endpoint'e düşüyordu ve attributeValues'ı hiç
+// döndürmüyordu (ham yanıtla doğrulandı, bkz. git geçmişi).
 export async function getCategoryAttributes(
   categoryId: number,
 ): Promise<TrendyolCategoryAttribute[]> {
   const result = await trendyolFetch<{
     categoryAttributes: TrendyolCategoryAttribute[];
-  }>(`/product/categories/${categoryId}/attributes`);
+  }>(`/product/product-categories/${categoryId}/attributes`);
   return result.categoryAttributes ?? [];
 }
 
@@ -247,7 +252,7 @@ export async function getCategoryAttributes(
 // doğru olup olmadığını doğrulamak için Trendyol'un işlenmemiş yanıtını
 // olduğu gibi döner.
 export async function getCategoryAttributesRaw(categoryId: number): Promise<unknown> {
-  return trendyolFetch(`/product/categories/${categoryId}/attributes`);
+  return trendyolFetch(`/product/product-categories/${categoryId}/attributes`);
 }
 
 export type TrendyolBrand = {
