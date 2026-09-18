@@ -243,6 +243,13 @@ export async function getCategoryAttributes(
   return result.categoryAttributes ?? [];
 }
 
+// Geçici teşhis yardımcısı: attributeValues eşlememizin (getCategoryAttributes)
+// doğru olup olmadığını doğrulamak için Trendyol'un işlenmemiş yanıtını
+// olduğu gibi döner.
+export async function getCategoryAttributesRaw(categoryId: number): Promise<unknown> {
+  return trendyolFetch(`/product/categories/${categoryId}/attributes`);
+}
+
 export type TrendyolBrand = {
   id: number;
   name: string;
