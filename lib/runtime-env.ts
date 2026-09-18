@@ -20,9 +20,18 @@ type RuntimeBindings = {
   // Referenced now so lib/trendyol/auth.ts's shape is ready; every call that
   // needs them throws a clear "ortam değişkeni ayarlanmamış" error via
   // getRequiredEnv until they're added as real Worker secrets.
-  TRENDYOL_SUPPLIER_ID?: string;
-  TRENDYOL_API_KEY?: string;
-  TRENDYOL_API_SECRET?: string;
+  //
+  // PROD ve STAGE (Trendyol'un sandbox ortamı) kimlik bilgileri farklı
+  // olabildiği için ayrı env değişkenleri olarak tutuluyor -
+  // TRENDYOL_ENVIRONMENT ("prod" | "stage", varsayılan "prod") hangisinin
+  // kullanılacağını seçiyor (bkz. lib/trendyol/auth.ts).
+  TRENDYOL_ENVIRONMENT?: string;
+  TRENDYOL_SUPPLIER_ID_PROD?: string;
+  TRENDYOL_API_KEY_PROD?: string;
+  TRENDYOL_API_SECRET_PROD?: string;
+  TRENDYOL_SUPPLIER_ID_STAGE?: string;
+  TRENDYOL_API_KEY_STAGE?: string;
+  TRENDYOL_API_SECRET_STAGE?: string;
   // Aynı durum Hepsiburada için de geçerli - onay bekleniyor, henüz gerçek
   // değer yok. Hepsiburada'nın kendi destek ekibinden gelen bilgiye göre
   // (developers.hepsiburada.com "Entegratöre Servis Anahtarı Ekleme"

@@ -1,16 +1,54 @@
-import { getTrendyolCredentials, buildTrendyolAuthHeader, buildTrendyolUserAgent } from "./auth";
+import { getTrendyolCredentials, getTrendyolEnvironment, buildTrendyolAuthHeader, buildTrendyolUserAgent } from "./auth";
 
-// Trendyol Marketplace'in resmi entegrasyon dokümantasyonundaki temel URL -
-// https://developers.trendyol.com. Sandbox/stage için ayrı bir host var
-// (stageapigw.trendyol.com) ama onay süreci bitene kadar hangisinin
-// kullanılacağı netleşmeyecek, o yüzden şimdilik canlı host sabitlendi.
-export const TRENDYOL_API_BASE = "https://apigw.trendyol.com/integration";
+// Trendyol Marketplace'in resmi entegrasyon dokümantasyonundaki temel URL.
+// STAGE (sandbox) onay süreci için ayrı bir host kullanıyor - hangisinin
+// aktif olduğu TRENDYOL_ENVIRONMENT'e göre auth.ts'te belirleniyor.
+const TRENDYOL_API_BASE_BY_ENVIRONMENT = {
+  prod: "https://apigw.trendyol.com/integration",
+  stage: "https://stageapigw.trendyol.com/integration",
+} as const;
+
+export function trendyolApiBase(): string {
+  return TRENDYOL_API_BASE_BY_ENVIRONMENT[getTrendyolEnvironment()];
+}
 
 type TrendyolErrorPayload = {
   errors?: { message?: string; code?: string }[];
 };
 
-// NOT: TRENDYOL_SUPPLIER_ID/API_KEY/API_SECRET henüz .env'de/Worker secret
+// Trendyol dokümantasyonuna göre aynı endpoint'e 10 saniyede en fazla 50
+// istek atılabilir, 51. istek 429 ("too.many.requests") döner. Kendi
+// tarafımızdan bu limite hiç yaklaşmamak için endpoint (path, query hariç)
+// başına kayan pencere (sliding window) ile istekleri throttle ediyoruz.
+// Worker isolate'ının yaşam süresi boyunca bellekte tutuluyor - kalıcı bir
+// depoya (KV/D1) ihtiyaç yok çünkü tek bir istek/cron içindeki art arda
+// çağrıları korumak yeterli, isolate'lar arası kesin senkronizasyon
+// gerekmiyor (gerçek trafiğimiz zaten bu limitin çok altında).
+const RATE_LIMIT_MAX_REQUESTS = 50;
+const RATE_LIMIT_WINDOW_MS = 10_000;
+const requestTimestampsByEndpoint = new Map<string, number[]>();
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitForRateLimit(endpoint: string): Promise<void> {
+  const now = Date.now();
+  const recent = (requestTimestampsByEndpoint.get(endpoint) ?? []).filter(
+    (timestamp) => now - timestamp < RATE_LIMIT_WINDOW_MS,
+  );
+  if (recent.length >= RATE_LIMIT_MAX_REQUESTS) {
+    const oldest = recent[0];
+    await sleep(RATE_LIMIT_WINDOW_MS - (now - oldest) + 1);
+    return waitForRateLimit(endpoint);
+  }
+  recent.push(now);
+  requestTimestampsByEndpoint.set(endpoint, recent);
+}
+
+const MAX_RATE_LIMIT_RETRIES = 3;
+
+// NOT: TRENDYOL_*_PROD/_STAGE değişkenleri henüz .env'de/Worker secret
 // olarak tanımlı değil (Trendyol onayı bekleniyor) - bu yüzden bu dosyadaki
 // hiçbir fonksiyon şu an gerçekten çalıştırılamaz; her çağrı
 // getTrendyolCredentials() üzerinden "ortam değişkeni ayarlanmamış" hatasıyla
@@ -19,14 +57,20 @@ type TrendyolErrorPayload = {
 async function trendyolFetch<T>(
   path: string,
   init: { method?: string; body?: unknown } = {},
+  attempt = 0,
 ): Promise<T> {
+  const endpoint = path.split("?")[0];
+  await waitForRateLimit(endpoint);
+
   const { supplierId, apiKey, apiSecret } = await getTrendyolCredentials();
 
-  const response = await fetch(`${TRENDYOL_API_BASE}${path}`, {
+  const response = await fetch(`${trendyolApiBase()}${path}`, {
     method: init.method ?? "GET",
     headers: {
       "content-type": "application/json",
       authorization: buildTrendyolAuthHeader(apiKey, apiSecret),
+      // Trendyol, User-Agent header'ı olmayan istekleri 403 ile reddediyor -
+      // bu yüzden asla eksik bırakılmamalı.
       "user-agent": buildTrendyolUserAgent(supplierId),
       // Trendyol'un Product V2 API'sinde zorunlu hale gelen header - Türkiye
       // yerel mağazası için "TR" (bkz. developers.trendyol.com Product V2
@@ -35,6 +79,23 @@ async function trendyolFetch<T>(
     },
     body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
   });
+
+  // 429: limiti aşan taraf biz olmasak bile (ör. aynı hesabı kullanan başka
+  // bir süreç), Retry-After'a (yoksa üstel geri çekilmeye) uyup sınırlı
+  // sayıda tekrar deniyoruz - sonsuz döngüye girmemesi için bir tavan var.
+  if (response.status === 429) {
+    if (attempt >= MAX_RATE_LIMIT_RETRIES) {
+      throw new Error(
+        "Trendyol API istek limiti aşıldı (429 too.many.requests) - tekrar denemeler tükendi.",
+      );
+    }
+    const retryAfterHeader = response.headers.get("retry-after");
+    const retryAfterMs = retryAfterHeader
+      ? Number(retryAfterHeader) * 1000
+      : 2 ** attempt * 1000;
+    await sleep(Number.isFinite(retryAfterMs) && retryAfterMs > 0 ? retryAfterMs : 1000);
+    return trendyolFetch(path, init, attempt + 1);
+  }
 
   if (!response.ok) {
     let message = await response.text();
@@ -47,6 +108,16 @@ async function trendyolFetch<T>(
       }
     } catch {
       // Trendyol didn't return JSON this time - fall back to the raw body.
+    }
+    if (response.status === 401) {
+      throw new Error(
+        `Trendyol kimlik doğrulama hatası (401 ClientApiAuthenticationException): API anahtarlarını kontrol edin. ${message}`,
+      );
+    }
+    if (response.status === 403) {
+      throw new Error(
+        `Trendyol isteği reddetti (403): User-Agent header eksik veya hatalı olabilir. ${message}`,
+      );
     }
     throw new Error(`Trendyol API isteği başarısız (${response.status}): ${message}`);
   }
