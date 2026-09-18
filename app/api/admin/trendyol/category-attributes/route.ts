@@ -5,6 +5,7 @@ import {
 import {
   getCategoryAttributes,
   getCategoryAttributesRaw,
+  getCategoryAttributeValues,
   getCategoryAttributeValuesRaw,
 } from "../../../../../lib/trendyol/client";
 import { getD1 } from "../../../../../lib/store-db";
@@ -78,11 +79,24 @@ export async function GET(request: Request) {
         return Response.json(raw);
       }
 
+      // Bazı özelliklerin (ör. Beden) onlarca sayfa değeri var - tek tek
+      // sayfa gezmek yerine "search" verilirse tüm sayfaları kendimiz
+      // toplayıp içinde geçen değerleri filtreliyoruz (ör. "Standart",
+      // "TR" gibi jewelry'ye uygun bir varsayılan aramak için).
+      const search = searchParams.get("search")?.toLocaleLowerCase("tr-TR");
       const byAttributeId: Record<string, unknown> = {};
       for (const attributeId of attributeIds) {
-        const raw = await getCategoryAttributeValuesRaw(categoryId, attributeId);
-        await writeDiagnostics(db, categoryId, attributeId, raw);
-        byAttributeId[attributeId] = raw;
+        if (search) {
+          const all = await getCategoryAttributeValues(categoryId, attributeId);
+          const matches = all.filter((value) =>
+            value.attributeValue.toLocaleLowerCase("tr-TR").includes(search),
+          );
+          byAttributeId[attributeId] = { totalMatches: matches.length, matches: matches.slice(0, 50) };
+        } else {
+          const raw = await getCategoryAttributeValuesRaw(categoryId, attributeId);
+          await writeDiagnostics(db, categoryId, attributeId, raw);
+          byAttributeId[attributeId] = raw;
+        }
       }
       return Response.json(byAttributeId);
     } catch (error) {
