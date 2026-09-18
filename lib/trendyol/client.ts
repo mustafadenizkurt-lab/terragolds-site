@@ -48,12 +48,10 @@ async function waitForRateLimit(endpoint: string): Promise<void> {
 
 const MAX_RATE_LIMIT_RETRIES = 3;
 
-// NOT: TRENDYOL_*_PROD/_STAGE değişkenleri henüz .env'de/Worker secret
-// olarak tanımlı değil (Trendyol onayı bekleniyor) - bu yüzden bu dosyadaki
-// hiçbir fonksiyon şu an gerçekten çalıştırılamaz; her çağrı
-// getTrendyolCredentials() üzerinden "ortam değişkeni ayarlanmamış" hatasıyla
-// başarısız olur. Onay gelip secret'lar eklendiğinde kod değişikliği
-// gerekmeden çalışır hale gelecek.
+// Kimlik bilgileri admin panelinden (Ayarlar > Trendyol) D1'e girildi ve
+// etkinleştirildi - getTrendyolCredentials() artık gerçek değerleri
+// döndürüyor. TRENDYOL_*_PROD/_STAGE ortam değişkenleri, admin panelinden
+// hiç kimlik bilgisi girilmemişse devreye giren yedek yol.
 async function trendyolFetch<T>(
   path: string,
   init: { method?: string; body?: unknown } = {},
