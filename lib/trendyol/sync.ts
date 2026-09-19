@@ -53,10 +53,16 @@ const NON_JEWELRY_CATEGORY_KEYWORDS: { keywords: string[]; categoryId: number }[
   { keywords: ["biblo", "heykel", "figür"], categoryId: 1877 }, // Ev Dekorasyon > Dekoratif Obje ve Biblo
 ];
 
+// "Figür" gibi kelimeler gerçek takı ürünlerinde de sıfat olarak geçebiliyor
+// (ör. "Figürlü Eskitme Yüzük Seti") - isimde ayrıca gerçek bir takı ismi
+// varsa bu, dekor değil takı demektir, non-jewelry eşlemesi atlanır.
+const JEWELRY_NAME_KEYWORDS = ["yüzük", "kolye", "küpe", "bileklik", "halhal"];
+
 function nonJewelryCategoryIdFor(product: { category: string; name: string }): number | null {
   const group = groupForCategory(product.category);
   if (group?.slug !== "antika-vintage") return null;
   const name = product.name.toLocaleLowerCase("tr-TR");
+  if (JEWELRY_NAME_KEYWORDS.some((keyword) => name.includes(keyword))) return null;
   const match = NON_JEWELRY_CATEGORY_KEYWORDS.find((entry) =>
     entry.keywords.some((keyword) => name.includes(keyword)),
   );
