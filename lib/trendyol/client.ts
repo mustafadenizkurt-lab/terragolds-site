@@ -162,6 +162,14 @@ export async function ensureTrendyolColumns(db: D1Database) {
   if (!names.has("trendyol_price_synced")) {
     await db.prepare("ALTER TABLE products ADD COLUMN trendyol_price_synced INTEGER").run();
   }
+  // Site fiyatından (products.price) bağımsız, sadece Trendyol'a giden
+  // dinamik fiyat - bkz. lib/trendyol/pricing.ts. Burada da (pricing.ts'in
+  // kendi ensure fonksiyonuna ek olarak, döngüsel import olmadan) garanti
+  // ediliyor çünkü pushStockAndPriceToTrendyol/pushPendingTrendyolPrices bu
+  // kolonu pricing.ts hiç çağrılmamış olsa bile okuyor.
+  if (!names.has("trendyol_override_price")) {
+    await db.prepare("ALTER TABLE products ADD COLUMN trendyol_override_price INTEGER").run();
+  }
   await db
     .prepare(
       "CREATE UNIQUE INDEX IF NOT EXISTS products_trendyol_barcode_unique ON products(trendyol_barcode) WHERE trendyol_barcode IS NOT NULL",

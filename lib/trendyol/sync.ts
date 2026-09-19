@@ -335,12 +335,20 @@ type StockPriceRow = {
   price: number;
   stock: number;
   trendyolBarcode: string | null;
+  trendyolOverridePrice: number | null;
 };
 
 // D1 kaynak (source of truth) - Shopify'daki pushInventoryToShopify/
 // pushPriceToShopify ile aynı prensip, tek farkla: Trendyol stok ve fiyatı
 // tek bir endpoint'te (updateStockAndPrice) birlikte istiyor, bu yüzden
 // burada da tek fonksiyonda birleşik.
+//
+// trendyol_override_price VARSA o kullanılır, products.price (site fiyatı)
+// DEĞİL - lib/trendyol/pricing.ts'in hesapladığı maliyet+kâr hedefli fiyatı
+// bu fonksiyon eskiden yok sayıp doğrudan site fiyatını gönderiyordu; bu da
+// her stok senkronunda (restockSupplierProducts, 6 saatte bir cron)
+// dinamik fiyatlamayı sessizce site fiyatına geri döndürüyordu (1934 ürün
+// etkilendi, kullanıcı Trendyol panelinde fark etti).
 export async function pushStockAndPriceToTrendyol(
   db: D1Database,
   productId: number,
@@ -349,7 +357,8 @@ export async function pushStockAndPriceToTrendyol(
 
   const product = await db
     .prepare(
-      `SELECT price, stock, trendyol_barcode AS trendyolBarcode
+      `SELECT price, stock, trendyol_barcode AS trendyolBarcode,
+              trendyol_override_price AS trendyolOverridePrice
        FROM products WHERE id = ?`,
     )
     .bind(productId)
@@ -360,18 +369,20 @@ export async function pushStockAndPriceToTrendyol(
   // oluşturulduğunda zaten güncel stok/fiyatla gönderir.
   if (!product?.trendyolBarcode) return;
 
+  const salePrice = product.trendyolOverridePrice ?? product.price;
+
   await updateStockAndPrice([
     {
       barcode: product.trendyolBarcode,
       quantity: product.stock,
-      salePrice: product.price,
-      listPrice: product.price,
+      salePrice,
+      listPrice: salePrice,
     },
   ]);
 
   await db
     .prepare("UPDATE products SET trendyol_price_synced = ? WHERE id = ?")
-    .bind(product.price, productId)
+    .bind(salePrice, productId)
     .run();
 }
 
@@ -392,11 +403,15 @@ export async function pushPendingTrendyolPrices(
 ): Promise<TrendyolPricePushResult> {
   await ensureTrendyolColumns(db);
 
+  // Hedef fiyat trendyol_override_price varsa odur, yoksa products.price -
+  // pushStockAndPriceToTrendyol'un gerçekte gönderdiğiyle aynı öncelik
+  // (yoksa override'lı ürünler trendyol_price_synced hep "farklı" görünüp
+  // sonsuza kadar "pending" sayılırdı).
   const pending = await db
     .prepare(
       `SELECT id FROM products
        WHERE trendyol_barcode IS NOT NULL
-         AND (trendyol_price_synced IS NULL OR trendyol_price_synced != price)
+         AND (trendyol_price_synced IS NULL OR trendyol_price_synced != COALESCE(trendyol_override_price, price))
        ORDER BY id LIMIT ?`,
     )
     .bind(batchSize)
@@ -407,7 +422,7 @@ export async function pushPendingTrendyolPrices(
       .prepare(
         `SELECT COUNT(*) AS c FROM products
          WHERE trendyol_barcode IS NOT NULL
-           AND (trendyol_price_synced IS NULL OR trendyol_price_synced != price)`,
+           AND (trendyol_price_synced IS NULL OR trendyol_price_synced != COALESCE(trendyol_override_price, price))`,
       )
       .first<{ c: number }>();
     return row?.c ?? 0;
