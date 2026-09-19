@@ -4,13 +4,8 @@ import { getD1 } from "../../../../../lib/store-db";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(request: Request) {
-  if (!(await getAuthorizedAdmin(request))) return unauthorizedAdminResponse();
+async function handle(batchSize: number) {
   const db = getD1();
-  const body = (await request.json().catch(() => ({}))) as {
-    batchSize?: number;
-  };
-  const batchSize = Math.min(200, Math.max(1, Number(body.batchSize) || 100));
   try {
     const result = await pushPendingTrendyolPrices(db, batchSize);
     return Response.json(result);
@@ -25,4 +20,22 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
+}
+
+export async function POST(request: Request) {
+  if (!(await getAuthorizedAdmin(request))) return unauthorizedAdminResponse();
+  const body = (await request.json().catch(() => ({}))) as {
+    batchSize?: number;
+  };
+  const batchSize = Math.min(1000, Math.max(1, Number(body.batchSize) || 1000));
+  return handle(batchSize);
+}
+
+// GET de kabul ediyor - tarayıcı adres çubuğundan doğrudan tetiklenebilsin
+// diye (bu oturumdaki diğer tek seferlik araçlarla aynı desen).
+export async function GET(request: Request) {
+  if (!(await getAuthorizedAdmin(request))) return unauthorizedAdminResponse();
+  const { searchParams } = new URL(request.url);
+  const batchSize = Math.min(1000, Math.max(1, Number(searchParams.get("batchSize")) || 1000));
+  return handle(batchSize);
 }

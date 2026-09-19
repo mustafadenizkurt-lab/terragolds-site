@@ -397,9 +397,14 @@ export type TrendyolPricePushResult = {
 // tedarikçinin toplu yeniden fiyatlandırması gibi durumlarda satır satır
 // değil, D1'de fiyatı değişmiş ama Trendyol'a henüz yansımamış ürünleri
 // partiler hâlinde işler. `remaining` 0 olana kadar tekrar çağrılabilir.
+//
+// Ürün başına ayrı ayrı pushStockAndPriceToTrendyol() çağıran ilk sürüm
+// (binlerce sıralı Trendyol API isteği) isteği zaman aşımına uğrattı -
+// restockSupplierProducts'ta yaşanan aynı sorun. Artık updateStockAndPrice'a
+// tek seferde (max 1000) toplu gönderiliyor.
 export async function pushPendingTrendyolPrices(
   db: D1Database,
-  batchSize = 25,
+  batchSize = 1000,
 ): Promise<TrendyolPricePushResult> {
   await ensureTrendyolColumns(db);
 
@@ -409,13 +414,15 @@ export async function pushPendingTrendyolPrices(
   // sonsuza kadar "pending" sayılırdı).
   const pending = await db
     .prepare(
-      `SELECT id FROM products
+      `SELECT id, stock, trendyol_barcode AS trendyolBarcode,
+              COALESCE(trendyol_override_price, price) AS salePrice
+       FROM products
        WHERE trendyol_barcode IS NOT NULL
          AND (trendyol_price_synced IS NULL OR trendyol_price_synced != COALESCE(trendyol_override_price, price))
        ORDER BY id LIMIT ?`,
     )
     .bind(batchSize)
-    .all<{ id: number }>();
+    .all<{ id: number; stock: number; trendyolBarcode: string; salePrice: number }>();
 
   const remainingCount = async () => {
     const row = await db
@@ -428,22 +435,32 @@ export async function pushPendingTrendyolPrices(
     return row?.c ?? 0;
   };
 
-  let pushed = 0;
-  let failed = 0;
-  const errors: string[] = [];
-  for (const row of pending.results) {
-    try {
-      await pushStockAndPriceToTrendyol(db, row.id);
-      pushed += 1;
-    } catch (error) {
-      failed += 1;
-      errors.push(
-        `#${row.id}: ${error instanceof Error ? error.message : "bilinmeyen hata"}`,
-      );
-    }
+  if (pending.results.length === 0) {
+    return { pushed: 0, failed: 0, remaining: 0, errors: [] };
   }
 
-  return { pushed, failed, remaining: await remainingCount(), errors };
+  try {
+    await updateStockAndPrice(
+      pending.results.map((row) => ({
+        barcode: row.trendyolBarcode,
+        quantity: row.stock,
+        salePrice: row.salePrice,
+        listPrice: row.salePrice,
+      })),
+    );
+  } catch (error) {
+    return {
+      pushed: 0,
+      failed: pending.results.length,
+      remaining: await remainingCount(),
+      errors: [error instanceof Error ? error.message : "bilinmeyen hata"],
+    };
+  }
+
+  const updateStmt = db.prepare("UPDATE products SET trendyol_price_synced = ? WHERE id = ?");
+  await db.batch(pending.results.map((row) => updateStmt.bind(row.salePrice, row.id)));
+
+  return { pushed: pending.results.length, failed: 0, remaining: await remainingCount(), errors: [] };
 }
 
 // --- Tek seferlik fiyat artışı: 0-200 TL arası ürünlere %20 zam ---
