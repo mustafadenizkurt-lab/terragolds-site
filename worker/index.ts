@@ -2,7 +2,7 @@
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
 import { dispatchApiRequest } from "./api-dispatch";
-import { syncActiveSuppliers } from "../lib/xml-sync/syncSupplier";
+import { restockActiveSuppliers, syncActiveSuppliers } from "../lib/xml-sync/syncSupplier";
 import {
   publishExistingProductsToShopify,
   syncProductsToShopify,
@@ -89,6 +89,11 @@ const worker = {
   },
   async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext) {
     ctx.waitUntil(syncActiveSuppliers(env.DB));
+    // "manual" işaretli ürünlerin (tedarikçiye elle bağlanmış, fiyatı/adı
+    // elle yönetilen kayıtlar) stoğu yukarıdaki normal senkrona hiç dahil
+    // değil - tedarikçide tükenen bir ürün fark edilmeden "stokta"
+    // görünmeye devam edebiliyordu (gerçek bir sipariş kabul edildi).
+    ctx.waitUntil(restockActiveSuppliers(env.DB).catch(() => {}));
     // Shopify secrets are only configured once the store owner sets them up
     // (see lib/shopify/auth.ts) - swallow failures here so a missing/invalid
     // Shopify credential never affects the unrelated XML supplier sync above.

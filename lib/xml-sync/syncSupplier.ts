@@ -62,6 +62,24 @@ export async function syncActiveSuppliers(db: D1Database) {
   return results;
 }
 
+// syncActiveSuppliers() ile aynı desen ama restockSupplierProducts()
+// çağırıyor - 'manual' ürünlerin stoğu normal senkrona dahil olmadığı için
+// (bkz. restockSupplierProducts yorumu) ayrı bir cron adımı gerekiyor.
+export async function restockActiveSuppliers(db: D1Database) {
+  const suppliers = await db.prepare(
+    "SELECT id, name, feed_url AS feedUrl, field_mapping AS fieldMapping, filters, default_markup_percent AS defaultMarkupPercent FROM xml_suppliers WHERE active = 1 ORDER BY id",
+  ).all<Supplier>();
+  const results = [];
+  for (const supplier of suppliers.results) {
+    try {
+      results.push({ supplierId: supplier.id, result: await restockSupplierProducts(db, supplier) });
+    } catch (error) {
+      results.push({ supplierId: supplier.id, error: error instanceof Error ? error.message : "Stok senkronu başarısız." });
+    }
+  }
+  return results;
+}
+
 // A 'running' row older than this was almost certainly orphaned, not a
 // sync that's genuinely still in progress - every observed real run
 // (success or failure) completes within a couple of minutes. The manual
