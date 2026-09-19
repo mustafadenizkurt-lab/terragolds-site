@@ -1,4 +1,4 @@
-import { ensureTrendyolColumns, createProduct, updateStockAndPrice, type TrendyolProduct, type TrendyolProductAttribute } from "./client";
+import { ensureTrendyolColumns, createProduct, updateProduct, updateStockAndPrice, type TrendyolProduct, type TrendyolProductAttribute } from "./client";
 import { toAbsoluteImageUrl } from "../shopify/client";
 import { groupForCategory } from "../category-groups";
 
@@ -262,6 +262,44 @@ export async function syncProductsToTrendyol(
   }
 
   return { created, failed, remaining: await remainingCount(), errors };
+}
+
+// Bir ürün Trendyol'a yanlış categoryId ile gönderildiğinde (ör. Antika ~
+// Vintage'daki biblo/tablo/tesbih ürünleri önce Kolye kategorisine
+// gitmişti), aynı barkodla tekrar createProduct() çağırmak Trendyol'un
+// "Aynı barkodlu bir ürününüz bulunduğundan yeni ürün oluşturulamaz"
+// hatasına düşüyor - barkod zaten var olan bir ürünü PUT (updateProduct)
+// ile güncellemek gerekiyor. Bu, belirli bir ürün ID listesini zorla
+// yeniden gönderen tek seferlik bir düzeltme aracı.
+export async function updateProductsCategoryOnTrendyol(
+  db: D1Database,
+  productIds: number[],
+): Promise<{ batchRequestId: string }> {
+  await ensureTrendyolColumns(db);
+  if (productIds.length === 0) throw new Error("Ürün ID listesi boş.");
+
+  const placeholders = productIds.map(() => "?").join(",");
+  const products = await db
+    .prepare(
+      `SELECT id, name, description, price, stock, image, category,
+              xml_external_id AS xmlExternalId
+       FROM products WHERE id IN (${placeholders})`,
+    )
+    .bind(...productIds)
+    .all<PendingProduct>();
+
+  const trendyolProducts = products.results.map(toTrendyolProduct);
+  const { batchRequestId } = await updateProduct(trendyolProducts);
+  for (const product of products.results) {
+    await db
+      .prepare(
+        `UPDATE products SET trendyol_barcode = ?, trendyol_listing_id = ?,
+         trendyol_synced_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      )
+      .bind(barcodeFor(product), batchRequestId, product.id)
+      .run();
+  }
+  return { batchRequestId };
 }
 
 type StockPriceRow = {
