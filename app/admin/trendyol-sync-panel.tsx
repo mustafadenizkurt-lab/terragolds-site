@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import MarketplaceCredentialsPanel from "./marketplace-credentials-panel";
 
 type SyncResult = {
@@ -35,6 +35,9 @@ export default function TrendyolSyncPanel({
   const [error, setError] = useState("");
   const [lastResult, setLastResult] = useState<SyncResult | null>(null);
   const [batchSize, setBatchSize] = useState(25);
+  const [autoRunning, setAutoRunning] = useState(false);
+  const [autoTotals, setAutoTotals] = useState({ created: 0, failed: 0 });
+  const autoStopRef = useRef(false);
 
   const [priceBusy, setPriceBusy] = useState(false);
   const [priceError, setPriceError] = useState("");
@@ -153,18 +156,25 @@ export default function TrendyolSyncPanel({
     }
   };
 
+  // Sunucudan tek bir parti ister - hem tekil "Şimdi senkronla" butonu hem de
+  // aşağıdaki otomatik döngü (syncAll) tarafından paylaşılıyor.
+  const runOneBatch = async (): Promise<SyncResult> => {
+    const response = await fetch("/api/admin/trendyol/sync", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ batchSize }),
+      cache: "no-store",
+    });
+    const body = (await response.json()) as SyncResult & { error?: string };
+    if (!response.ok) throw new Error(body.error ?? "İşlem tamamlanamadı.");
+    return body;
+  };
+
   const sync = async () => {
     setBusy(true);
     setError("");
     try {
-      const response = await fetch("/api/admin/trendyol/sync", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ batchSize }),
-        cache: "no-store",
-      });
-      const body = (await response.json()) as SyncResult & { error?: string };
-      if (!response.ok) throw new Error(body.error ?? "İşlem tamamlanamadı.");
+      const body = await runOneBatch();
       setLastResult(body);
       onNotice(
         `Trendyol: ${body.created} ürün gönderildi, ${body.failed} hata, ${body.remaining} ürün sırada.`,
@@ -178,6 +188,54 @@ export default function TrendyolSyncPanel({
     } finally {
       setBusy(false);
     }
+  };
+
+  // "Hepsini gönder": sıra bitene (remaining=0) kadar partileri arka arkaya
+  // gönderir - elle onlarca kez "Şimdi senkronla"ya basmak yerine. Bir
+  // partide hata çıkarsa (failed > 0) durur - kullanıcı sebebini görüp karar
+  // versin diye, sessizce yığılıp devam etmiyor. "Durdur" ile her an
+  // kesilebilir.
+  const syncAll = async () => {
+    setAutoRunning(true);
+    autoStopRef.current = false;
+    setError("");
+    setAutoTotals({ created: 0, failed: 0 });
+    try {
+      for (;;) {
+        if (autoStopRef.current) {
+          onNotice("Otomatik gönderim durduruldu.");
+          break;
+        }
+        const body = await runOneBatch();
+        setLastResult(body);
+        setAutoTotals((totals) => ({
+          created: totals.created + body.created,
+          failed: totals.failed + body.failed,
+        }));
+        if (body.failed > 0) {
+          onNotice(
+            `Otomatik gönderim durdu: bu partide ${body.failed} hata var, ${body.remaining} ürün hâlâ sırada.`,
+          );
+          break;
+        }
+        if (body.remaining === 0) {
+          onNotice(`Trendyol: tüm ürünler gönderildi (toplam ${body.created} bu partide dahil).`);
+          break;
+        }
+      }
+    } catch (syncError) {
+      setError(
+        syncError instanceof Error
+          ? syncError.message
+          : "Trendyol senkronu başarısız.",
+      );
+    } finally {
+      setAutoRunning(false);
+    }
+  };
+
+  const stopAutoSync = () => {
+    autoStopRef.current = true;
   };
 
   const pushPrices = async () => {
@@ -446,14 +504,30 @@ export default function TrendyolSyncPanel({
             yukarıdaki bağlantı bilgilerini kaydedin.
           </p>
         </div>
-        <button
-          className="admin-primary-button"
-          type="button"
-          disabled={busy}
-          onClick={() => void sync()}
-        >
-          {busy ? "Gönderiliyor…" : "Şimdi senkronla"}
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            className="admin-primary-button"
+            type="button"
+            disabled={busy || autoRunning}
+            onClick={() => void sync()}
+          >
+            {busy ? "Gönderiliyor…" : "Şimdi senkronla"}
+          </button>
+          {autoRunning ? (
+            <button className="payment-disconnect" type="button" onClick={stopAutoSync}>
+              Durdur
+            </button>
+          ) : (
+            <button
+              className="admin-primary-button"
+              type="button"
+              disabled={busy}
+              onClick={() => void syncAll()}
+            >
+              Hepsini gönder
+            </button>
+          )}
+        </div>
       </div>
       {error && (
         <div className="admin-inline-error" role="alert">
@@ -470,7 +544,15 @@ export default function TrendyolSyncPanel({
           onChange={(event) => setBatchSize(Number(event.target.value) || 25)}
         />
       </label>
-      {lastResult && (
+      {autoRunning && (
+        <div className="admin-bulk-toolbar">
+          <strong>Otomatik gönderiliyor…</strong>
+          <span>{autoTotals.created} ürün gönderildi (bu oturumda)</span>
+          <span>{autoTotals.failed} hata</span>
+          {lastResult && <span>{lastResult.remaining} ürün sırada</span>}
+        </div>
+      )}
+      {!autoRunning && lastResult && (
         <div className="admin-bulk-toolbar">
           <strong>{lastResult.created} ürün gönderildi</strong>
           <span>{lastResult.failed} hata</span>
