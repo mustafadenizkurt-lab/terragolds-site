@@ -62,21 +62,43 @@ async function trendyolFetch<T>(
 
   const { supplierId, apiKey, apiSecret } = await getTrendyolCredentials();
 
-  const response = await fetch(`${trendyolApiBase()}${path}`, {
-    method: init.method ?? "GET",
-    headers: {
-      "content-type": "application/json",
-      authorization: buildTrendyolAuthHeader(apiKey, apiSecret),
-      // Trendyol, User-Agent header'ı olmayan istekleri 403 ile reddediyor -
-      // bu yüzden asla eksik bırakılmamalı.
-      "user-agent": buildTrendyolUserAgent(supplierId),
-      // Trendyol'un Product V2 API'sinde zorunlu hale gelen header - Türkiye
-      // yerel mağazası için "TR" (bkz. developers.trendyol.com Product V2
-      // dokümantasyonu, "storeFrontCode" header parametresi).
-      "storefrontcode": "TR",
-    },
-    body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
-  });
+  // fetch() burada hiçbir zaman aşımı olmadan çağrılıyordu - Trendyol
+  // tarafı bir isteğe yanıt vermeyi geciktirirse (özellikle çok sayfalı
+  // getProducts taramasında) tüm istek süresiz askıda kalıp tarayıcıda
+  // "donma" gibi görünüyordu. AbortController ile sabit bir üst sınır
+  // konuyor.
+  const REQUEST_TIMEOUT_MS = 20_000;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetch(`${trendyolApiBase()}${path}`, {
+      method: init.method ?? "GET",
+      headers: {
+        "content-type": "application/json",
+        authorization: buildTrendyolAuthHeader(apiKey, apiSecret),
+        // Trendyol, User-Agent header'ı olmayan istekleri 403 ile reddediyor -
+        // bu yüzden asla eksik bırakılmamalı.
+        "user-agent": buildTrendyolUserAgent(supplierId),
+        // Trendyol'un Product V2 API'sinde zorunlu hale gelen header - Türkiye
+        // yerel mağazası için "TR" (bkz. developers.trendyol.com Product V2
+        // dokümantasyonu, "storeFrontCode" header parametresi).
+        "storefrontcode": "TR",
+      },
+      body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error(
+        `Trendyol API isteği zaman aşımına uğradı (${REQUEST_TIMEOUT_MS / 1000} sn): ${path}`,
+      );
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   // 429: limiti aşan taraf biz olmasak bile (ör. aynı hesabı kullanan başka
   // bir süreç), Retry-After'a (yoksa üstel geri çekilmeye) uyup sınırlı
