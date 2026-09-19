@@ -341,7 +341,9 @@ export type RestockResult = {
   total: number;
 };
 
-type StockRow = { id: number; stock: number };
+type StockRow = { id: number; xmlExternalId: string; stock: number };
+
+const RESTOCK_WRITE_BATCH_SIZE = 500; // db.batch() tek çağrıda çok fazla statement almasın diye
 
 // syncSupplier()'ın stok/discontinued mantığıyla aynı fikir ama sadece
 // 'synced' değil, xml_supplier_id+xml_external_id ile eşleşen TÜM ürünleri
@@ -352,15 +354,30 @@ type StockRow = { id: number; stock: number };
 // Fiyat/isim/kategori/açıklama gibi elle yönetilen hiçbir alana dokunmuyor -
 // SADECE stock yazıyor, tıpkı repriceSupplierProducts'ın sadece price/cost
 // yazması gibi.
+//
+// Feed kaydı başına ayrı bir D1 SELECT atan ilk sürüm (binlerce sıralı
+// round-trip) isteği zaman aşımına uğrattı - bulk-price-increase'de
+// yaşanan aynı sorun. Bunun yerine bu tedarikçinin TÜM ürünleri TEK
+// sorguyla belleğe alınıp karşılaştırma bellekte yapılıyor, sadece
+// GERÇEKTEN değişen satırlar db.batch() ile toplu yazılıyor.
 export async function restockSupplierProducts(
   db: D1Database,
   supplier: Supplier,
 ): Promise<RestockResult> {
   const mapping = JSON.parse(supplier.fieldMapping || "{}") as SupplierMapping;
   const records = parseFeed(await fetchFeed(supplier.feedUrl));
-  let updated = 0;
+
+  const existingRows = await db
+    .prepare(
+      "SELECT id, xml_external_id AS xmlExternalId, stock FROM products WHERE xml_supplier_id = ? AND xml_external_id IS NOT NULL",
+    )
+    .bind(supplier.id)
+    .all<StockRow>();
+  const byExternalId = new Map(existingRows.results.map((row) => [row.xmlExternalId, row]));
+
   let skipped = 0;
   const seenExternalIds = new Set<string>();
+  const changed: { id: number; newStock: number; discontinued: boolean }[] = [];
 
   for (const record of records) {
     const product = mapRecord(record, mapping, supplier.defaultMarkupPercent);
@@ -370,54 +387,46 @@ export async function restockSupplierProducts(
     }
     seenExternalIds.add(product.externalId);
 
-    const existing = await db
-      .prepare(
-        "SELECT id, stock FROM products WHERE xml_supplier_id = ? AND xml_external_id = ? LIMIT 1",
-      )
-      .bind(supplier.id, product.externalId)
-      .first<StockRow>();
+    const existing = byExternalId.get(product.externalId);
     if (!existing || existing.stock === product.stock) {
       skipped += 1;
       continue;
     }
-
-    await db
-      .prepare("UPDATE products SET stock = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
-      .bind(product.stock, existing.id)
-      .run();
-    await pushStockEverywhere(db, existing.id);
-    updated += 1;
+    changed.push({ id: existing.id, newStock: product.stock, discontinued: false });
   }
 
-  const discontinued = await zeroOutMissingStock(db, supplier.id, seenExternalIds);
-  return { updated, discontinued, skipped, total: records.length };
-}
-
-// markDiscontinuedProducts (syncSupplier'ın kendi 'synced'-only sürümü) ile
-// aynı fikir ama xml_sync_status filtresi YOK - 'manual' ürünler de feed'den
-// tamamen düşmüşse (tedarikçi artık hiç satmıyor) stoğu 0'a çekiliyor.
-async function zeroOutMissingStock(
-  db: D1Database,
-  supplierId: number,
-  seenExternalIds: Set<string>,
-): Promise<number> {
-  const rows = await db
-    .prepare(
-      "SELECT id, xml_external_id AS xmlExternalId FROM products WHERE xml_supplier_id = ? AND xml_external_id IS NOT NULL AND stock > 0",
-    )
-    .bind(supplierId)
-    .all<{ id: number; xmlExternalId: string }>();
-  let discontinued = 0;
-  for (const row of rows.results) {
-    if (seenExternalIds.has(row.xmlExternalId)) continue;
-    await db
-      .prepare("UPDATE products SET stock = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
-      .bind(row.id)
-      .run();
-    await pushStockEverywhere(db, row.id);
-    discontinued += 1;
+  // markDiscontinuedProducts'ın (syncSupplier'ın kendi 'synced'-only
+  // sürümü) aynı fikri ama xml_sync_status filtresi YOK - 'manual' ürünler
+  // de feed'den tamamen düşmüşse (tedarikçi artık hiç satmıyor) stoğu 0'a
+  // çekiliyor. Aynı bellekteki liste üzerinden, ekstra sorgu gerekmeden.
+  for (const row of existingRows.results) {
+    if (row.stock > 0 && !seenExternalIds.has(row.xmlExternalId)) {
+      changed.push({ id: row.id, newStock: 0, discontinued: true });
+    }
   }
-  return discontinued;
+
+  for (let offset = 0; offset < changed.length; offset += RESTOCK_WRITE_BATCH_SIZE) {
+    const chunk = changed.slice(offset, offset + RESTOCK_WRITE_BATCH_SIZE);
+    const updateStmt = db.prepare(
+      "UPDATE products SET stock = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+    );
+    await db.batch(chunk.map(({ id, newStock }) => updateStmt.bind(newStock, id)));
+  }
+
+  // Pazaryeri push'ları (ağ çağrıları) D1 yazımından ayrı, sıralı kalıyor -
+  // bunlar zaten kendi rate limitleriyle sınırlı ve genelde çok daha az
+  // sayıda (sadece gerçekten değişenler), D1 SELECT'leri gibi binlerce değil.
+  for (const { id } of changed) {
+    await pushStockEverywhere(db, id);
+  }
+
+  const discontinued = changed.filter((entry) => entry.discontinued).length;
+  return {
+    updated: changed.length - discontinued,
+    discontinued,
+    skipped,
+    total: records.length,
+  };
 }
 
 // D1'deki yeni stok, ürünün listelendiği her pazaryerine tek tek gönderilir
