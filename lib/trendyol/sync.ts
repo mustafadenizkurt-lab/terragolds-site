@@ -40,7 +40,32 @@ const TRENDYOL_FALLBACK_CATEGORY_ID = 2853; // Çelik Kolye - eşleşmeyen/bilin
 // bulunan, tescilli marka bekletmeyen "Genel Markalar" kaydının ID'si.
 const TRENDYOL_DEFAULT_BRAND_ID = 1041874;
 
-function categoryIdFor(product: { category: string }): number {
+// "Antika ~ Vintage" (grup: antika-vintage) karma bir kategori - içinde hem
+// gerçek takı (burç yüzükleri, antik sikke kolye) hem de takı OLMAYAN ev
+// dekorasyon/aksesuar ürünleri (biblo, heykel, tablo, tesbih) var. Bunları
+// çelik takı kategorisine göndermek yanlış olur - admin panelindeki
+// "Kategori ara" ile bulunan gerçek Trendyol kategorilerine, ürün adındaki
+// anahtar kelimeye göre yönlendiriliyor. Eşleşmeyen (yüzük/kolye gibi
+// gerçek takı isimli) ürünler normal akışa (Kolye varsayılanı) düşer.
+const NON_JEWELRY_CATEGORY_KEYWORDS: { keywords: string[]; categoryId: number }[] = [
+  { keywords: ["tesbih"], categoryId: 1823 }, // Aksesuar > Diğer Aksesuar > Tesbih
+  { keywords: ["tablo", "pano"], categoryId: 842 }, // Ev & Mobilya > Ev Dekorasyon > Tablo
+  { keywords: ["biblo", "heykel", "figür"], categoryId: 1877 }, // Ev Dekorasyon > Dekoratif Obje ve Biblo
+];
+
+function nonJewelryCategoryIdFor(product: { category: string; name: string }): number | null {
+  const group = groupForCategory(product.category);
+  if (group?.slug !== "antika-vintage") return null;
+  const name = product.name.toLocaleLowerCase("tr-TR");
+  const match = NON_JEWELRY_CATEGORY_KEYWORDS.find((entry) =>
+    entry.keywords.some((keyword) => name.includes(keyword)),
+  );
+  return match?.categoryId ?? null;
+}
+
+function categoryIdFor(product: { category: string; name: string }): number {
+  const nonJewelryCategoryId = nonJewelryCategoryIdFor(product);
+  if (nonJewelryCategoryId) return nonJewelryCategoryId;
   const group = groupForCategory(product.category);
   return (group && TRENDYOL_CATEGORY_BY_GROUP_SLUG[group.slug]) || TRENDYOL_FALLBACK_CATEGORY_ID;
 }
@@ -78,7 +103,13 @@ const TRENDYOL_EXTRA_ATTRIBUTE_BY_GROUP_SLUG: Record<string, TrendyolProductAttr
 };
 const TRENDYOL_FALLBACK_EXTRA_ATTRIBUTE = TRENDYOL_EXTRA_ATTRIBUTE_BY_GROUP_SLUG.kolyeler;
 
-function attributesFor(product: { category: string }): TrendyolProductAttribute[] {
+function attributesFor(
+  product: { category: string; name: string },
+): TrendyolProductAttribute[] | undefined {
+  // Biblo/tablo/tesbih çelik takı değil - Materyal: Paslanmaz Çelik gibi
+  // takıya özgü varsayılanlar bu kategorilerde anlamsız/yanlış olur, o
+  // yüzden bu ürünler için hiç attributes göndermiyoruz.
+  if (nonJewelryCategoryIdFor(product)) return undefined;
   const group = groupForCategory(product.category);
   const extra =
     (group && TRENDYOL_EXTRA_ATTRIBUTE_BY_GROUP_SLUG[group.slug]) ||
