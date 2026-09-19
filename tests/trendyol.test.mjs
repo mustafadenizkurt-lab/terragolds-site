@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { buildTrendyolAuthHeader, buildTrendyolUserAgent } from "../lib/trendyol/http-utils.ts";
 import { mapTrendyolOrderPayload } from "../lib/trendyol/order-mapping.ts";
+import { computeRequiredPrice, DEFAULT_COMMISSION_RATE } from "../lib/trendyol/pricing-formula.ts";
 
 // Trendyol henüz API kimlik bilgilerimizi onaylamadı, o yüzden bu testler
 // gerçek bir API çağrısı yapmıyor - sadece kimlik bilgisi olmadan da test
@@ -106,4 +107,25 @@ test("mapTrendyolOrderPayload eksik müşteri/adres alanlarında çökmüyor", (
   assert.equal(mapped.shippingCountry, "TR");
   assert.equal(mapped.trackingNumber, "");
   assert.deepEqual(mapped.items, []);
+});
+
+test("computeRequiredPrice maliyet 100 TL için beklenen fiyatı üretir (varsayılan %22 komisyon)", () => {
+  // productCostWithVat = 100 * 1.2 = 120
+  // totalCost = 120 + 29 (ORDER_FEE) + 80 (SHIPPING_COST) = 229
+  // targetProfit = 120 * 0.5 = 60
+  // requiredPrice = (229 + 60) / (1 - 0.22) = 289 / 0.78
+  const result = computeRequiredPrice(100, 9999); // bilinmeyen kategori -> default oran
+  assert.ok(Math.abs(result - 289 / (1 - DEFAULT_COMMISSION_RATE)) < 1e-9);
+});
+
+test("computeRequiredPrice maliyet arttıkça gerekli fiyatı da artırır", () => {
+  const low = computeRequiredPrice(50, 9999);
+  const high = computeRequiredPrice(200, 9999);
+  assert.ok(high > low);
+});
+
+test("computeRequiredPrice maliyet 0 için sadece sabit maliyetleri (kargo+sipariş) yansıtır", () => {
+  // productCostWithVat=0, targetProfit=0 -> requiredPrice = (0+29+80+0) / (1-0.22)
+  const result = computeRequiredPrice(0, 9999);
+  assert.ok(Math.abs(result - 109 / (1 - DEFAULT_COMMISSION_RATE)) < 1e-9);
 });

@@ -141,7 +141,7 @@ function nonJewelryCategoryFor(
   );
 }
 
-function categoryIdFor(product: { category: string; name: string }): number {
+export function categoryIdFor(product: { category: string; name: string }): number {
   const nonJewelry = nonJewelryCategoryFor(product);
   if (nonJewelry) return nonJewelry.categoryId;
   const group = groupForCategory(product.category);
