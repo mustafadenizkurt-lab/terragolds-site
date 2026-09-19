@@ -105,9 +105,20 @@ export async function GET(request: Request) {
       // toplayıp içinde geçen değerleri filtreliyoruz (ör. "Standart",
       // "TR" gibi jewelry'ye uygun bir varsayılan aramak için).
       const search = searchParams.get("search")?.toLocaleLowerCase("tr-TR");
+      // Bir özellik değeri ID'sinin BAŞKA bir kategoride kullanılıp bu
+      // kategoride de geçerli olup olmadığını kontrol etmek için - metin
+      // aramasından farklı olarak doğrudan attributeValueId eşleşmesi arar,
+      // tüm sayfaları tarar.
+      const checkValueId = Number(searchParams.get("checkValueId"));
       const byAttributeId: Record<string, unknown> = {};
       for (const attributeId of attributeIds) {
-        if (search) {
+        if (checkValueId > 0) {
+          const all = await getCategoryAttributeValues(categoryId, attributeId);
+          const found = all.find((value) => value.attributeValueId === checkValueId);
+          byAttributeId[attributeId] = found
+            ? { found: true, value: found }
+            : { found: false, totalValuesChecked: all.length };
+        } else if (search) {
           const all = await getCategoryAttributeValues(categoryId, attributeId);
           const matches = all.filter((value) =>
             value.attributeValue.toLocaleLowerCase("tr-TR").includes(search),
