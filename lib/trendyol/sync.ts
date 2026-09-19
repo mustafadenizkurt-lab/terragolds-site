@@ -9,6 +9,7 @@ type PendingProduct = {
   price: number;
   stock: number;
   image: string;
+  hoverImage: string | null;
   category: string;
   xmlExternalId: string | null;
 };
@@ -203,8 +204,15 @@ function attributesFor(
   return [...TRENDYOL_COMMON_ATTRIBUTES, ...extra];
 }
 
+// Trendyol v2'de en fazla 8 görsel kabul ediyor, ilki kapak fotoğrafı olarak
+// kullanılıyor - sitemizdeki ana görsel (image) + hover görseli (hoverImage,
+// üzerine gelince/karşılaştırmada görünen ikinci fotoğraf) sırasıyla
+// gönderiliyor. Daha önce sadece image gönderiliyordu, Trendyol'da tek
+// fotoğraf görünmesinin sebebi buydu.
 function toTrendyolProduct(product: PendingProduct): TrendyolProduct {
-  const imageUrl = toAbsoluteImageUrl(product.image);
+  const imageUrls = [product.image, product.hoverImage]
+    .map((url) => (url ? toAbsoluteImageUrl(url) : null))
+    .filter((url): url is string => Boolean(url));
   return {
     barcode: barcodeFor(product),
     title: product.name,
@@ -219,7 +227,7 @@ function toTrendyolProduct(product: PendingProduct): TrendyolProduct {
     // (25 ürün) reddedilen tek bir satır yüzünden başarısız oluyor - D1'de
     // birkaç ürünün açıklaması boş, o yüzden ürün adına düşülüyor.
     description: product.description.trim() || product.name,
-    images: imageUrl ? [{ url: imageUrl }] : [],
+    images: imageUrls.map((url) => ({ url })),
     vatRate: 20,
     attributes: attributesFor(product),
   };
@@ -247,7 +255,7 @@ export async function syncProductsToTrendyol(
 
   const pending = await db
     .prepare(
-      `SELECT id, name, description, price, stock, image, category,
+      `SELECT id, name, description, price, stock, image, hover_image AS hoverImage, category,
               xml_external_id AS xmlExternalId
        FROM products
        WHERE status = 'published' AND trendyol_listing_id IS NULL
@@ -310,7 +318,7 @@ export async function updateProductsCategoryOnTrendyol(
   const placeholders = productIds.map(() => "?").join(",");
   const products = await db
     .prepare(
-      `SELECT id, name, description, price, stock, image, category,
+      `SELECT id, name, description, price, stock, image, hover_image AS hoverImage, category,
               xml_external_id AS xmlExternalId
        FROM products WHERE id IN (${placeholders})`,
     )
