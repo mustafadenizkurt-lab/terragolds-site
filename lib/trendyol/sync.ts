@@ -47,10 +47,57 @@ const TRENDYOL_DEFAULT_BRAND_ID = 1041874;
 // "Kategori ara" ile bulunan gerçek Trendyol kategorilerine, ürün adındaki
 // anahtar kelimeye göre yönlendiriliyor. Eşleşmeyen (yüzük/kolye gibi
 // gerçek takı isimli) ürünler normal akışa (Kolye varsayılanı) düşer.
-const NON_JEWELRY_CATEGORY_KEYWORDS: { keywords: string[]; categoryId: number }[] = [
-  { keywords: ["tesbih"], categoryId: 1823 }, // Aksesuar > Diğer Aksesuar > Tesbih
-  { keywords: ["tablo", "pano"], categoryId: 842 }, // Ev & Mobilya > Ev Dekorasyon > Tablo
-  { keywords: ["biblo", "heykel", "figür"], categoryId: 1877 }, // Ev Dekorasyon > Dekoratif Obje ve Biblo
+//
+// Her kategorinin kendi zorunlu özellikleri var (admin panelindeki
+// "Kategori özellikleri" teşhis aracıyla tek tek doğrulandı) - jewelry
+// varsayılanlarından (Materyal: Paslanmaz Çelik vb.) tamamen farklı, bu
+// yüzden ayrı bir attributes listesi taşıyorlar. "Çerçeve Tipi" (id 5),
+// Biblo kategorisinde zorunlu görünüyor ama Trendyol'da hiç tanımlı
+// değeri yok - gönderilemediği için atlandı.
+type NonJewelryCategory = {
+  keywords: string[];
+  categoryId: number;
+  attributes: TrendyolProductAttribute[];
+};
+
+const NON_JEWELRY_CATEGORIES: NonJewelryCategory[] = [
+  {
+    keywords: ["tesbih"],
+    categoryId: 1823, // Aksesuar > Diğer Aksesuar > Tesbih
+    attributes: [
+      { attributeId: 348, attributeValueId: 7001 }, // Web Color: Kahverengi
+      { attributeId: 260, attributeValueId: 1209593 }, // Taş Cinsi: Yok
+      { attributeId: 1186, attributeValueId: 10559446 }, // Kutu Durumu: Kutu yok
+      { attributeId: 1192, attributeValueId: 10617344 }, // Menşei: TR
+      { attributeId: 47, customAttributeValue: "Kahverengi" }, // Renk (allowCustom)
+      { attributeId: 14, attributeValueId: 1215244 }, // Materyal: Ağaç
+    ],
+  },
+  {
+    keywords: ["tablo", "pano"],
+    categoryId: 842, // Ev & Mobilya > Ev Dekorasyon > Tablo
+    attributes: [
+      { attributeId: 348, attributeValueId: 7001 }, // Web Color: Kahverengi
+      { attributeId: 14, attributeValueId: 1256806 }, // Materyal: Belirtilmemiş
+      { attributeId: 47, customAttributeValue: "Kahverengi" }, // Renk (allowCustom)
+      { attributeId: 1192, attributeValueId: 10617344 }, // Menşei: TR
+      { attributeId: 18, attributeValueId: 1256822 }, // Parça Sayısı: Belirtilmemiş
+      { attributeId: 20, attributeValueId: 1256823 }, // Tema/Stil: Belirtilmemiş
+    ],
+  },
+  {
+    keywords: ["biblo", "heykel", "figür"],
+    categoryId: 1877, // Ev & Mobilya > Ev Dekorasyon > Dekoratif Obje ve Biblo
+    attributes: [
+      { attributeId: 47, customAttributeValue: "Kahverengi" }, // Renk (allowCustom)
+      { attributeId: 348, attributeValueId: 7001 }, // Web Color: Kahverengi
+      { attributeId: 92, attributeValueId: 142196 }, // Boyut/Ebat: Tek Ebat
+      { attributeId: 14, attributeValueId: 1256806 }, // Materyal: Belirtilmemiş
+      { attributeId: 20, attributeValueId: 1256823 }, // Tema/Stil: Belirtilmemiş
+      { attributeId: 1192, attributeValueId: 10617344 }, // Menşei: TR
+      { attributeId: 18, attributeValueId: 1256822 }, // Parça Sayısı: Belirtilmemiş
+    ],
+  },
 ];
 
 // "Figür" gibi kelimeler gerçek takı ürünlerinde de sıfat olarak geçebiliyor
@@ -58,20 +105,23 @@ const NON_JEWELRY_CATEGORY_KEYWORDS: { keywords: string[]; categoryId: number }[
 // varsa bu, dekor değil takı demektir, non-jewelry eşlemesi atlanır.
 const JEWELRY_NAME_KEYWORDS = ["yüzük", "kolye", "küpe", "bileklik", "halhal"];
 
-function nonJewelryCategoryIdFor(product: { category: string; name: string }): number | null {
+function nonJewelryCategoryFor(
+  product: { category: string; name: string },
+): NonJewelryCategory | null {
   const group = groupForCategory(product.category);
   if (group?.slug !== "antika-vintage") return null;
   const name = product.name.toLocaleLowerCase("tr-TR");
   if (JEWELRY_NAME_KEYWORDS.some((keyword) => name.includes(keyword))) return null;
-  const match = NON_JEWELRY_CATEGORY_KEYWORDS.find((entry) =>
-    entry.keywords.some((keyword) => name.includes(keyword)),
+  return (
+    NON_JEWELRY_CATEGORIES.find((entry) =>
+      entry.keywords.some((keyword) => name.includes(keyword)),
+    ) ?? null
   );
-  return match?.categoryId ?? null;
 }
 
 function categoryIdFor(product: { category: string; name: string }): number {
-  const nonJewelryCategoryId = nonJewelryCategoryIdFor(product);
-  if (nonJewelryCategoryId) return nonJewelryCategoryId;
+  const nonJewelry = nonJewelryCategoryFor(product);
+  if (nonJewelry) return nonJewelry.categoryId;
   const group = groupForCategory(product.category);
   return (group && TRENDYOL_CATEGORY_BY_GROUP_SLUG[group.slug]) || TRENDYOL_FALLBACK_CATEGORY_ID;
 }
@@ -111,11 +161,12 @@ const TRENDYOL_FALLBACK_EXTRA_ATTRIBUTE = TRENDYOL_EXTRA_ATTRIBUTE_BY_GROUP_SLUG
 
 function attributesFor(
   product: { category: string; name: string },
-): TrendyolProductAttribute[] | undefined {
+): TrendyolProductAttribute[] {
   // Biblo/tablo/tesbih çelik takı değil - Materyal: Paslanmaz Çelik gibi
-  // takıya özgü varsayılanlar bu kategorilerde anlamsız/yanlış olur, o
-  // yüzden bu ürünler için hiç attributes göndermiyoruz.
-  if (nonJewelryCategoryIdFor(product)) return undefined;
+  // takıya özgü varsayılanlar bu kategorilerde anlamsız/yanlış olur, kendi
+  // (NON_JEWELRY_CATEGORIES'teki) özellik listeleri kullanılıyor.
+  const nonJewelry = nonJewelryCategoryFor(product);
+  if (nonJewelry) return nonJewelry.attributes;
   const group = groupForCategory(product.category);
   const extra =
     (group && TRENDYOL_EXTRA_ATTRIBUTE_BY_GROUP_SLUG[group.slug]) ||
