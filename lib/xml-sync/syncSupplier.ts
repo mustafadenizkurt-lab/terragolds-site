@@ -27,6 +27,10 @@ export type SupplierMapping = {
   retailPrice?: string;
   stock?: string;
   image?: string;
+  // Sitede/Trendyol'da "hover" görüntülendiğinde görünen ikinci fotoğraf
+  // (ör. bir tedarikçi feed'inde "resim.resim2") - opsiyonel, her tedarikçi
+  // ikinci bir fotoğraf sağlamıyor.
+  hoverImage?: string;
   description?: string;
 };
 
@@ -178,8 +182,8 @@ export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<
       const matchedId = existing?.id;
       if (matchedId) {
         await db.prepare(
-          `UPDATE products SET name = ?, stone = ?, category = ?, price = ?, cost = ?, stock = ?, image = ?, description = ?, xml_sync_status = 'synced', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-        ).bind(product.name, product.stone, product.category, product.price, product.cost, product.stock, product.image, product.description, matchedId).run();
+          `UPDATE products SET name = ?, stone = ?, category = ?, price = ?, cost = ?, stock = ?, image = ?, hover_image = COALESCE(?, hover_image), description = ?, xml_sync_status = 'synced', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+        ).bind(product.name, product.stone, product.category, product.price, product.cost, product.stock, product.image, product.hoverImage, product.description, matchedId).run();
         updated += 1;
         // D1 is the source of truth for stock - push this product's new
         // count to Shopify (a no-op if it isn't synced there yet). Only
@@ -212,8 +216,8 @@ export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<
       } else {
         const description = await uniqueDescriptionForNewProduct(product);
         const created = await db.prepare(
-          `INSERT INTO products (name, stone, category, price, cost, stock, image, description, status, xml_supplier_id, xml_external_id, xml_sync_status, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, 'synced', CURRENT_TIMESTAMP) RETURNING id`,
-        ).bind(product.name, product.stone, product.category, product.price, product.cost, product.stock, product.image, description, supplier.id, product.externalId).first<{ id: number }>();
+          `INSERT INTO products (name, stone, category, price, cost, stock, image, hover_image, description, status, xml_supplier_id, xml_external_id, xml_sync_status, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, 'synced', CURRENT_TIMESTAMP) RETURNING id`,
+        ).bind(product.name, product.stone, product.category, product.price, product.cost, product.stock, product.image, product.hoverImage, description, supplier.id, product.externalId).first<{ id: number }>();
         if (created?.id) {
           const slug = await resolveProductSlug(db, product.name, created.id);
           await db.prepare("UPDATE products SET slug = ? WHERE id = ?").bind(slug, created.id).run();
@@ -310,6 +314,7 @@ export function mapRecord(record: XmlRecord, mapping: SupplierMapping, markup: n
     cost: hasCost ? Math.max(0, Math.round(cost)) : 0,
     stock: Math.max(0, Number.parseInt(readMappedValue(record, mapping.stock) || "0", 10) || 0),
     image: readMappedValue(record, mapping.image),
+    hoverImage: readMappedValue(record, mapping.hoverImage) || null,
     description: readMappedValue(record, mapping.description),
   };
 }
@@ -464,4 +469,58 @@ async function pushStockEverywhere(db: D1Database, productId: number): Promise<v
   } catch {
     // Self-heals on the next stock change or a manual price/stock backfill.
   }
+}
+
+export type HoverImageBackfillResult = {
+  updated: number;
+  skipped: number;
+  total: number;
+};
+
+// restockSupplierProducts ile aynı desen (tek sorguda tüm ürünler belleğe
+// alınıp bellekte karşılaştırılıyor, sadece değişenler db.batch() ile
+// yazılıyor) - ama stock yerine hover_image. xml_sync_status'tan bağımsız
+// TÜM eşleşen ürünleri kapsıyor (repriceSupplierProducts'taki gibi 'manual'
+// dahil) - hover_image hiçbir zaman elle yönetilen bir alan olmadı, bu
+// yüzden geriye dönük doldurmak güvenli.
+export async function backfillHoverImages(
+  db: D1Database,
+  supplier: Supplier,
+): Promise<HoverImageBackfillResult> {
+  const mapping = JSON.parse(supplier.fieldMapping || "{}") as SupplierMapping;
+  const records = parseFeed(await fetchFeed(supplier.feedUrl));
+
+  const existingRows = await db
+    .prepare(
+      "SELECT id, xml_external_id AS xmlExternalId, hover_image AS hoverImage FROM products WHERE xml_supplier_id = ? AND xml_external_id IS NOT NULL",
+    )
+    .bind(supplier.id)
+    .all<{ id: number; xmlExternalId: string; hoverImage: string | null }>();
+  const byExternalId = new Map(existingRows.results.map((row) => [row.xmlExternalId, row]));
+
+  let skipped = 0;
+  const changed: { id: number; hoverImage: string }[] = [];
+  for (const record of records) {
+    const product = mapRecord(record, mapping, supplier.defaultMarkupPercent);
+    if (!product.externalId || !product.hoverImage) {
+      skipped += 1;
+      continue;
+    }
+    const existing = byExternalId.get(product.externalId);
+    if (!existing || existing.hoverImage === product.hoverImage) {
+      skipped += 1;
+      continue;
+    }
+    changed.push({ id: existing.id, hoverImage: product.hoverImage });
+  }
+
+  for (let offset = 0; offset < changed.length; offset += RESTOCK_WRITE_BATCH_SIZE) {
+    const chunk = changed.slice(offset, offset + RESTOCK_WRITE_BATCH_SIZE);
+    const updateStmt = db.prepare(
+      "UPDATE products SET hover_image = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+    );
+    await db.batch(chunk.map(({ id, hoverImage }) => updateStmt.bind(hoverImage, id)));
+  }
+
+  return { updated: changed.length, skipped, total: records.length };
 }

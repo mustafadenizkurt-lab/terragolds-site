@@ -301,6 +301,59 @@ export async function syncProductsToTrendyol(
   return { created, failed, remaining: await remainingCount(), errors };
 }
 
+export type TrendyolImageRefreshResult = {
+  updated: number;
+  remaining: number;
+  batches: { batchRequestId: string; itemCount: number }[];
+  error: string | null;
+};
+
+const IMAGE_REFRESH_BATCH_SIZE = 1000; // Trendyol v2/products limiti
+
+// toTrendyolProduct() artık hover_image'ı da (varsa) gönderiyor - ama bu
+// sadece HENÜZ Trendyol'a gönderilmemiş ürünler için geçerli. Zaten
+// listelenmiş ürünlerin fotoğrafını güncellemek PUT (updateProduct)
+// gerektiriyor - bu, hover_image'ı yeni doldurulmuş TÜM ürünleri tam
+// ürün payload'ıyla (kategori/özellikler dahil, PUT tam obje bekliyor)
+// yeniden gönderen tek seferlik bir araç. updateProductsCategoryOnTrendyol
+// gibi belirli bir ID listesiyle değil, tüm uygun ürünler için otomatik
+// çalışıyor - tekrar çalıştırmak zararsız (aynı doğru veriyi tekrar
+// gönderir), bu yüzden ilerleme takibi için ayrı bir log tablosu yok.
+export async function refreshTrendyolImages(db: D1Database): Promise<TrendyolImageRefreshResult> {
+  await ensureTrendyolColumns(db);
+
+  const pending = await db
+    .prepare(
+      `SELECT id, name, description, price, stock, image, hover_image AS hoverImage, category,
+              xml_external_id AS xmlExternalId
+       FROM products
+       WHERE trendyol_barcode IS NOT NULL AND hover_image IS NOT NULL
+       ORDER BY id`,
+    )
+    .all<PendingProduct>();
+
+  const batches: { batchRequestId: string; itemCount: number }[] = [];
+  let updated = 0;
+
+  for (let offset = 0; offset < pending.results.length; offset += IMAGE_REFRESH_BATCH_SIZE) {
+    const chunk = pending.results.slice(offset, offset + IMAGE_REFRESH_BATCH_SIZE);
+    try {
+      const { batchRequestId } = await updateProduct(chunk.map(toTrendyolProduct));
+      batches.push({ batchRequestId, itemCount: chunk.length });
+      updated += chunk.length;
+    } catch (error) {
+      return {
+        updated,
+        remaining: pending.results.length - updated,
+        batches,
+        error: error instanceof Error ? error.message : "bilinmeyen hata",
+      };
+    }
+  }
+
+  return { updated, remaining: 0, batches, error: null };
+}
+
 // Bir ürün Trendyol'a yanlış categoryId ile gönderildiğinde (ör. Antika ~
 // Vintage'daki biblo/tablo/tesbih ürünleri önce Kolye kategorisine
 // gitmişti), aynı barkodla tekrar createProduct() çağırmak Trendyol'un
