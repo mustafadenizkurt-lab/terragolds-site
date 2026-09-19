@@ -16,17 +16,33 @@ export const dynamic = "force-dynamic";
 // sorgulanamadı) - bu yüzden gerçek kaynağa (Trendyol'un GERÇEKTEN sahip
 // olduğu barkod listesi, getProducts ile sayfalanarak TÜMÜ) gidip bizim
 // "senkronlandı" dediğimiz barkod listesiyle karşılaştırıyoruz.
+// Trendyol'un gerçek çalışma zamanı yanıtında totalPages alanının bizim
+// varsaydığımız gibi davranacağı (ya da hiç var olacağı) test edilmedi -
+// yanlış/eksik gelirse sayfalama sonsuz döngüye girebilir. Bu yüzden hem
+// sabit bir üst sınır (10.000 ürün - gerçek katalogdan çok daha fazla) hem
+// de "bu sayfa hiç yeni barkod getirmedi" güvenlik kesicisi var.
+const MAX_PAGES = 50;
+
 async function fetchAllTrendyolBarcodes(): Promise<Set<string>> {
   const barcodes = new Set<string>();
   const size = 200;
-  let page = 0;
-  for (;;) {
+  for (let page = 0; page < MAX_PAGES; page += 1) {
     const result = await getProducts({ page, size });
-    for (const product of result.content) {
+    const content = result.content ?? [];
+    if (content.length === 0) break;
+
+    const sizeBefore = barcodes.size;
+    for (const product of content) {
       if (product.barcode) barcodes.add(product.barcode);
     }
-    page += 1;
-    if (page >= result.totalPages || result.content.length === 0) break;
+    const gotNewBarcodes = barcodes.size > sizeBefore;
+
+    const totalPages = result.totalPages;
+    const reachedLastPage =
+      typeof totalPages === "number" && Number.isFinite(totalPages)
+        ? page + 1 >= totalPages
+        : content.length < size;
+    if (reachedLastPage || !gotNewBarcodes) break;
   }
   return barcodes;
 }
