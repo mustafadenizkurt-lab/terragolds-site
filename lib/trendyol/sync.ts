@@ -566,21 +566,21 @@ export async function applyTrendyolPriceIncrease(db: D1Database): Promise<PriceI
       };
     }
 
-    for (const { product, newPrice } of pricedChunk) {
-      await db
-        .prepare(
-          `UPDATE products SET price = ?, trendyol_price_synced = ? WHERE id = ?`,
-        )
-        .bind(newPrice, newPrice, product.id)
-        .run();
-      await db
-        .prepare(
-          `INSERT INTO trendyol_price_increase_log (product_id, old_price, new_price, batch_request_id)
-           VALUES (?, ?, ?, ?)`,
-        )
-        .bind(product.id, product.price, newPrice, batchRequestId)
-        .run();
-    }
+    // Ürün başına 2 ayrı await'li tekil sorgu yerine (1000 ürün = 2000
+    // sıralı D1 round-trip - istek zaman aşımına uğradı) db.batch() ile TEK
+    // round-trip'te tüm UPDATE+INSERT'ler gönderiliyor.
+    const updateStmt = db.prepare(
+      `UPDATE products SET price = ?, trendyol_price_synced = ? WHERE id = ?`,
+    );
+    const insertStmt = db.prepare(
+      `INSERT INTO trendyol_price_increase_log (product_id, old_price, new_price, batch_request_id)
+       VALUES (?, ?, ?, ?)`,
+    );
+    const statements = pricedChunk.flatMap(({ product, newPrice }) => [
+      updateStmt.bind(newPrice, newPrice, product.id),
+      insertStmt.bind(product.id, product.price, newPrice, batchRequestId),
+    ]);
+    await db.batch(statements);
 
     batches.push({ batchRequestId, itemCount: chunk.length });
     increased += chunk.length;
