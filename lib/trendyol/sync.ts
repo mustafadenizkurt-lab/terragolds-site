@@ -98,7 +98,10 @@ function toTrendyolProduct(product: PendingProduct): TrendyolProduct {
     stockCode: barcodeFor(product),
     listPrice: product.price,
     salePrice: product.price,
-    description: product.description,
+    // Trendyol boş açıklamayı reddediyor ve tek gönderdiğimiz TÜM parti
+    // (25 ürün) reddedilen tek bir satır yüzünden başarısız oluyor - D1'de
+    // birkaç ürünün açıklaması boş, o yüzden ürün adına düşülüyor.
+    description: product.description.trim() || product.name,
     images: imageUrl ? [{ url: imageUrl }] : [],
     vatRate: 20,
     attributes: attributesFor(product),
