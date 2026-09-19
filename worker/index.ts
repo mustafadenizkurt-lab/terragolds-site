@@ -3,11 +3,13 @@ import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } fr
 import handler from "vinext/server/app-router-entry";
 import { dispatchApiRequest } from "./api-dispatch";
 import { restockActiveSuppliers, syncActiveSuppliers } from "../lib/xml-sync/syncSupplier";
-import {
-  publishExistingProductsToShopify,
-  syncProductsToShopify,
-} from "../lib/shopify/sync";
-import { pushPendingShopifyPrices } from "../lib/shopify/price";
+// Shopify kanalı pasife alındı - bkz. scheduled() içindeki yorum. Tekrar
+// açılınca bu import'lar da geri gelmeli.
+// import {
+//   publishExistingProductsToShopify,
+//   syncProductsToShopify,
+// } from "../lib/shopify/sync";
+// import { pushPendingShopifyPrices } from "../lib/shopify/price";
 
 interface Env {
   ASSETS: Fetcher;
@@ -94,21 +96,15 @@ const worker = {
     // değil - tedarikçide tükenen bir ürün fark edilmeden "stokta"
     // görünmeye devam edebiliyordu (gerçek bir sipariş kabul edildi).
     ctx.waitUntil(restockActiveSuppliers(env.DB).catch(() => {}));
-    // Shopify secrets are only configured once the store owner sets them up
-    // (see lib/shopify/auth.ts) - swallow failures here so a missing/invalid
-    // Shopify credential never affects the unrelated XML supplier sync above.
-    ctx.waitUntil(syncProductsToShopify(env.DB).catch(() => {}));
-    // Backfills products created before syncProductsToShopify started
-    // publishing to the Online Store channel - self-limiting since it only
-    // ever selects products still missing shopify_published_at.
-    ctx.waitUntil(
-      publishExistingProductsToShopify(env.DB, 200).catch(() => {}),
-    );
-    // Catches up any product whose D1 price has drifted from what's live on
-    // Shopify (e.g. after a bulk supplier reprice, which deliberately
-    // doesn't push per-row - see pushPendingShopifyPrices's own comment).
-    // Self-limiting the same way as the publish backfill above.
-    ctx.waitUntil(pushPendingShopifyPrices(env.DB, 200).catch(() => {}));
+    // Shopify kanalı pasife alındı (hiç sipariş gelmiyordu, kullanıcı
+    // talebiyle durduruldu) - otomatik ürün/fiyat/stok gönderimi geçici
+    // olarak kapalı. Kod silinmedi, tekrar açmak için aşağıdaki 3 satırı
+    // geri yorum satırından çıkarmak yeterli.
+    // ctx.waitUntil(syncProductsToShopify(env.DB).catch(() => {}));
+    // ctx.waitUntil(
+    //   publishExistingProductsToShopify(env.DB, 200).catch(() => {}),
+    // );
+    // ctx.waitUntil(pushPendingShopifyPrices(env.DB, 200).catch(() => {}));
   },
 };
 

@@ -450,12 +450,10 @@ export async function restockSupplierProducts(
 // D1'deki yeni stok, ürünün listelendiği her pazaryerine tek tek gönderilir
 // (hiçbiri diğerinin varlığını varsaymadan - push* fonksiyonlarının her biri
 // zaten "bu kanala hiç gönderilmemişse no-op" davranışında).
+//
+// Shopify kanalı pasife alındı (hiç sipariş gelmiyordu) - bkz.
+// worker/index.ts scheduled(). O push kasıtlı olarak burada da atlanıyor.
 async function pushStockEverywhere(db: D1Database, productId: number): Promise<void> {
-  try {
-    await pushInventoryToShopify(db, productId);
-  } catch {
-    // Self-heals on the next stock change or scheduled sync.
-  }
   try {
     await pushStockAndPriceToTrendyol(db, productId);
   } catch {
