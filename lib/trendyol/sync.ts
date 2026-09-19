@@ -1,4 +1,4 @@
-import { ensureTrendyolColumns, createProduct, updateProduct, updateStockAndPrice, type TrendyolProduct, type TrendyolProductAttribute } from "./client";
+import { ensureTrendyolColumns, createProduct, updateProduct, updateProductImages, updateStockAndPrice, type TrendyolProduct, type TrendyolProductAttribute } from "./client";
 import { toAbsoluteImageUrl } from "../shopify/client";
 import { groupForCategory } from "../category-groups";
 
@@ -310,12 +310,14 @@ export type TrendyolImageRefreshResult = {
 
 const IMAGE_REFRESH_BATCH_SIZE = 1000; // Trendyol v2/products limiti
 
-// toTrendyolProduct() artık hover_image'ı da (varsa) gönderiyor - ama bu
-// sadece HENÜZ Trendyol'a gönderilmemiş ürünler için geçerli. Zaten
-// listelenmiş ürünlerin fotoğrafını güncellemek PUT (updateProduct)
-// gerektiriyor - bu, hover_image'ı yeni doldurulmuş TÜM ürünleri tam
-// ürün payload'ıyla (kategori/özellikler dahil, PUT tam obje bekliyor)
-// yeniden gönderen tek seferlik bir araç. updateProductsCategoryOnTrendyol
+// Trendyol onaylanmış ürünlerde barcode/productMainId/brandId/categoryId ve
+// slicer/varianter özellik değerlerinin güncellenmesine izin vermiyor
+// (developers.trendyol.com "Ürün Güncelleme - Onaylı Ürün v2") - ilk
+// denemede toTrendyolProduct()'ın ürettiği TAM obje (kategori, marka,
+// fiyat, stok, attributes dahil) bu yüzden 404 "İşlem başarısız oldu" ile
+// reddedildi (1527 üründen ilk parti). Sadece fotoğraf güncellemek için
+// buna gerek yok - kısmi (partial) payload yeterli: barcode (eşleştirme
+// anahtarı, değeri değişmiyor) + images. updateProductsCategoryOnTrendyol
 // gibi belirli bir ID listesiyle değil, tüm uygun ürünler için otomatik
 // çalışıyor - tekrar çalıştırmak zararsız (aynı doğru veriyi tekrar
 // gönderir), bu yüzden ilerleme takibi için ayrı bir log tablosu yok.
@@ -338,7 +340,13 @@ export async function refreshTrendyolImages(db: D1Database): Promise<TrendyolIma
   for (let offset = 0; offset < pending.results.length; offset += IMAGE_REFRESH_BATCH_SIZE) {
     const chunk = pending.results.slice(offset, offset + IMAGE_REFRESH_BATCH_SIZE);
     try {
-      const { batchRequestId } = await updateProduct(chunk.map(toTrendyolProduct));
+      const items = chunk.map((product) => {
+        const imageUrls = [product.image, product.hoverImage]
+          .map((url) => (url ? toAbsoluteImageUrl(url) : null))
+          .filter((url): url is string => Boolean(url));
+        return { barcode: barcodeFor(product), images: imageUrls.map((url) => ({ url })) };
+      });
+      const { batchRequestId } = await updateProductImages(items);
       batches.push({ batchRequestId, itemCount: chunk.length });
       updated += chunk.length;
     } catch (error) {

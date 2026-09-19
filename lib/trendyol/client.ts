@@ -123,7 +123,9 @@ async function trendyolFetch<T>(
       const parsed = JSON.parse(message) as TrendyolErrorPayload;
       if (parsed.errors?.length) {
         message = parsed.errors
-          .map((error) => error.message ?? error.code ?? "bilinmeyen hata")
+          .map((error) =>
+            [error.code, error.message].filter(Boolean).join(": ") || "bilinmeyen hata",
+          )
           .join(", ");
       }
     } catch {
@@ -388,6 +390,29 @@ export async function updateProduct(
   return trendyolFetch(`/product/sellers/${supplierId}/v2/products`, {
     method: "PUT",
     body: { items: products },
+  });
+}
+
+export type TrendyolProductImageUpdate = {
+  barcode: string;
+  images: { url: string }[];
+};
+
+// Onaylanmış (approved) ürünlerde barcode/productMainId/brandId/categoryId ve
+// slicer/varianter özellik değerleri güncellenemiyor (developers.trendyol.com
+// "Ürün Güncelleme - Onaylı Ürün v2") - updateProduct()'ın gönderdiği TAM
+// ürün objesi (kategori, marka, fiyat, stok, attributes dahil) bu yüzden
+// onaylı ürünlerde 404 ile reddediliyordu. Sadece fotoğraf güncellemek için
+// kısmi (partial) payload: barcode (eşleştirme anahtarı, değeri değişmiyor) +
+// images. Trendyol dokümantasyonu kısmi güncellemeyi (attribute değerleri
+// hariç) destekliyor.
+export async function updateProductImages(
+  items: TrendyolProductImageUpdate[],
+): Promise<TrendyolBatchRequestResult> {
+  const { supplierId } = await getTrendyolCredentials();
+  return trendyolFetch(`/product/sellers/${supplierId}/v2/products`, {
+    method: "PUT",
+    body: { items },
   });
 }
 
