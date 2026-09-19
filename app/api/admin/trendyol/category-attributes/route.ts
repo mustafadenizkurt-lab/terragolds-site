@@ -66,10 +66,31 @@ export async function GET(request: Request) {
   // olabileceğinden D1'e de yazılıyor.
   if (searchParams.get("raw") === "1") {
     const attributeIdsParam = searchParams.get("attributeIds") ?? searchParams.get("attributeId");
-    const attributeIds = (attributeIdsParam ?? "")
+    let attributeIds = (attributeIdsParam ?? "")
       .split(",")
       .map((value) => Number(value.trim()))
       .filter((value) => value > 0);
+
+    // Sayısal ID'yi elle yazarken/kopyalarken bir hane düşürülebiliyor
+    // (ör. "338" -> "33") - bu yüzden özellik adının tamamı ya da bir kısmı
+    // (ör. "Beden") ile de aranabiliyor, ID hiç yazılmadan.
+    const attributeNameParam = searchParams.get("attributeName");
+    if (attributeIds.length === 0 && attributeNameParam) {
+      const search = attributeNameParam.toLocaleLowerCase("tr-TR");
+      const attributes = await getCategoryAttributes(categoryId);
+      attributeIds = attributes
+        .filter((attribute) =>
+          (attribute.attribute?.name ?? "").toLocaleLowerCase("tr-TR").includes(search),
+        )
+        .map((attribute) => attribute.attribute?.id ?? 0)
+        .filter((id) => id > 0);
+      if (attributeIds.length === 0) {
+        return Response.json(
+          { error: `"${attributeNameParam}" adıyla eşleşen özellik bulunamadı.` },
+          { status: 404 },
+        );
+      }
+    }
 
     const db = getD1();
     try {
