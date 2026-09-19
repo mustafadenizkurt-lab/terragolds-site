@@ -16,8 +16,21 @@ type PendingProduct = {
 // Trendyol her ürün için barkod zorunlu tutuyor - tedarikçi ürün kodumuz
 // (xml_external_id) varsa onu kullanıyoruz, yoksa kendi id'mizden türetilmiş
 // bir kod (yerel ürünler ve elle eklenenler için).
+//
+// Bu 12 ürün daha önce yanlış categoryId (Kolye) ile onaylanmıştı - Trendyol
+// onaylı ürünlerde categoryId güncellemesini desteklemiyor
+// (developers.trendyol.com "Ürün Güncelleme - Onaylı Ürün v2": "barcode,
+// productMainId, brandId, categoryId ... güncellenemez"). Doğru kategoriyle
+// YENİ bir ürün olarak oluşturulabilmeleri için farklı bir barkod
+// kullanılıyor - eski (yanlış kategorili) TG-{id} kaydı Trendyol panelinden
+// elle pasife alınmalı, otomatik silinmiyor.
+const RECREATE_WITH_NEW_BARCODE_IDS = new Set([
+  5015, 5016, 5017, 5022, 5023, 5025, 5026, 5027, 5028, 5029, 5033, 5514,
+]);
+
 function barcodeFor(product: { id: number; xmlExternalId: string | null }): string {
-  return product.xmlExternalId || `TG-${product.id}`;
+  const base = product.xmlExternalId || `TG-${product.id}`;
+  return RECREATE_WITH_NEW_BARCODE_IDS.has(product.id) ? `${base}-v2` : base;
 }
 
 // Site kategori grubu (lib/category-groups.ts slug'ı) -> Trendyol'un kendi
