@@ -23,7 +23,6 @@ import XmlSuppliersPanel from "./xml-suppliers-panel";
 import ShopifySyncPanel from "./shopify-sync-panel";
 import TrendyolSyncPanel from "./trendyol-sync-panel";
 import HepsiburadaSyncPanel from "./hepsiburada-sync-panel";
-import BirfaturaPanel from "./birfatura-panel";
 import XmlCodeBackfillPanel from "./xml-code-backfill-panel";
 import {
   defaultSettings,
@@ -53,7 +52,6 @@ type AdminView =
   | "shopify"
   | "trendyol"
   | "hepsiburada"
-  | "birfatura"
   | "skuBackfill"
   | "customers"
   | "partners"
@@ -576,9 +574,6 @@ export default function AdminClient({
           <button type="button" className={view === "hepsiburada" ? "active" : ""} onClick={() => setView("hepsiburada")}>
             <span>⇄</span> Hepsiburada senkronu
           </button>
-          <button type="button" className={view === "birfatura" ? "active" : ""} onClick={() => setView("birfatura")}>
-            <span>⇄</span> BirFatura entegrasyonu
-          </button>
           <button type="button" className={view === "skuBackfill" ? "active" : ""} onClick={() => setView("skuBackfill")}>
             <span>#</span> Ürün Kodu Eşleştirme
           </button>
@@ -695,7 +690,6 @@ export default function AdminClient({
               {view === "shopify" && "Shopify senkronu"}
               {view === "trendyol" && "Trendyol senkronu"}
               {view === "hepsiburada" && "Hepsiburada senkronu"}
-              {view === "birfatura" && "BirFatura entegrasyonu"}
               {view === "skuBackfill" && "Ürün Kodu Eşleştirme"}
               {view === "shipping" && "Kargo yönetimi"}
               {view === "payments" && "Ödeme yöntemleri"}
@@ -1113,7 +1107,6 @@ export default function AdminClient({
             {view === "shopify" && <ShopifySyncPanel onNotice={flash} />}
             {view === "trendyol" && <TrendyolSyncPanel onNotice={flash} />}
             {view === "hepsiburada" && <HepsiburadaSyncPanel onNotice={flash} />}
-            {view === "birfatura" && <BirfaturaPanel onNotice={flash} />}
             {view === "skuBackfill" && <XmlCodeBackfillPanel onNotice={flash} />}
 
             {view === "operations" && (
