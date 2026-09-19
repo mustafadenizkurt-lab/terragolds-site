@@ -7,6 +7,8 @@ import { rewriteProductDescription } from "../product-description-rewrite";
 import { getOptionalEnv } from "../runtime-env";
 import { pushInventoryToShopify } from "../shopify/inventory";
 import { pushPriceToShopify } from "../shopify/price";
+import { pushStockAndPriceToTrendyol } from "../trendyol/sync";
+import { pushStockAndPriceToHepsiburada } from "../hepsiburada/sync";
 
 export type SupplierMapping = {
   externalId?: string;
@@ -330,4 +332,111 @@ export async function repriceSupplierProducts(
     }
   }
   return { updated, skipped, total: records.length };
+}
+
+export type RestockResult = {
+  updated: number;
+  discontinued: number;
+  skipped: number;
+  total: number;
+};
+
+type StockRow = { id: number; stock: number };
+
+// syncSupplier()'ın stok/discontinued mantığıyla aynı fikir ama sadece
+// 'synced' değil, xml_supplier_id+xml_external_id ile eşleşen TÜM ürünleri
+// (repriceSupplierProducts'taki gibi 'manual' dahil) kapsıyor - 'manual'
+// işaretli ürünlerin stoğu bu feed'e hiç bağlı olmadığından, tedarikçide
+// tükenen bir ürün D1'de sonsuza kadar "stokta" görünmeye devam ediyordu
+// (gerçek bir sipariş yanlışlıkla kabul edilmiş, kullanıcı fark etti).
+// Fiyat/isim/kategori/açıklama gibi elle yönetilen hiçbir alana dokunmuyor -
+// SADECE stock yazıyor, tıpkı repriceSupplierProducts'ın sadece price/cost
+// yazması gibi.
+export async function restockSupplierProducts(
+  db: D1Database,
+  supplier: Supplier,
+): Promise<RestockResult> {
+  const mapping = JSON.parse(supplier.fieldMapping || "{}") as SupplierMapping;
+  const records = parseFeed(await fetchFeed(supplier.feedUrl));
+  let updated = 0;
+  let skipped = 0;
+  const seenExternalIds = new Set<string>();
+
+  for (const record of records) {
+    const product = mapRecord(record, mapping, supplier.defaultMarkupPercent);
+    if (!product.externalId) {
+      skipped += 1;
+      continue;
+    }
+    seenExternalIds.add(product.externalId);
+
+    const existing = await db
+      .prepare(
+        "SELECT id, stock FROM products WHERE xml_supplier_id = ? AND xml_external_id = ? LIMIT 1",
+      )
+      .bind(supplier.id, product.externalId)
+      .first<StockRow>();
+    if (!existing || existing.stock === product.stock) {
+      skipped += 1;
+      continue;
+    }
+
+    await db
+      .prepare("UPDATE products SET stock = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+      .bind(product.stock, existing.id)
+      .run();
+    await pushStockEverywhere(db, existing.id);
+    updated += 1;
+  }
+
+  const discontinued = await zeroOutMissingStock(db, supplier.id, seenExternalIds);
+  return { updated, discontinued, skipped, total: records.length };
+}
+
+// markDiscontinuedProducts (syncSupplier'ın kendi 'synced'-only sürümü) ile
+// aynı fikir ama xml_sync_status filtresi YOK - 'manual' ürünler de feed'den
+// tamamen düşmüşse (tedarikçi artık hiç satmıyor) stoğu 0'a çekiliyor.
+async function zeroOutMissingStock(
+  db: D1Database,
+  supplierId: number,
+  seenExternalIds: Set<string>,
+): Promise<number> {
+  const rows = await db
+    .prepare(
+      "SELECT id, xml_external_id AS xmlExternalId FROM products WHERE xml_supplier_id = ? AND xml_external_id IS NOT NULL AND stock > 0",
+    )
+    .bind(supplierId)
+    .all<{ id: number; xmlExternalId: string }>();
+  let discontinued = 0;
+  for (const row of rows.results) {
+    if (seenExternalIds.has(row.xmlExternalId)) continue;
+    await db
+      .prepare("UPDATE products SET stock = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+      .bind(row.id)
+      .run();
+    await pushStockEverywhere(db, row.id);
+    discontinued += 1;
+  }
+  return discontinued;
+}
+
+// D1'deki yeni stok, ürünün listelendiği her pazaryerine tek tek gönderilir
+// (hiçbiri diğerinin varlığını varsaymadan - push* fonksiyonlarının her biri
+// zaten "bu kanala hiç gönderilmemişse no-op" davranışında).
+async function pushStockEverywhere(db: D1Database, productId: number): Promise<void> {
+  try {
+    await pushInventoryToShopify(db, productId);
+  } catch {
+    // Self-heals on the next stock change or scheduled sync.
+  }
+  try {
+    await pushStockAndPriceToTrendyol(db, productId);
+  } catch {
+    // Self-heals on the next stock change or a manual price/stock backfill.
+  }
+  try {
+    await pushStockAndPriceToHepsiburada(db, productId);
+  } catch {
+    // Self-heals on the next stock change or a manual price/stock backfill.
+  }
 }
