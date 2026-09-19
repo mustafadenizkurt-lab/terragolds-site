@@ -430,3 +430,161 @@ export async function pushPendingTrendyolPrices(
 
   return { pushed, failed, remaining: await remainingCount(), errors };
 }
+
+// --- Tek seferlik fiyat artışı: 0-200 TL arası ürünlere %20 zam ---
+//
+// D1'deki price kolonu tek gerçek kaynak - Trendyol'un kendi ürün listeleme
+// (filterProducts) servisinden "mevcut fiyatı" çekmek yerine doğrudan D1
+// filtreleniyor (bu servis ayrıca şu an 426 brownout hatası veriyor, bkz.
+// /api/admin/trendyol/missing-products teşhisi). updateStockAndPrice zaten
+// var olan batch (max 1000 item) + rate-limit + kimlik doğrulama altyapısını
+// kullanıyor, tekrar yazılmadı.
+//
+// Aynı ürüne yanlışlıkla iki kez zam uygulanmasını (ör. script iki kez
+// tetiklenirse 50 -> 60 -> 72 gibi) önlemek için işlenen her ürün
+// trendyol_price_increase_log tablosuna kalıcı olarak yazılıyor - bir sonraki
+// çalıştırma bu tabloda olan ID'leri otomatik atlıyor, script güvenle tekrar
+// çalıştırılabilir (ör. bir parti başarısız olduğunda kalanları tamamlamak
+// için).
+async function ensurePriceIncreaseLogTable(db: D1Database) {
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS trendyol_price_increase_log (
+        product_id INTEGER PRIMARY KEY,
+        old_price INTEGER NOT NULL,
+        new_price INTEGER NOT NULL,
+        batch_request_id TEXT,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`,
+    )
+    .run();
+}
+
+type PriceIncreaseCandidate = {
+  id: number;
+  name: string;
+  price: number;
+  stock: number;
+  trendyolBarcode: string;
+};
+
+const PRICE_INCREASE_MULTIPLIER = 1.2;
+const PRICE_INCREASE_MAX_PRICE = 200;
+const PRICE_INCREASE_BATCH_SIZE = 1000; // Trendyol updatePriceAndInventory limiti
+
+async function priceIncreaseCandidates(db: D1Database): Promise<PriceIncreaseCandidate[]> {
+  await ensureTrendyolColumns(db);
+  await ensurePriceIncreaseLogTable(db);
+  const result = await db
+    .prepare(
+      `SELECT id, name, price, stock, trendyol_barcode AS trendyolBarcode
+       FROM products
+       WHERE status = 'published'
+         AND trendyol_barcode IS NOT NULL
+         AND price > 0 AND price <= ?
+         AND id NOT IN (SELECT product_id FROM trendyol_price_increase_log)
+       ORDER BY id`,
+    )
+    .bind(PRICE_INCREASE_MAX_PRICE)
+    .all<PriceIncreaseCandidate>();
+  return result.results;
+}
+
+export type PriceIncreasePreview = {
+  candidateCount: number;
+  alreadyProcessedCount: number;
+  sample: { id: number; name: string; oldPrice: number; newPrice: number }[];
+};
+
+// Hiçbir şeyi değiştirmeden - kaç ürünün etkileneceğini ve örnek eski/yeni
+// fiyatları göstermek için. Uygulamadan önce admin panelinden kontrol amaçlı.
+export async function previewTrendyolPriceIncrease(db: D1Database): Promise<PriceIncreasePreview> {
+  await ensurePriceIncreaseLogTable(db);
+  const candidates = await priceIncreaseCandidates(db);
+  const alreadyProcessed = await db
+    .prepare("SELECT COUNT(*) AS c FROM trendyol_price_increase_log")
+    .first<{ c: number }>();
+  return {
+    candidateCount: candidates.length,
+    alreadyProcessedCount: alreadyProcessed?.c ?? 0,
+    sample: candidates.slice(0, 20).map((product) => ({
+      id: product.id,
+      name: product.name,
+      oldPrice: product.price,
+      newPrice: Math.round(product.price * PRICE_INCREASE_MULTIPLIER),
+    })),
+  };
+}
+
+export type PriceIncreaseBatchLog = {
+  batchRequestId: string;
+  itemCount: number;
+};
+
+export type PriceIncreaseResult = {
+  totalCandidates: number;
+  increased: number;
+  batches: PriceIncreaseBatchLog[];
+  stoppedEarly: boolean;
+  error: string | null;
+};
+
+// Gerçek uygulama: D1'i günceller, Trendyol'a gönderir, her ürünü log
+// tablosuna yazar. Bir parti başarısız olursa işlem orada durur (henüz
+// loglanmamış ürünler bir sonraki çalıştırmada otomatik tekrar denenir) -
+// zaten başarıyla işlenmiş partiler geri alınmaz.
+export async function applyTrendyolPriceIncrease(db: D1Database): Promise<PriceIncreaseResult> {
+  const candidates = await priceIncreaseCandidates(db);
+  const batches: PriceIncreaseBatchLog[] = [];
+  let increased = 0;
+
+  for (let offset = 0; offset < candidates.length; offset += PRICE_INCREASE_BATCH_SIZE) {
+    const chunk = candidates.slice(offset, offset + PRICE_INCREASE_BATCH_SIZE);
+    const pricedChunk = chunk.map((product) => ({
+      product,
+      newPrice: Math.round(product.price * PRICE_INCREASE_MULTIPLIER),
+    }));
+
+    let batchRequestId: string;
+    try {
+      const result = await updateStockAndPrice(
+        pricedChunk.map(({ product, newPrice }) => ({
+          barcode: product.trendyolBarcode,
+          quantity: product.stock,
+          salePrice: newPrice,
+          listPrice: newPrice,
+        })),
+      );
+      batchRequestId = result.batchRequestId;
+    } catch (error) {
+      return {
+        totalCandidates: candidates.length,
+        increased,
+        batches,
+        stoppedEarly: true,
+        error: error instanceof Error ? error.message : "bilinmeyen hata",
+      };
+    }
+
+    for (const { product, newPrice } of pricedChunk) {
+      await db
+        .prepare(
+          `UPDATE products SET price = ?, trendyol_price_synced = ? WHERE id = ?`,
+        )
+        .bind(newPrice, newPrice, product.id)
+        .run();
+      await db
+        .prepare(
+          `INSERT INTO trendyol_price_increase_log (product_id, old_price, new_price, batch_request_id)
+           VALUES (?, ?, ?, ?)`,
+        )
+        .bind(product.id, product.price, newPrice, batchRequestId)
+        .run();
+    }
+
+    batches.push({ batchRequestId, itemCount: chunk.length });
+    increased += chunk.length;
+  }
+
+  return { totalCandidates: candidates.length, increased, batches, stoppedEarly: false, error: null };
+}
