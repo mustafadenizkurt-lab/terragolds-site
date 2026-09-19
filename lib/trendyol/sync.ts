@@ -40,8 +40,17 @@ function barcodeFor(product: { id: number; xmlExternalId: string | null }): stri
 // "antika-vintage", "saat-kombin" ve "aksesuar" grupları için henüz uygun
 // bir Trendyol kategorisi netleştirilmedi, o yüzden şimdilik Kolye'yle aynı
 // varsayılana düşüyorlar - gerçek ID'ler bulununca burada güncellenmeli.
+//
+// yuzuk için "Çelik Yüzük" (2841) YANLIŞTI: bu kategoride zorunlu+varyant
+// belirleyici "Beden" özelliği sadece somut yüzük ölçüleri kabul ediyor,
+// "Ayarlanabilir" gibi tek-beden bir değeri yok - ürünlerimizin neredeyse
+// tamamı ("Pirinç ... Ayarlanabilir Yüzük") bu yüzden batch KABUL EDİLİP
+// (batchRequestId dönüp) arka planda TEK TEK sessizce reddedildi (696/696,
+// %100 başarısızlık - Trendyol satıcı panelindeki gerçek ürün sayısıyla
+// karşılaştırılarak bulundu). "Bijuteri Yüzük" (1261) kategorisinde
+// "Beden: Ayarlanabilir" (10620045) seçeneği var - doğru kategori bu.
 const TRENDYOL_CATEGORY_BY_GROUP_SLUG: Record<string, number> = {
-  yuzuk: 2841, // Çelik Yüzük
+  yuzuk: 1261, // Bijuteri Yüzük
   kolyeler: 2853, // Çelik Kolye
   kupeler: 2846, // Çelik Küpe
   bileklik: 2845, // Çelik Bileklik
@@ -159,18 +168,25 @@ const TRENDYOL_COMMON_ATTRIBUTES: TrendyolProductAttribute[] = [
   { attributeId: 47, customAttributeValue: "Gümüş" }, // Renk (allowCustom)
 ];
 
-// Kategoriye özgü ek zorunlu alan - grup slug'ına göre (bkz.
-// TRENDYOL_CATEGORY_BY_GROUP_SLUG). Kolye/Yüzük/Bileklik "Beden", Küpe
-// "Model", Halhal "Yaş Grubu" istiyor; eşleşmeyen/bilinmeyen gruplar
+// Kategoriye özgü ek zorunlu alan(lar) - grup slug'ına göre (bkz.
+// TRENDYOL_CATEGORY_BY_GROUP_SLUG). Kolye/Bileklik "Beden", Küpe "Model",
+// Halhal "Yaş Grubu" istiyor; eşleşmeyen/bilinmeyen gruplar
 // TRENDYOL_FALLBACK_CATEGORY_ID (Kolye) ile aynı "Beden" alanına düşer.
-const TRENDYOL_EXTRA_ATTRIBUTE_BY_GROUP_SLUG: Record<string, TrendyolProductAttribute> = {
-  yuzuk: { attributeId: 338, attributeValueId: 144271 }, // Beden: Standart
-  kolyeler: { attributeId: 338, attributeValueId: 144271 }, // Beden: Standart
-  bileklik: { attributeId: 338, attributeValueId: 144271 }, // Beden: Standart
-  kupeler: { attributeId: 32, attributeValueId: 870 }, // Model: Standart
-  "sahmeran-halhal": { attributeId: 346, attributeValueId: 4293 }, // Yaş Grubu: Yetişkin
+// Yüzük ("Bijuteri Yüzük" 1261) hem "Beden" (Ayarlanabilir) HEM "Yaş
+// Grubu" (Yetişkin) istiyor - diğer 4 kategoride bu ikinci alan zorunlu
+// değil (100% başarıyla kanıtlandı), o yüzden liste kategoriye göre
+// değişen uzunlukta.
+const TRENDYOL_EXTRA_ATTRIBUTES_BY_GROUP_SLUG: Record<string, TrendyolProductAttribute[]> = {
+  yuzuk: [
+    { attributeId: 338, attributeValueId: 10620045 }, // Beden: Ayarlanabilir
+    { attributeId: 346, attributeValueId: 4293 }, // Yaş Grubu: Yetişkin
+  ],
+  kolyeler: [{ attributeId: 338, attributeValueId: 144271 }], // Beden: Standart
+  bileklik: [{ attributeId: 338, attributeValueId: 144271 }], // Beden: Standart
+  kupeler: [{ attributeId: 32, attributeValueId: 870 }], // Model: Standart
+  "sahmeran-halhal": [{ attributeId: 346, attributeValueId: 4293 }], // Yaş Grubu: Yetişkin
 };
-const TRENDYOL_FALLBACK_EXTRA_ATTRIBUTE = TRENDYOL_EXTRA_ATTRIBUTE_BY_GROUP_SLUG.kolyeler;
+const TRENDYOL_FALLBACK_EXTRA_ATTRIBUTES = TRENDYOL_EXTRA_ATTRIBUTES_BY_GROUP_SLUG.kolyeler;
 
 function attributesFor(
   product: { category: string; name: string },
@@ -182,9 +198,9 @@ function attributesFor(
   if (nonJewelry) return nonJewelry.attributes;
   const group = groupForCategory(product.category);
   const extra =
-    (group && TRENDYOL_EXTRA_ATTRIBUTE_BY_GROUP_SLUG[group.slug]) ||
-    TRENDYOL_FALLBACK_EXTRA_ATTRIBUTE;
-  return [...TRENDYOL_COMMON_ATTRIBUTES, extra];
+    (group && TRENDYOL_EXTRA_ATTRIBUTES_BY_GROUP_SLUG[group.slug]) ||
+    TRENDYOL_FALLBACK_EXTRA_ATTRIBUTES;
+  return [...TRENDYOL_COMMON_ATTRIBUTES, ...extra];
 }
 
 function toTrendyolProduct(product: PendingProduct): TrendyolProduct {
