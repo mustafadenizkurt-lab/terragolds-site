@@ -4,6 +4,7 @@ import handler from "vinext/server/app-router-entry";
 import { dispatchApiRequest } from "./api-dispatch";
 import { restockActiveSuppliers, syncActiveSuppliers } from "../lib/xml-sync/syncSupplier";
 import { syncTrendyolOrders } from "../lib/trendyol/orders";
+import { reconcilePendingPaytrOrders } from "../lib/paytr-reconcile";
 // Shopify kanalı pasife alındı - bkz. scheduled() içindeki yorum. Tekrar
 // açılınca bu import'lar da geri gelmeli.
 // import {
@@ -105,6 +106,14 @@ const worker = {
     // için (aynı sipariş tekrar çekilirse D1'deki durumun üzerine yazmıyor)
     // her 6 saatte bir tekrar çalıştırmak güvenli.
     ctx.waitUntil(syncTrendyolOrders(env.DB).catch(() => {}));
+    // Kübra Kurt siparişinde keşfedildi: PayTR'nin bildirim URL'si
+    // (callback) bir siparişe hiç ulaşmayabiliyor - müşteriden gerçekten
+    // para çekiliyor ama sipariş sonsuza kadar "pending" kalıyor, kimse
+    // fark etmeden kargolanabiliyor. Callback tek güvenceydi, otomatik bir
+    // yeniden kontrol yoktu. Artık her 6 saatte bir "pending" kalmış
+    // (>15dk, <14 gün) PayTR siparişleri PayTR'nin kendi durum sorgusuyla
+    // taranıp, gerçekten ödenmişse otomatik düzeltiliyor.
+    ctx.waitUntil(reconcilePendingPaytrOrders(env.DB).catch(() => {}));
     // Shopify kanalı pasife alındı (hiç sipariş gelmiyordu, kullanıcı
     // talebiyle durduruldu) - otomatik ürün/fiyat/stok gönderimi geçici
     // olarak kapalı. Kod silinmedi, tekrar açmak için aşağıdaki 3 satırı
