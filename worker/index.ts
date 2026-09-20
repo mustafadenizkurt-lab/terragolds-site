@@ -3,6 +3,7 @@ import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } fr
 import handler from "vinext/server/app-router-entry";
 import { dispatchApiRequest } from "./api-dispatch";
 import { restockActiveSuppliers, syncActiveSuppliers } from "../lib/xml-sync/syncSupplier";
+import { syncTrendyolOrders } from "../lib/trendyol/orders";
 // Shopify kanalı pasife alındı - bkz. scheduled() içindeki yorum. Tekrar
 // açılınca bu import'lar da geri gelmeli.
 // import {
@@ -96,6 +97,14 @@ const worker = {
     // değil - tedarikçide tükenen bir ürün fark edilmeden "stokta"
     // görünmeye devam edebiliyordu (gerçek bir sipariş kabul edildi).
     ctx.waitUntil(restockActiveSuppliers(env.DB).catch(() => {}));
+    // Trendyol siparişleri hiçbir zaman otomatik çekilmiyordu - admin
+    // panelinde bunu tetikleyen bir buton da yoktu, cron'a da bağlı
+    // değildi. Sonuç: Trendyol'da gerçek bir sipariş oluşsa bile biri elle
+    // /api/admin/trendyol/orders'a istek atmadıkça admin panelde hiç
+    // görünmüyordu. syncTrendyolOrders zaten INSERT OR IGNORE kullandığı
+    // için (aynı sipariş tekrar çekilirse D1'deki durumun üzerine yazmıyor)
+    // her 6 saatte bir tekrar çalıştırmak güvenli.
+    ctx.waitUntil(syncTrendyolOrders(env.DB).catch(() => {}));
     // Shopify kanalı pasife alındı (hiç sipariş gelmiyordu, kullanıcı
     // talebiyle durduruldu) - otomatik ürün/fiyat/stok gönderimi geçici
     // olarak kapalı. Kod silinmedi, tekrar açmak için aşağıdaki 3 satırı
