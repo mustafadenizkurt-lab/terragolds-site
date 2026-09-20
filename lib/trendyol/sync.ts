@@ -315,6 +315,16 @@ const CONTENT_ID_BACKFILL_BATCH_SIZE = 200; // sıralı, barkod başına tek ist
 // filtreleme (v2) servisinden barkod başına sorgulanıp dolduruluyor. Kademeli
 // çalışan tek seferlik bir araç: her çağrıda batchSize kadar ürünü işler,
 // tekrar çalıştırmak zararsız (zaten dolu olanları LIMIT'e hiç almıyor).
+//
+// ÖNEMLİ: barcodeFor(row) DEĞİL, D1'deki trendyol_barcode sütunu okunuyor -
+// barcodeFor() ürünün id/xml_external_id'sinden barkodu YENİDEN HESAPLIYOR,
+// bu genelde trendyol_barcode ile aynı çıkıyor AMA RECREATE_WITH_NEW_BARCODE_IDS
+// listesi (kategori düzeltmesi için "-v2" ekiyle yeniden oluşturulan birkaç
+// ürün) ve xml_external_id sonradan değişmiş ürünlerde ikisi birbirinden
+// sapabiliyor - ilk denemede 23 üründe tam bu yüzden "Ürün bulunamadı" (404)
+// alındı (TG-5019, TG-5022-v2 gibi barkodlar Trendyol'da hiç yoktu - gerçek
+// barkod farklıydı). trendyol_barcode, Trendyol'a GERÇEKTEN gönderilmiş
+// değer olduğu için tek doğru kaynak bu.
 export async function backfillTrendyolContentIds(
   db: D1Database,
   batchSize = CONTENT_ID_BACKFILL_BATCH_SIZE,
@@ -323,26 +333,25 @@ export async function backfillTrendyolContentIds(
 
   const pending = await db
     .prepare(
-      `SELECT id, xml_external_id AS xmlExternalId
+      `SELECT id, trendyol_barcode AS barcode
        FROM products
        WHERE trendyol_barcode IS NOT NULL AND trendyol_content_id IS NULL
        ORDER BY id LIMIT ?`,
     )
     .bind(batchSize)
-    .all<{ id: number; xmlExternalId: string | null }>();
+    .all<{ id: number; barcode: string }>();
 
   let failed = 0;
   const errors: string[] = [];
   const writes: { id: number; contentId: number }[] = [];
 
   for (const row of pending.results) {
-    const barcode = barcodeFor(row);
     try {
-      const info = await getProductByBarcode(barcode);
+      const info = await getProductByBarcode(row.barcode);
       writes.push({ id: row.id, contentId: info.contentId });
     } catch (error) {
       failed += 1;
-      errors.push(`${barcode}: ${error instanceof Error ? error.message : "bilinmeyen hata"}`);
+      errors.push(`${row.barcode}: ${error instanceof Error ? error.message : "bilinmeyen hata"}`);
     }
   }
 
@@ -381,17 +390,17 @@ export async function checkTrendyolBarcodes(
 ): Promise<{ id: number; barcode: string; foundOnTrendyol: boolean; trendyolProduct: unknown }[]> {
   const pending = await db
     .prepare(
-      `SELECT id, xml_external_id AS xmlExternalId
+      `SELECT id, trendyol_barcode AS barcode
        FROM products
        WHERE trendyol_barcode IS NOT NULL AND hover_image IS NOT NULL
        ORDER BY id LIMIT ?`,
     )
     .bind(limit)
-    .all<{ id: number; xmlExternalId: string | null }>();
+    .all<{ id: number; barcode: string }>();
 
   const results = [];
   for (const row of pending.results) {
-    const barcode = barcodeFor(row);
+    const barcode = row.barcode;
     try {
       const trendyolProduct = await getProductByBarcode(barcode);
       results.push({ id: row.id, barcode, foundOnTrendyol: true, trendyolProduct });
