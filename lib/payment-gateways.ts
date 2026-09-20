@@ -197,6 +197,37 @@ export async function initializePaytrPayment(
   return { orderId: order.id, redirectUrl: localPaymentPage.toString() };
 }
 
+// Teşhis: PayTR'nin bildirim URL'sine (callback) hiç ulaşmadığı durumlar
+// olabiliyor (ağ sorunu, PayTR tarafı, vs.) - bu durumda D1'deki sipariş
+// "pending" kalıyor ama müşteriden gerçekten para çekilmiş olabilir.
+// PayTR'nin "Durum Sorgu" servisi (dev.paytr.com/en/durum-sorgu),
+// callback'ten bağımsız olarak PayTR'nin kendi kayıtlarından o siparişin
+// GERÇEK ödeme durumunu döndürüyor - ham yanıtı olduğu gibi döndürüyoruz,
+// tam alan adları PayTR tarafında değişebiliyor.
+export async function checkPaytrOrderStatus(orderId: string): Promise<unknown> {
+  const provider = await getPaymentProvider("paytr");
+  const { merchantId, merchantKey, merchantSalt } = provider.credentials;
+  if (!merchantId || !merchantKey || !merchantSalt) {
+    throw new Error("PayTR mağaza bilgileri eksik.");
+  }
+  const paytrToken = await hmacSha256(
+    `${merchantId}${orderId}${merchantSalt}`,
+    merchantKey,
+    "base64",
+  );
+  const form = new URLSearchParams({
+    merchant_id: merchantId,
+    merchant_oid: orderId,
+    paytr_token: paytrToken,
+  });
+  const response = await fetch("https://www.paytr.com/odeme/durum-sorgu", {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: form,
+  });
+  return response.json();
+}
+
 function iyzicoBaseUrl(testMode: boolean) {
   return testMode
     ? "https://sandbox-api.iyzipay.com"
