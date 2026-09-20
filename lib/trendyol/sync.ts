@@ -1,4 +1,4 @@
-import { ensureTrendyolColumns, createProduct, updateProduct, updateProductImages, updateStockAndPrice, getProducts, type TrendyolProduct, type TrendyolProductAttribute } from "./client";
+import { ensureTrendyolColumns, createProduct, updateProduct, updateProductImages, updateStockAndPrice, getProducts, getBatchRequestResult, type TrendyolProduct, type TrendyolProductAttribute } from "./client";
 import { toAbsoluteImageUrl } from "../shopify/client";
 import { groupForCategory } from "../category-groups";
 
@@ -346,6 +346,50 @@ export async function checkTrendyolBarcodes(
       foundOnTrendyol: content.length > 0,
       trendyolProduct: content[0] ?? null,
     });
+  }
+  return results;
+}
+
+// checkTrendyolBarcodes()'ın kullandığı getProducts() (/product/sellers/{id}/products,
+// v1) Trendyol'un planlı "brownout"u yüzünden 426 ile kullanılamaz hale geldi
+// - Product v1 kapatılma sürecinde. O yüzden ürünün gerçekten var/onaylı
+// olup olmadığını kontrol etmenin ikinci yolu: syncProductsToTrendyol()'un
+// ürünü Trendyol'a gönderirken aldığı batchRequestId'yi (trendyol_listing_id
+// sütununda saklanıyor) getBatchRequestResult ile sorgulamak - bu, Trendyol'un
+// o gönderimi ASENKRON olarak işledikten sonra her bir ürün için gerçekte ne
+// olduğunu (approved/failed + hata sebebi) döndürür.
+export async function checkTrendyolBatchResults(
+  db: D1Database,
+  limit = 3,
+): Promise<{ batchRequestId: string; productIds: number[]; result: unknown }[]> {
+  const rows = await db
+    .prepare(
+      `SELECT id, trendyol_listing_id AS batchRequestId
+       FROM products
+       WHERE trendyol_barcode IS NOT NULL AND hover_image IS NOT NULL
+             AND trendyol_listing_id IS NOT NULL
+       ORDER BY id`,
+    )
+    .all<{ id: number; batchRequestId: string }>();
+
+  const byBatch = new Map<string, number[]>();
+  for (const row of rows.results) {
+    if (!byBatch.has(row.batchRequestId) && byBatch.size >= limit) continue;
+    if (!byBatch.has(row.batchRequestId)) byBatch.set(row.batchRequestId, []);
+    byBatch.get(row.batchRequestId)!.push(row.id);
+  }
+
+  const results: { batchRequestId: string; productIds: number[]; result: unknown }[] = [];
+  for (const [batchRequestId, productIds] of byBatch) {
+    try {
+      results.push({ batchRequestId, productIds, result: await getBatchRequestResult(batchRequestId) });
+    } catch (error) {
+      results.push({
+        batchRequestId,
+        productIds,
+        result: { error: error instanceof Error ? error.message : "bilinmeyen hata" },
+      });
+    }
   }
   return results;
 }
