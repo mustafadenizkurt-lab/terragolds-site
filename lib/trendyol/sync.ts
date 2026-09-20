@@ -1,4 +1,4 @@
-import { ensureTrendyolColumns, createProduct, updateProduct, updateProductImages, updateStockAndPrice, type TrendyolProduct, type TrendyolProductAttribute } from "./client";
+import { ensureTrendyolColumns, createProduct, updateProduct, updateProductImages, updateStockAndPrice, getProducts, type TrendyolProduct, type TrendyolProductAttribute } from "./client";
 import { toAbsoluteImageUrl } from "../shopify/client";
 import { groupForCategory } from "../category-groups";
 
@@ -310,16 +310,45 @@ export type TrendyolImageRefreshResult = {
 
 const IMAGE_REFRESH_BATCH_SIZE = 1000; // Trendyol v2/products limiti
 
-// v2/products endpoint'i PUT kabul etmiyordu (bkz. client.ts'deki
-// updateProduct/updateProductImages - hem tam obje hem kısmi payload'la
-// aynı 404 "İşlem başarısız oldu" hatası alınmıştı, kök neden HTTP metoduydu,
-// artık ikisi de POST kullanıyor). Sadece fotoğraf güncellemek için ayrıca
-// updateProduct()'ın TAM ürün objesine (kategori, marka, fiyat, stok,
-// attributes dahil) de gerek yok - kısmi (partial) payload yeterli: barcode
-// (eşleştirme anahtarı, değeri değişmiyor) + images. updateProductsCategoryOnTrendyol
-// gibi belirli bir ID listesiyle değil, tüm uygun ürünler için otomatik
-// çalışıyor - tekrar çalıştırmak zararsız (aynı doğru veriyi tekrar
-// gönderir), bu yüzden ilerleme takibi için ayrı bir log tablosu yok.
+// NOT: "404 İşlem başarısız oldu" hatası hem PUT hem POST'ta, hem
+// toTrendyolProduct()'ın ürettiği TAM objeyle hem sadece {barcode, images}
+// içeren kısmi payload'la BİREBİR AYNI şekilde tekrarlandı - yani ne HTTP
+// metodu ne de payload şekli asıl sebep. Kalan tek makul açıklama: bu
+// barkodlar Trendyol'da gerçekten yok/onaylı değil. syncProductsToTrendyol()
+// createProduct() çağrısı başarılı olur olmaz (Trendyol'un ASENKRON
+// batchRequestId sonucunu HİÇ kontrol etmeden) trendyol_barcode'u D1'e
+// yazıyor - yani D1'de "trendyol_barcode IS NOT NULL" olması sadece
+// "gönderildi", "Trendyol'da onaylı ürün olarak var" anlamına gelmiyor. Bu
+// sezon içindeki yüzük kategorisi hatasında (696 üründe %100 sessiz
+// başarısızlık, checkTrendyolBarcodes ile teşhis edildi - bkz. altta) aynı
+// kalıp zaten bir kez yaşanmıştı.
+export async function checkTrendyolBarcodes(
+  db: D1Database,
+  limit = 5,
+): Promise<{ id: number; barcode: string; foundOnTrendyol: boolean; trendyolProduct: unknown }[]> {
+  const pending = await db
+    .prepare(
+      `SELECT id, xml_external_id AS xmlExternalId
+       FROM products
+       WHERE trendyol_barcode IS NOT NULL AND hover_image IS NOT NULL
+       ORDER BY id LIMIT ?`,
+    )
+    .bind(limit)
+    .all<{ id: number; xmlExternalId: string | null }>();
+
+  const results = [];
+  for (const row of pending.results) {
+    const barcode = barcodeFor(row);
+    const { content } = await getProducts({ barcode, size: 1 });
+    results.push({
+      id: row.id,
+      barcode,
+      foundOnTrendyol: content.length > 0,
+      trendyolProduct: content[0] ?? null,
+    });
+  }
+  return results;
+}
 export async function refreshTrendyolImages(db: D1Database): Promise<TrendyolImageRefreshResult> {
   await ensureTrendyolColumns(db);
 
