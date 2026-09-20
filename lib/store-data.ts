@@ -17,6 +17,8 @@ export type Product = {
   reviewAverage?: number;
   reviewCount?: number;
   description: string;
+  /** SEO-rewritten alternative to `description` (see scripts/generate-seo-descriptions.ts) - null/undefined until generated, product page falls back to `description`. */
+  seoDescription?: string | null;
   status: "published" | "draft";
   slug: string;
   metaTitle?: string;

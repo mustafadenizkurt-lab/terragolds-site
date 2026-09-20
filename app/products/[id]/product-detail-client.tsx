@@ -517,7 +517,7 @@ export default function ProductDetailClient({
           </div>
 
           <p className="product-profile-description">
-            {decodeHtmlEntities(product.description)}
+            {decodeHtmlEntities(product.seoDescription || product.description)}
           </p>
 
           <SizeGuide

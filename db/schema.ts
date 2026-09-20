@@ -91,6 +91,12 @@ export const products = sqliteTable("products", {
   dailyDealOrder: integer("daily_deal_order").notNull().default(0),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  // Nullable, unlike `description` - null means "not generated yet" so the
+  // SEO-rewrite script can select WHERE seo_description IS NULL and resume
+  // where it left off. Falls back to `description` on the product page when
+  // null (see product-detail-client.tsx). Declared last so drizzle-kit emits
+  // a plain ALTER TABLE ADD COLUMN instead of a full-table rebuild.
+  seoDescription: text("seo_description"),
 }, (table) => [
   uniqueIndex("products_xml_source_unique").on(table.xmlSupplierId, table.xmlExternalId),
   index("products_xml_supplier_idx").on(table.xmlSupplierId, table.xmlSyncStatus),

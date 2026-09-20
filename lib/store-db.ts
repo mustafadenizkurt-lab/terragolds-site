@@ -26,6 +26,7 @@ type ProductRow = {
   review_average: number;
   review_count: number;
   description: string;
+  seo_description: string | null;
   status: string;
   shopier_url: string | null;
   shopier_product_id: string | null;
@@ -217,6 +218,7 @@ function mapProduct(row: ProductRow): Product {
     reviewAverage: Number(row.review_average) || 0,
     reviewCount: Number(row.review_count) || 0,
     description: row.description,
+    seoDescription: row.seo_description ?? undefined,
     status: row.status === "draft" ? "draft" : "published",
     shopierUrl: row.shopier_url ?? undefined,
     shopierProductId: row.shopier_product_id ?? undefined,
