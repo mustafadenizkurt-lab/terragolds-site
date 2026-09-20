@@ -212,6 +212,11 @@ type TrendyolBatchRequestResult = {
   batchRequestId: string;
 };
 
+// UYARI: bu, Trendyol'un artık kapattığı (426 "planlanmış brownout") eski
+// v1 ürün listeleme endpoint'i - şu an SADECE missing-products teşhis
+// aracında kullanılıyor, o da zaten ayrı, çözülmemiş bir sorun olarak
+// biliniyor. Tek ürün/barkod kontrolü için bunun yerine aşağıdaki v2
+// getProductByBarcode() kullanılmalı.
 export async function getProducts(params: {
   page?: number;
   size?: number;
@@ -225,6 +230,18 @@ export async function getProducts(params: {
   const search = query.toString();
   return trendyolFetch(
     `/product/sellers/${supplierId}/products${search ? `?${search}` : ""}`,
+  );
+}
+
+// Trendyol "Ürün Filtreleme - Temel Bilgi v2" (Product Filter - Base
+// Information v2) servisi - tek bir barkodun Trendyol'da GERÇEKTEN var/
+// onaylı olup olmadığını (approved, approvedDate, archived, listingId,
+// contentId gibi alanlarla) döndürüyor. getProducts() (v1, brownout'ta)
+// yerine bunu kullan.
+export async function getProductByBarcode(barcode: string): Promise<unknown> {
+  const { supplierId } = await getTrendyolCredentials();
+  return trendyolFetch(
+    `/product/sellers/${supplierId}/product/${encodeURIComponent(barcode)}`,
   );
 }
 

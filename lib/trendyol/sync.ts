@@ -1,4 +1,4 @@
-import { ensureTrendyolColumns, createProduct, updateProduct, updateProductImages, updateStockAndPrice, getProducts, getBatchRequestResult, type TrendyolProduct, type TrendyolProductAttribute } from "./client";
+import { ensureTrendyolColumns, createProduct, updateProduct, updateProductImages, updateStockAndPrice, getProductByBarcode, getBatchRequestResult, type TrendyolProduct, type TrendyolProductAttribute } from "./client";
 import { toAbsoluteImageUrl } from "../shopify/client";
 import { groupForCategory } from "../category-groups";
 
@@ -321,7 +321,8 @@ const IMAGE_REFRESH_BATCH_SIZE = 1000; // Trendyol v2/products limiti
 // "gönderildi", "Trendyol'da onaylı ürün olarak var" anlamına gelmiyor. Bu
 // sezon içindeki yüzük kategorisi hatasında (696 üründe %100 sessiz
 // başarısızlık, checkTrendyolBarcodes ile teşhis edildi - bkz. altta) aynı
-// kalıp zaten bir kez yaşanmıştı.
+// kalıp zaten bir kez yaşanmıştı. getProductByBarcode() v2 servisini
+// kullanıyor - v1 getProducts() brownout'ta (426) olduğu için değil.
 export async function checkTrendyolBarcodes(
   db: D1Database,
   limit = 5,
@@ -339,13 +340,17 @@ export async function checkTrendyolBarcodes(
   const results = [];
   for (const row of pending.results) {
     const barcode = barcodeFor(row);
-    const { content } = await getProducts({ barcode, size: 1 });
-    results.push({
-      id: row.id,
-      barcode,
-      foundOnTrendyol: content.length > 0,
-      trendyolProduct: content[0] ?? null,
-    });
+    try {
+      const trendyolProduct = await getProductByBarcode(barcode);
+      results.push({ id: row.id, barcode, foundOnTrendyol: true, trendyolProduct });
+    } catch (error) {
+      results.push({
+        id: row.id,
+        barcode,
+        foundOnTrendyol: false,
+        trendyolProduct: { error: error instanceof Error ? error.message : "bilinmeyen hata" },
+      });
+    }
   }
   return results;
 }
