@@ -301,6 +301,65 @@ export async function syncProductsToTrendyol(
   return { created, failed, remaining: await remainingCount(), errors };
 }
 
+export type TrendyolContentIdBackfillResult = {
+  updated: number;
+  remaining: number;
+  failed: number;
+  errors: string[];
+};
+
+const CONTENT_ID_BACKFILL_BATCH_SIZE = 200; // sıralı, barkod başına tek istek - rate limite (50/10sn) takılmamak için ölçülü.
+
+// content-bulk-update (bkz. client.ts updateProductImages) barcode değil
+// contentId istiyor - bu D1'de hiç saklanmıyordu, Trendyol'un ürün
+// filtreleme (v2) servisinden barkod başına sorgulanıp dolduruluyor. Kademeli
+// çalışan tek seferlik bir araç: her çağrıda batchSize kadar ürünü işler,
+// tekrar çalıştırmak zararsız (zaten dolu olanları LIMIT'e hiç almıyor).
+export async function backfillTrendyolContentIds(
+  db: D1Database,
+  batchSize = CONTENT_ID_BACKFILL_BATCH_SIZE,
+): Promise<TrendyolContentIdBackfillResult> {
+  await ensureTrendyolColumns(db);
+
+  const pending = await db
+    .prepare(
+      `SELECT id, xml_external_id AS xmlExternalId
+       FROM products
+       WHERE trendyol_barcode IS NOT NULL AND trendyol_content_id IS NULL
+       ORDER BY id LIMIT ?`,
+    )
+    .bind(batchSize)
+    .all<{ id: number; xmlExternalId: string | null }>();
+
+  let failed = 0;
+  const errors: string[] = [];
+  const writes: { id: number; contentId: number }[] = [];
+
+  for (const row of pending.results) {
+    const barcode = barcodeFor(row);
+    try {
+      const info = await getProductByBarcode(barcode);
+      writes.push({ id: row.id, contentId: info.contentId });
+    } catch (error) {
+      failed += 1;
+      errors.push(`${barcode}: ${error instanceof Error ? error.message : "bilinmeyen hata"}`);
+    }
+  }
+
+  if (writes.length > 0) {
+    const updateStmt = db.prepare("UPDATE products SET trendyol_content_id = ? WHERE id = ?");
+    await db.batch(writes.map(({ id, contentId }) => updateStmt.bind(contentId, id)));
+  }
+
+  const remainingRow = await db
+    .prepare(
+      "SELECT COUNT(*) AS c FROM products WHERE trendyol_barcode IS NOT NULL AND trendyol_content_id IS NULL",
+    )
+    .first<{ c: number }>();
+
+  return { updated: writes.length, remaining: remainingRow?.c ?? 0, failed, errors };
+}
+
 export type TrendyolImageRefreshResult = {
   updated: number;
   remaining: number;
@@ -308,21 +367,14 @@ export type TrendyolImageRefreshResult = {
   error: string | null;
 };
 
-const IMAGE_REFRESH_BATCH_SIZE = 1000; // Trendyol v2/products limiti
+const IMAGE_REFRESH_BATCH_SIZE = 1000; // content-bulk-update limiti
 
-// NOT: "404 İşlem başarısız oldu" hatası hem PUT hem POST'ta, hem
-// toTrendyolProduct()'ın ürettiği TAM objeyle hem sadece {barcode, images}
-// içeren kısmi payload'la BİREBİR AYNI şekilde tekrarlandı - yani ne HTTP
-// metodu ne de payload şekli asıl sebep. Kalan tek makul açıklama: bu
-// barkodlar Trendyol'da gerçekten yok/onaylı değil. syncProductsToTrendyol()
-// createProduct() çağrısı başarılı olur olmaz (Trendyol'un ASENKRON
-// batchRequestId sonucunu HİÇ kontrol etmeden) trendyol_barcode'u D1'e
-// yazıyor - yani D1'de "trendyol_barcode IS NOT NULL" olması sadece
-// "gönderildi", "Trendyol'da onaylı ürün olarak var" anlamına gelmiyor. Bu
-// sezon içindeki yüzük kategorisi hatasında (696 üründe %100 sessiz
-// başarısızlık, checkTrendyolBarcodes ile teşhis edildi - bkz. altta) aynı
-// kalıp zaten bir kez yaşanmıştı. getProductByBarcode() v2 servisini
-// kullanıyor - v1 getProducts() brownout'ta (426) olduğu için değil.
+// Teşhis: verilen barkodun Trendyol'da gerçekten onaylı/var olup olmadığını
+// (approved, contentId dahil) v2 getProductByBarcode() ile gösterir - bu
+// örneklemle ürünlerin GERÇEKTEN onaylı olduğu doğrulandı (404 hatasının
+// asıl sebebi başka: bkz. updateProductImages/backfillTrendyolContentIds -
+// onaylı ürünlerde barcode değil contentId ile eşleşen ayrı bir endpoint
+// gerekiyormuş).
 export async function checkTrendyolBarcodes(
   db: D1Database,
   limit = 5,
@@ -398,18 +450,22 @@ export async function checkTrendyolBatchResults(
   }
   return results;
 }
+
+// Onaylı ürün fotoğraf güncellemesi contentId gerektiriyor (bkz. client.ts
+// updateProductImages) - trendyol_content_id boş olan ürünler burada
+// atlanıyor, önce backfillTrendyolContentIds() ile doldurulmaları gerekiyor.
 export async function refreshTrendyolImages(db: D1Database): Promise<TrendyolImageRefreshResult> {
   await ensureTrendyolColumns(db);
 
   const pending = await db
     .prepare(
       `SELECT id, name, description, price, stock, image, hover_image AS hoverImage, category,
-              xml_external_id AS xmlExternalId
+              xml_external_id AS xmlExternalId, trendyol_content_id AS contentId
        FROM products
-       WHERE trendyol_barcode IS NOT NULL AND hover_image IS NOT NULL
+       WHERE trendyol_content_id IS NOT NULL AND hover_image IS NOT NULL
        ORDER BY id`,
     )
-    .all<PendingProduct>();
+    .all<PendingProduct & { contentId: number }>();
 
   const batches: { batchRequestId: string; itemCount: number }[] = [];
   let updated = 0;
@@ -421,7 +477,7 @@ export async function refreshTrendyolImages(db: D1Database): Promise<TrendyolIma
         const imageUrls = [product.image, product.hoverImage]
           .map((url) => (url ? toAbsoluteImageUrl(url) : null))
           .filter((url): url is string => Boolean(url));
-        return { barcode: barcodeFor(product), images: imageUrls.map((url) => ({ url })) };
+        return { contentId: product.contentId, images: imageUrls.map((url) => ({ url })) };
       });
       const { batchRequestId } = await updateProductImages(items);
       batches.push({ batchRequestId, itemCount: chunk.length });

@@ -172,6 +172,12 @@ export async function ensureTrendyolColumns(db: D1Database) {
   if (!names.has("trendyol_override_price")) {
     await db.prepare("ALTER TABLE products ADD COLUMN trendyol_override_price INTEGER").run();
   }
+  // Onaylı ürün güncelleme servisi (content-bulk-update) barcode değil
+  // contentId ile çalışıyor - Trendyol'un getProductByBarcode() ile
+  // döndürdüğü, ürüne özel sayısal kimlik. bkz. backfillTrendyolContentIds.
+  if (!names.has("trendyol_content_id")) {
+    await db.prepare("ALTER TABLE products ADD COLUMN trendyol_content_id INTEGER").run();
+  }
   await db
     .prepare(
       "CREATE UNIQUE INDEX IF NOT EXISTS products_trendyol_barcode_unique ON products(trendyol_barcode) WHERE trendyol_barcode IS NOT NULL",
@@ -233,12 +239,21 @@ export async function getProducts(params: {
   );
 }
 
+export type TrendyolProductFilterInfo = {
+  barcode: string;
+  approved: boolean;
+  approvedDate?: number | null;
+  archived: boolean;
+  contentId: number;
+  listingId: string;
+};
+
 // Trendyol "Ürün Filtreleme - Temel Bilgi v2" (Product Filter - Base
 // Information v2) servisi - tek bir barkodun Trendyol'da GERÇEKTEN var/
 // onaylı olup olmadığını (approved, approvedDate, archived, listingId,
 // contentId gibi alanlarla) döndürüyor. getProducts() (v1, brownout'ta)
 // yerine bunu kullan.
-export async function getProductByBarcode(barcode: string): Promise<unknown> {
+export async function getProductByBarcode(barcode: string): Promise<TrendyolProductFilterInfo> {
   const { supplierId } = await getTrendyolCredentials();
   return trendyolFetch(
     `/product/sellers/${supplierId}/product/${encodeURIComponent(barcode)}`,
@@ -397,38 +412,43 @@ export async function createProduct(
   });
 }
 
+// v2/products (create ile aynı endpoint) sadece HENÜZ ONAYLANMAMIŞ ürünler
+// için barcode ile güncelleme yapıyor ("Ürün Güncelleme - Onaysız Ürün v2").
+// Trendyol'da ONAYLANMIŞ ürünler için ayrı, contentId ile çalışan bir servis
+// var (Ürün Güncelleme - Onaylı Ürün v2, bkz. updateProductImages) - bu
+// yüzden PUT/POST denemesi fark etmeksizin bu endpoint'ten aynı 404 alındı:
+// içerik zaten onaylıysa bu endpoint uygun endpoint değil.
 export async function updateProduct(
   products: TrendyolProduct[],
 ): Promise<TrendyolBatchRequestResult> {
   const { supplierId } = await getTrendyolCredentials();
-  // v2/products endpoint'i PUT kabul etmiyor (apigw seviyesinde route
-  // tanımlı değil - hem tam obje hem de sadece {barcode, images} içeren
-  // kısmi payload'la PUT denendiğinde BYTE-BYTE AYNI "404 İşlem başarısız
-  // oldu" hatası alındı, yani sorun body içeriği değil HTTP metoduydu).
-  // Trendyol'un kendi dokümantasyonu da güncellemenin (barcode eşleştirmesi
-  // ile) aynı createProduct endpoint'ine POST atılarak yapıldığını belirtiyor
-  // - ayrı bir "update" endpoint'i yok.
   return trendyolFetch(`/product/sellers/${supplierId}/v2/products`, {
     method: "POST",
     body: { items: products },
   });
 }
 
-export type TrendyolProductImageUpdate = {
-  barcode: string;
+export type TrendyolProductContentUpdate = {
+  contentId: number;
   images: { url: string }[];
 };
 
-// Sadece fotoğraf güncellemek için updateProduct()'ın TAM ürün objesine
-// (kategori, marka, fiyat, stok, attributes dahil) gerek yok - kısmi
-// (partial) payload: barcode (eşleştirme anahtarı) + images yeterli.
-// Trendyol dokümantasyonu kısmi güncellemeyi (attribute değerleri hariç)
-// destekliyor.
+// Trendyol "Ürün Güncelleme - Onaylı Ürün v2" servisi - ONAYLANMIŞ
+// ürünlerde barcode değil contentId ile eşleştirme yapıyor, ayrı bir
+// endpoint'te (content-bulk-update). updateProduct()'ın kullandığı
+// /v2/products (barcode ile) sadece henüz onaylanmamış ürünlerde işe
+// yarıyor - onaylı üründe "İşlem başarısız oldu" (404) ile reddediliyordu,
+// kök neden hem yanlış endpoint hem yanlış eşleştirme alanıydı (barcode
+// yerine contentId gerekiyordu). contentId, getProductByBarcode() ile
+// bulunup trendyol_content_id kolonuna yazılıyor (bkz.
+// backfillTrendyolContentIds). Sadece fotoğraf güncellemek için
+// updateProduct()'ın TAM ürün objesine gerek yok - kısmi (partial) payload
+// yeterli: contentId + images.
 export async function updateProductImages(
-  items: TrendyolProductImageUpdate[],
+  items: TrendyolProductContentUpdate[],
 ): Promise<TrendyolBatchRequestResult> {
   const { supplierId } = await getTrendyolCredentials();
-  return trendyolFetch(`/product/sellers/${supplierId}/v2/products`, {
+  return trendyolFetch(`/product/sellers/${supplierId}/products/content-bulk-update`, {
     method: "POST",
     body: { items },
   });
