@@ -384,11 +384,15 @@ export async function updateProduct(
   products: TrendyolProduct[],
 ): Promise<TrendyolBatchRequestResult> {
   const { supplierId } = await getTrendyolCredentials();
-  // Trendyol'da ürün güncellemesi de aynı v2/products endpoint'i üzerinden,
-  // PUT metoduyla ve barcode eşleştirmesiyle yapılıyor - ayrı bir "update"
-  // endpoint'i yok.
+  // v2/products endpoint'i PUT kabul etmiyor (apigw seviyesinde route
+  // tanımlı değil - hem tam obje hem de sadece {barcode, images} içeren
+  // kısmi payload'la PUT denendiğinde BYTE-BYTE AYNI "404 İşlem başarısız
+  // oldu" hatası alındı, yani sorun body içeriği değil HTTP metoduydu).
+  // Trendyol'un kendi dokümantasyonu da güncellemenin (barcode eşleştirmesi
+  // ile) aynı createProduct endpoint'ine POST atılarak yapıldığını belirtiyor
+  // - ayrı bir "update" endpoint'i yok.
   return trendyolFetch(`/product/sellers/${supplierId}/v2/products`, {
-    method: "PUT",
+    method: "POST",
     body: { items: products },
   });
 }
@@ -398,20 +402,17 @@ export type TrendyolProductImageUpdate = {
   images: { url: string }[];
 };
 
-// Onaylanmış (approved) ürünlerde barcode/productMainId/brandId/categoryId ve
-// slicer/varianter özellik değerleri güncellenemiyor (developers.trendyol.com
-// "Ürün Güncelleme - Onaylı Ürün v2") - updateProduct()'ın gönderdiği TAM
-// ürün objesi (kategori, marka, fiyat, stok, attributes dahil) bu yüzden
-// onaylı ürünlerde 404 ile reddediliyordu. Sadece fotoğraf güncellemek için
-// kısmi (partial) payload: barcode (eşleştirme anahtarı, değeri değişmiyor) +
-// images. Trendyol dokümantasyonu kısmi güncellemeyi (attribute değerleri
-// hariç) destekliyor.
+// Sadece fotoğraf güncellemek için updateProduct()'ın TAM ürün objesine
+// (kategori, marka, fiyat, stok, attributes dahil) gerek yok - kısmi
+// (partial) payload: barcode (eşleştirme anahtarı) + images yeterli.
+// Trendyol dokümantasyonu kısmi güncellemeyi (attribute değerleri hariç)
+// destekliyor.
 export async function updateProductImages(
   items: TrendyolProductImageUpdate[],
 ): Promise<TrendyolBatchRequestResult> {
   const { supplierId } = await getTrendyolCredentials();
   return trendyolFetch(`/product/sellers/${supplierId}/v2/products`, {
-    method: "PUT",
+    method: "POST",
     body: { items },
   });
 }

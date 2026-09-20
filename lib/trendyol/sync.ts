@@ -310,14 +310,13 @@ export type TrendyolImageRefreshResult = {
 
 const IMAGE_REFRESH_BATCH_SIZE = 1000; // Trendyol v2/products limiti
 
-// Trendyol onaylanmış ürünlerde barcode/productMainId/brandId/categoryId ve
-// slicer/varianter özellik değerlerinin güncellenmesine izin vermiyor
-// (developers.trendyol.com "Ürün Güncelleme - Onaylı Ürün v2") - ilk
-// denemede toTrendyolProduct()'ın ürettiği TAM obje (kategori, marka,
-// fiyat, stok, attributes dahil) bu yüzden 404 "İşlem başarısız oldu" ile
-// reddedildi (1527 üründen ilk parti). Sadece fotoğraf güncellemek için
-// buna gerek yok - kısmi (partial) payload yeterli: barcode (eşleştirme
-// anahtarı, değeri değişmiyor) + images. updateProductsCategoryOnTrendyol
+// v2/products endpoint'i PUT kabul etmiyordu (bkz. client.ts'deki
+// updateProduct/updateProductImages - hem tam obje hem kısmi payload'la
+// aynı 404 "İşlem başarısız oldu" hatası alınmıştı, kök neden HTTP metoduydu,
+// artık ikisi de POST kullanıyor). Sadece fotoğraf güncellemek için ayrıca
+// updateProduct()'ın TAM ürün objesine (kategori, marka, fiyat, stok,
+// attributes dahil) de gerek yok - kısmi (partial) payload yeterli: barcode
+// (eşleştirme anahtarı, değeri değişmiyor) + images. updateProductsCategoryOnTrendyol
 // gibi belirli bir ID listesiyle değil, tüm uygun ürünler için otomatik
 // çalışıyor - tekrar çalıştırmak zararsız (aynı doğru veriyi tekrar
 // gönderir), bu yüzden ilerleme takibi için ayrı bir log tablosu yok.
@@ -366,9 +365,10 @@ export async function refreshTrendyolImages(db: D1Database): Promise<TrendyolIma
 // Vintage'daki biblo/tablo/tesbih ürünleri önce Kolye kategorisine
 // gitmişti), aynı barkodla tekrar createProduct() çağırmak Trendyol'un
 // "Aynı barkodlu bir ürününüz bulunduğundan yeni ürün oluşturulamaz"
-// hatasına düşüyor - barkod zaten var olan bir ürünü PUT (updateProduct)
-// ile güncellemek gerekiyor. Bu, belirli bir ürün ID listesini zorla
-// yeniden gönderen tek seferlik bir düzeltme aracı.
+// hatasına düşüyor - barkod zaten var olan bir ürünü updateProduct() ile
+// (aynı endpoint, aynı POST metodu, sadece isim farkı) güncellemek
+// gerekiyor. Bu, belirli bir ürün ID listesini zorla yeniden gönderen tek
+// seferlik bir düzeltme aracı.
 export async function updateProductsCategoryOnTrendyol(
   db: D1Database,
   productIds: number[],
