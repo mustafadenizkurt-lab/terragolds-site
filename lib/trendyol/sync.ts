@@ -348,6 +348,16 @@ export async function backfillTrendyolContentIds(
   for (const row of pending.results) {
     try {
       const info = await getProductByBarcode(row.barcode);
+      // Trendyol'un bu servisi bazı ürünlerde (ör. henüz tam işlenmemiş/
+      // arşivlenmiş kayıtlar) contentId'siz veya beklenmedik bir gövdeyle
+      // dönebiliyor - tek bir eksik contentId, D1_TYPE_ERROR ile TÜM
+      // batch'i (ve o ana kadarki tüm başarılı sonuçları) kaybettiriyordu.
+      // Sayısal değilse hata olarak işaretleyip diğer ürünlere devam et.
+      if (typeof info.contentId !== "number") {
+        failed += 1;
+        errors.push(`${row.barcode}: contentId dönmedi (${JSON.stringify(info)})`);
+        continue;
+      }
       writes.push({ id: row.id, contentId: info.contentId });
     } catch (error) {
       failed += 1;
