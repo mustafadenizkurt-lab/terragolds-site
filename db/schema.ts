@@ -53,6 +53,35 @@ export const xmlSyncLogs = sqliteTable(
   ],
 );
 
+// Bir ürün admin panelinden silindiğinde (varsa xml_supplier_id/
+// xml_external_id çifti buraya da yazılır) - bu, satırdan bağımsız olduğu
+// için ürün gerçekten silinse bile kalıcı: syncSupplier/restockSupplierProducts/
+// repriceSupplierProducts/backfillHoverImages bu tabloyu kontrol edip
+// eşleşen (supplier, external id) çiftini hiç yeniden oluşturmuyor. Daha
+// önce ürünü silmek onu sadece geçici olarak kaldırıyordu - feed'de hâlâ
+// varsa bir sonraki senkronda yeni bir satır olarak (eski geçmişinden kopuk)
+// geri geliyordu.
+export const excludedSupplierProducts = sqliteTable(
+  "excluded_supplier_products",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    supplierId: integer("supplier_id")
+      .notNull()
+      .references(() => xmlSuppliers.id, { onDelete: "cascade" }),
+    externalId: text("external_id").notNull(),
+    excludedBy: integer("excluded_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    excludedAt: text("excluded_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    uniqueIndex("excluded_supplier_products_unique").on(
+      table.supplierId,
+      table.externalId,
+    ),
+  ],
+);
+
 export const products = sqliteTable("products", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
