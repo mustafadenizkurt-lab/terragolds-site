@@ -54,10 +54,17 @@ const MAX_RATE_LIMIT_RETRIES = 3;
 // hiç kimlik bilgisi girilmemişse devreye giren yedek yol.
 async function trendyolFetch<T>(
   path: string,
-  init: { method?: string; body?: unknown } = {},
+  init: { method?: string; body?: unknown; rateLimitKey?: string } = {},
   attempt = 0,
 ): Promise<T> {
-  const endpoint = path.split("?")[0];
+  // Varsayılan anahtar path'in kendisi (query hariç) - ama barkod gibi
+  // path'e GÖMÜLÜ değişken bir segment varsa (ör. getProductByBarcode),
+  // her çağrı FARKLI bir "endpoint" sayılıp sliding-window limiti hiç
+  // devreye girmezdi (her barkod kendi sıfırdan sayacıyla başlardı) -
+  // binlerce barkodu art arda tararken Trendyol'u fiilen hiç
+  // yavaşlatmadan yağmalayıp gerçek 429'lara çarpardık. Bu durumda
+  // çağıran taraf normalize edilmiş, SABİT bir rateLimitKey veriyor.
+  const endpoint = init.rateLimitKey ?? path.split("?")[0];
   await waitForRateLimit(endpoint);
 
   const { supplierId, apiKey, apiSecret } = await getTrendyolCredentials();
@@ -267,6 +274,7 @@ export async function getProductByBarcode(barcode: string): Promise<TrendyolProd
   const { supplierId } = await getTrendyolCredentials();
   return trendyolFetch(
     `/product/sellers/${supplierId}/product/${encodeURIComponent(barcode)}`,
+    { rateLimitKey: `/product/sellers/${supplierId}/product/:barcode` },
   );
 }
 
