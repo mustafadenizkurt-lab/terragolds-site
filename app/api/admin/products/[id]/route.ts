@@ -6,6 +6,7 @@ import { pushInventoryToShopify } from "../../../../../lib/shopify/inventory";
 import { excludeSupplierProducts } from "../../../../../lib/xml-sync/excluded-products";
 import { pushStockAndPriceToTrendyol } from "../../../../../lib/trendyol/sync";
 import { pushStockAndPriceToHepsiburada } from "../../../../../lib/hepsiburada/sync";
+import { ensureImageLockColumn } from "../../../../../lib/product-image-lock";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +26,20 @@ export async function PUT(request: Request, context: RouteContext) {
     const product = parseProductInput(await request.json());
     await ensureSeedData();
     const db = getD1();
+    await ensureImageLockColumn(db);
     const slug = await resolveProductSlug(db, product.name, id, product.slug);
+
+    // Admin ana görseli (image) burada, kendi panelimizden elle değiştirirse
+    // (ör. Trendyol'da pasife alınmasına sebep olan tedarikçi kaynaklı
+    // logolu görseli düzeltmek için), bir sonraki XML senkronu bunu
+    // tedarikçinin orijinal görseliyle EZMESİN diye kilitliyoruz - bkz.
+    // lib/product-image-lock.ts ve syncSupplier()'daki CASE koruması.
+    const current = await db
+      .prepare("SELECT image FROM products WHERE id = ?")
+      .bind(id)
+      .first<{ image: string }>();
+    const imageChanged = Boolean(current) && current!.image !== product.image;
+
     const result = await db
       .prepare(
         `UPDATE products
@@ -35,6 +49,7 @@ export async function PUT(request: Request, context: RouteContext) {
              shopier_url = ?, shopier_product_id = ?,
              shopier_sync_status = ?, slug = ?, meta_title = ?, meta_description = ?,
              featured = ?, sort_order = ?, is_daily_deal = ?, daily_deal_order = ?,
+             image_locked_at = CASE WHEN ? THEN CURRENT_TIMESTAMP ELSE image_locked_at END,
              updated_at = CURRENT_TIMESTAMP
          WHERE id = ?`,
       )
@@ -62,6 +77,7 @@ export async function PUT(request: Request, context: RouteContext) {
         product.sortOrder,
         product.isDailyDeal ? 1 : 0,
         product.dailyDealOrder,
+        imageChanged ? 1 : 0,
         id,
       )
       .run();
