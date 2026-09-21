@@ -18,6 +18,7 @@ import * as adminPaymentProviderById from "../app/api/admin/payment-providers/[p
 import * as adminProducts from "../app/api/admin/products/route";
 import * as adminProductById from "../app/api/admin/products/[id]/route";
 import * as adminProductsBulk from "../app/api/admin/products/bulk/route";
+import * as adminProductsLockTrendyolImage from "../app/api/admin/products/lock-trendyol-image/route";
 import * as adminReturnRequests from "../app/api/admin/return-requests/route";
 import * as adminReturnRequestById from "../app/api/admin/return-requests/[id]/route";
 import * as adminSettings from "../app/api/admin/settings/route";
@@ -88,6 +89,7 @@ const exactRoutes: Record<string, RouteModule> = {
   "/api/admin/payment-providers": adminPaymentProviders,
   "/api/admin/products": adminProducts,
   "/api/admin/products/bulk": adminProductsBulk,
+  "/api/admin/products/lock-trendyol-image": adminProductsLockTrendyolImage,
   "/api/admin/return-requests": adminReturnRequests,
   "/api/admin/settings": adminSettings,
   "/api/admin/shipping": adminShipping,
