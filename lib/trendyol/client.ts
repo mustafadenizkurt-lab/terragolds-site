@@ -313,6 +313,30 @@ export async function getUnapprovedProducts(params: {
   );
 }
 
+// Teşhis: bazı kaynaklar bu endpoint'in "approved" query parametresiyle de
+// (true/false/hiç verilmeden) çağrılabildiğini, approved=true verildiğinde
+// onaylı ürünlerin TAM içeriğini (images dahil) döndürebildiğini gösteriyor
+// - henüz doğrulanmadı. Ham yanıtı olduğu gibi döndürüyor ki gerçek alan
+// adlarını görüp doğru tipi sonradan yazabilelim. Trendyol'a elle
+// yüklenmiş düzeltilmiş görseli geri D1'e çekebilmek için araştırılıyor.
+export async function getProductsRaw(params: {
+  page?: number;
+  size?: number;
+  barcode?: string;
+  approved?: boolean;
+} = {}): Promise<unknown> {
+  const { supplierId } = await getTrendyolCredentials();
+  const query = new URLSearchParams();
+  if (params.page !== undefined) query.set("page", String(params.page));
+  if (params.size !== undefined) query.set("size", String(params.size));
+  if (params.barcode) query.set("barcode", params.barcode);
+  if (params.approved !== undefined) query.set("approved", String(params.approved));
+  const search = query.toString();
+  return trendyolFetch(
+    `/product/sellers/${supplierId}/products/unapproved${search ? `?${search}` : ""}`,
+  );
+}
+
 export type TrendyolCategory = {
   id: number;
   name: string;
