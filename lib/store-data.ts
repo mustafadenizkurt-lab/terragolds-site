@@ -11,6 +11,8 @@ export type Product = {
   stock: number;
   image: string;
   hoverImage?: string;
+  image3?: string;
+  image4?: string;
   badge?: string;
   campaignLabel?: string;
   discountPercent: number;

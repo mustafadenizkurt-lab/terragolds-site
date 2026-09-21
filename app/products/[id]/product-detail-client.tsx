@@ -406,7 +406,7 @@ export default function ProductDetailClient({
       ? new URL(product.image, window.location.origin).toString()
       : product.image;
   const productImages = [...new Set(
-    [product.image, product.hoverImage].filter(
+    [product.image, product.hoverImage, product.image3, product.image4].filter(
       (image): image is string => Boolean(image),
     ),
   )];

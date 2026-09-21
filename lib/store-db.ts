@@ -20,6 +20,8 @@ type ProductRow = {
   stock: number;
   image: string;
   hover_image: string | null;
+  image3: string | null;
+  image4: string | null;
   badge: string | null;
   campaign_label: string | null;
   discount_percent: number;
@@ -77,6 +79,15 @@ export async function ensureSeedData() {
     .all<{ name: string }>();
   if (!columns.results.some((column) => column.name === "hover_image")) {
     await db.prepare("ALTER TABLE products ADD COLUMN hover_image TEXT").run();
+  }
+  // Ürün galerisini 2'den 4 görsele çıkarmak için - image/hover_image
+  // gibi tedarikçi/XML senkronu hiç dokunmuyor, sadece admin panelinden
+  // elle yönetiliyor.
+  if (!columns.results.some((column) => column.name === "image3")) {
+    await db.prepare("ALTER TABLE products ADD COLUMN image3 TEXT").run();
+  }
+  if (!columns.results.some((column) => column.name === "image4")) {
+    await db.prepare("ALTER TABLE products ADD COLUMN image4 TEXT").run();
   }
   if (!columns.results.some((column) => column.name === "is_daily_deal")) {
     await db
@@ -212,6 +223,8 @@ function mapProduct(row: ProductRow): Product {
     stock: row.stock,
     image: row.image,
     hoverImage: row.hover_image ?? undefined,
+    image3: row.image3 ?? undefined,
+    image4: row.image4 ?? undefined,
     badge: row.badge ?? undefined,
     campaignLabel: row.campaign_label ?? undefined,
     discountPercent: row.discount_percent,
