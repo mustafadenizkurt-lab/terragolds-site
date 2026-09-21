@@ -4,6 +4,8 @@ import { resolveProductSlug } from "../../../../../lib/product-slugs";
 import { ensureSeedData, getD1 } from "../../../../../lib/store-db";
 import { pushInventoryToShopify } from "../../../../../lib/shopify/inventory";
 import { excludeSupplierProducts } from "../../../../../lib/xml-sync/excluded-products";
+import { pushStockAndPriceToTrendyol } from "../../../../../lib/trendyol/sync";
+import { pushStockAndPriceToHepsiburada } from "../../../../../lib/hepsiburada/sync";
 
 export const dynamic = "force-dynamic";
 
@@ -117,6 +119,28 @@ export async function DELETE(request: Request, context: RouteContext) {
       [{ supplierId: product.xmlSupplierId, externalId: product.xmlExternalId }],
       admin.id,
     );
+  }
+
+  // Silme/hariç tutma sadece D1'i güncelliyordu - ürün Trendyol/Hepsiburada'da
+  // zaten listelenmişse, biz onu sildikten sonra da orada son bildirilen
+  // stok/fiyatla görünmeye devam ediyor, kimse fark etmeden sipariş
+  // alınabiliyordu. Satır silinmeden/taslağa alınmadan ÖNCE stoğu 0'a çekip
+  // pazaryerlerine bildiriyoruz (push* fonksiyonları zaten "hiç
+  // listelenmemişse no-op" davranışında, satırın hâlâ var olmasına ihtiyaç
+  // duyuyorlar - bu yüzden sıra önemli).
+  await db
+    .prepare("UPDATE products SET stock = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+    .bind(id)
+    .run();
+  try {
+    await pushStockAndPriceToTrendyol(db, id);
+  } catch {
+    // Self-heals on the next stock change or a manual price/stock backfill.
+  }
+  try {
+    await pushStockAndPriceToHepsiburada(db, id);
+  } catch {
+    // Self-heals on the next stock change or a manual price/stock backfill.
   }
 
   // A tedarikçi-senkron ürünü tamamen silinirse, o ürünün kodu feed'de hâlâ

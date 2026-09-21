@@ -5,6 +5,8 @@ import {
 import { getD1 } from "../../../../../lib/store-db";
 import { pushInventoryToShopify } from "../../../../../lib/shopify/inventory";
 import { excludeSupplierProducts } from "../../../../../lib/xml-sync/excluded-products";
+import { pushStockAndPriceToTrendyol } from "../../../../../lib/trendyol/sync";
+import { pushStockAndPriceToHepsiburada } from "../../../../../lib/hepsiburada/sync";
 
 export const dynamic = "force-dynamic";
 
@@ -74,6 +76,31 @@ export async function PATCH(request: Request) {
         .bind(...productIds)
         .all<{ supplierId: number; externalId: string }>();
       await excludeSupplierProducts(db, toExclude.results, admin.id);
+
+      // Tek ürün DELETE route'uyla aynı mantık: satır silinmeden/taslağa
+      // alınmadan ÖNCE stoğu 0'a çekip Trendyol/Hepsiburada'ya bildiriyoruz -
+      // yoksa ürün bizde silinse de pazaryerinde son bildirilen stokla
+      // görünmeye devam edip sipariş alınabiliyordu. push* fonksiyonları
+      // "hiç listelenmemişse no-op" davranışında, satırın hâlâ var olmasına
+      // ihtiyaç duyuyorlar - bu yüzden sıra önemli.
+      await db
+        .prepare(
+          `UPDATE products SET stock = 0, updated_at = CURRENT_TIMESTAMP WHERE id IN (${placeholders})`,
+        )
+        .bind(...productIds)
+        .run();
+      for (const productId of productIds) {
+        try {
+          await pushStockAndPriceToTrendyol(db, productId);
+        } catch {
+          // Self-heals on the next stock change or a manual price/stock backfill.
+        }
+        try {
+          await pushStockAndPriceToHepsiburada(db, productId);
+        } catch {
+          // Self-heals on the next stock change or a manual price/stock backfill.
+        }
+      }
 
       // Senkron ürünü (xml_sync_status = 'synced') gerçekten silinirse,
       // kodu tedarikçi feed'inde hâlâ varsa bir sonraki senkronda sıfırdan
