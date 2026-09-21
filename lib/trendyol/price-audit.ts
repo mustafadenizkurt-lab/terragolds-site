@@ -1,4 +1,4 @@
-import { getProducts } from "./client";
+import { getProducts, getProductByBarcode } from "./client";
 
 // D1'de trendyol_price_synced = trendyol_override_price ise "gönderildi"
 // sayılıyor - ama updateStockAndPrice() sadece batchRequestId dönen bir
@@ -17,6 +17,14 @@ export type PriceAuditMismatch = {
   liveSalePrice: number;
   liveListPrice: number;
   diff: number;
+  // getProducts() (v1, "brownout"ta) salePrice=0 dönerse bunun gerçekten
+  // pasif/onaysız bir ürün mü yoksa v1'in kendi güvenilirlik sorunu mu
+  // olduğunu ayırt etmek için v2 (getProductByBarcode) durumu ayrıca
+  // sorgulanıyor - sadece salePrice=0 olan eşleşmeler için (rate limit'i
+  // gereksiz yere zorlamamak adına).
+  approved: boolean | null;
+  archived: boolean | null;
+  statusCheckError: string | null;
 };
 
 export type PriceAuditResult = {
@@ -58,6 +66,14 @@ export async function ensurePriceAuditTable(db: D1Database): Promise<void> {
        )`,
     )
     .run();
+  const columns = await db.prepare("PRAGMA table_info(trendyol_price_mismatches)").all<{ name: string }>();
+  const names = new Set(columns.results.map((column) => column.name));
+  if (!names.has("approved")) {
+    await db.prepare("ALTER TABLE trendyol_price_mismatches ADD COLUMN approved INTEGER").run();
+  }
+  if (!names.has("archived")) {
+    await db.prepare("ALTER TABLE trendyol_price_mismatches ADD COLUMN archived INTEGER").run();
+  }
 }
 
 // Tüm kataloğu Trendyol'un kendi sayfalama sırasıyla tarar (barkod başına
@@ -104,12 +120,17 @@ export async function auditTrendyolPrices(db: D1Database): Promise<PriceAuditRes
             liveSalePrice: item.salePrice,
             liveListPrice: item.listPrice,
             diff,
+            approved: null,
+            archived: null,
+            statusCheckError: null,
           });
         }
       }
 
       if (page + 1 >= result.totalPages) break;
     }
+
+    await attachApprovalStatus(mismatches);
   } catch (error) {
     // O ana kadar bulunanları yine de kaydet - kısmi sonuç, hiç sonuç
     // yoktan iyidir.
@@ -140,13 +161,30 @@ export async function auditTrendyolPrices(db: D1Database): Promise<PriceAuditRes
   };
 }
 
+// Sadece salePrice=0 dönen (yani "gerçekten satılamıyor mu, yoksa v1 API mi
+// güvenilmez" sorusu olan) eşleşmeler için v2 (getProductByBarcode) ile
+// gerçek onay/arşiv durumunu sorguluyor - diğerlerinde (fiyat farklı ama
+// >0) zaten aktif olduğu belli, ekstra sorguya gerek yok.
+async function attachApprovalStatus(mismatches: PriceAuditMismatch[]): Promise<void> {
+  const needsCheck = mismatches.filter((mismatch) => mismatch.liveSalePrice === 0);
+  for (const mismatch of needsCheck) {
+    try {
+      const info = await getProductByBarcode(mismatch.barcode);
+      mismatch.approved = info.approved;
+      mismatch.archived = info.archived;
+    } catch (error) {
+      mismatch.statusCheckError = error instanceof Error ? error.message : "bilinmeyen hata";
+    }
+  }
+}
+
 async function persistMismatches(db: D1Database, mismatches: PriceAuditMismatch[]): Promise<void> {
   await db.prepare("DELETE FROM trendyol_price_mismatches").run();
   if (!mismatches.length) return;
   const insertStmt = db.prepare(
     `INSERT INTO trendyol_price_mismatches
-       (product_id, barcode, name, db_target_price, live_sale_price, live_list_price, diff)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+       (product_id, barcode, name, db_target_price, live_sale_price, live_list_price, diff, approved, archived)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   );
   const BATCH_SIZE = 100;
   for (let offset = 0; offset < mismatches.length; offset += BATCH_SIZE) {
@@ -161,6 +199,8 @@ async function persistMismatches(db: D1Database, mismatches: PriceAuditMismatch[
           mismatch.liveSalePrice,
           mismatch.liveListPrice,
           mismatch.diff,
+          mismatch.approved === null ? null : mismatch.approved ? 1 : 0,
+          mismatch.archived === null ? null : mismatch.archived ? 1 : 0,
         ),
       ),
     );
