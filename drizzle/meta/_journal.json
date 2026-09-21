@@ -134,6 +134,13 @@
       "when": 1788284153677,
       "tag": "0018_perpetual_hellion",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1790006738450,
+      "tag": "0019_long_darkhawk",
+      "breakpoints": true
     }
   ]
 }

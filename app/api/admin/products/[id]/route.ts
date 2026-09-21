@@ -3,6 +3,7 @@ import { parseProductInput } from "../../../../../lib/product-input";
 import { resolveProductSlug } from "../../../../../lib/product-slugs";
 import { ensureSeedData, getD1 } from "../../../../../lib/store-db";
 import { pushInventoryToShopify } from "../../../../../lib/shopify/inventory";
+import { excludeSupplierProducts } from "../../../../../lib/xml-sync/excluded-products";
 
 export const dynamic = "force-dynamic";
 
@@ -86,7 +87,8 @@ export async function PUT(request: Request, context: RouteContext) {
 }
 
 export async function DELETE(request: Request, context: RouteContext) {
-  if (!(await getAuthorizedAdmin(request))) return unauthorizedAdminResponse();
+  const admin = await getAuthorizedAdmin(request);
+  if (!admin) return unauthorizedAdminResponse();
 
   const id = Number((await context.params).id);
   if (!Number.isInteger(id) || id <= 0) {
@@ -95,11 +97,26 @@ export async function DELETE(request: Request, context: RouteContext) {
 
   const db = getD1();
   const product = await db
-    .prepare("SELECT xml_sync_status AS xmlSyncStatus FROM products WHERE id = ?")
+    .prepare(
+      "SELECT xml_sync_status AS xmlSyncStatus, xml_supplier_id AS xmlSupplierId, xml_external_id AS xmlExternalId FROM products WHERE id = ?",
+    )
     .bind(id)
-    .first<{ xmlSyncStatus: string | null }>();
+    .first<{ xmlSyncStatus: string | null; xmlSupplierId: number | null; xmlExternalId: string | null }>();
   if (!product) {
     return Response.json({ error: "Ürün bulunamadı." }, { status: 404 });
+  }
+
+  // Bir tedarikçiye bağlı ürün silinirse (taslağa alınsa da gerçekten
+  // silinse de), o ürünün kodu hariç tutma tablosuna eklenir - feed'de hâlâ
+  // varsa bir sonraki senkron artık onu hiç yeniden oluşturmuyor/güncellemiyor
+  // (bkz. lib/xml-sync/excluded-products.ts). Satır tamamen silinse bile bu
+  // koruma kalıcı, çünkü ayrı bir tabloda tutuluyor.
+  if (product.xmlSupplierId && product.xmlExternalId) {
+    await excludeSupplierProducts(
+      db,
+      [{ supplierId: product.xmlSupplierId, externalId: product.xmlExternalId }],
+      admin.id,
+    );
   }
 
   // A tedarikçi-senkron ürünü tamamen silinirse, o ürünün kodu feed'de hâlâ
