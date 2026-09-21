@@ -1,4 +1,5 @@
 import { getProducts, getProductByBarcode } from "./client";
+import { pushPendingTrendyolPrices } from "./sync";
 
 // D1'de trendyol_price_synced = trendyol_override_price ise "gönderildi"
 // sayılıyor - ama updateStockAndPrice() sadece batchRequestId dönen bir
@@ -176,6 +177,46 @@ async function attachApprovalStatus(mismatches: PriceAuditMismatch[]): Promise<v
       mismatch.statusCheckError = error instanceof Error ? error.message : "bilinmeyen hata";
     }
   }
+}
+
+export type PriceAuditAndFixResult = PriceAuditResult & {
+  autoFixed: number;
+  autoFixErrors: string[];
+};
+
+// auditTrendyolPrices()'ın raporladığı uyuşmazlıklardan sadece liveSalePrice
+// > 0 olanları (yani GERÇEKTEN aktif/onaylı, ama yanlış fiyatla listede
+// olduğu kesin olanları) otomatik düzeltir. salePrice=0 dönenlere kasıtlı
+// dokunulmuyor - approved:true/archived:false olsalar bile bu, v1 API'nin
+// (brownout'ta) o ürün için hiç güvenilir fiyat döndürmediği anlamına
+// gelebilir (bkz. yukarıki attachApprovalStatus yorumu); "0" hedefine göre
+// fiyat "düzeltmeye" çalışmak yanlış bir düzeltme olurdu.
+export async function auditAndFixTrendyolPrices(db: D1Database): Promise<PriceAuditAndFixResult> {
+  const audit = await auditTrendyolPrices(db);
+  const fixable = audit.mismatches.filter((mismatch) => mismatch.liveSalePrice > 0);
+
+  let autoFixed = 0;
+  const autoFixErrors: string[] = [];
+
+  if (fixable.length) {
+    // trendyol_price_synced'i sıfırlayıp pushPendingTrendyolPrices'ın
+    // "gönderilmesi gereken" listesine tekrar düşmelerini sağlıyoruz -
+    // pushStockAndPriceToTrendyol'un kendisi zaten trendyol_override_price'ı
+    // (varsa) kullanıyor, burada sadece "gönderildi" yanlış bilgisini
+    // temizliyoruz.
+    const resetStmt = db.prepare("UPDATE products SET trendyol_price_synced = NULL WHERE id = ?");
+    await db.batch(fixable.map((mismatch) => resetStmt.bind(mismatch.productId)));
+
+    try {
+      const pushResult = await pushPendingTrendyolPrices(db, fixable.length);
+      autoFixed = pushResult.pushed;
+      autoFixErrors.push(...pushResult.errors);
+    } catch (error) {
+      autoFixErrors.push(error instanceof Error ? error.message : "bilinmeyen hata");
+    }
+  }
+
+  return { ...audit, autoFixed, autoFixErrors };
 }
 
 async function persistMismatches(db: D1Database, mismatches: PriceAuditMismatch[]): Promise<void> {

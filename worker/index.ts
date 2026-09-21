@@ -6,6 +6,7 @@ import { restockActiveSuppliers, syncActiveSuppliers } from "../lib/xml-sync/syn
 import { syncTrendyolOrders } from "../lib/trendyol/orders";
 import { reconcilePendingPaytrOrders } from "../lib/paytr-reconcile";
 import { scanTrendyolArchivedProducts } from "../lib/trendyol/archived-scan";
+import { auditAndFixTrendyolPrices } from "../lib/trendyol/price-audit";
 // Shopify kanalı pasife alındı - bkz. scheduled() içindeki yorum. Tekrar
 // açılınca bu import'lar da geri gelmeli.
 // import {
@@ -122,6 +123,15 @@ const worker = {
     // (artık archived=false) ürünleri otomatik "kilitliyor" - bkz.
     // lib/trendyol/archived-scan.ts.
     ctx.waitUntil(scanTrendyolArchivedProducts(env.DB).catch(() => {}));
+    // BB8694 siparişinde keşfedildi: fiyat gönderimi (updateStockAndPrice)
+    // sadece bir batchRequestId dönüyor, gerçek kabul/red Trendyol'da
+    // ASENKRON gerçekleşiyor ve hiçbir yerde doğrulanmıyordu - D1
+    // "gönderildi" derken Trendyol'da saatlerce eski fiyat kalabiliyordu,
+    // sessizce zarar ettiriyordu. Bu tarama Trendyol'un GERÇEKTEN
+    // listelediği fiyatı D1'in hedef fiyatıyla karşılaştırıp (sadece
+    // gerçekten aktif/pozitif fiyatlı, kesin yanlış olan ürünlerde) fiyatı
+    // otomatik yeniden gönderiyor - bkz. lib/trendyol/price-audit.ts.
+    ctx.waitUntil(auditAndFixTrendyolPrices(env.DB).catch(() => {}));
     // Shopify kanalı pasife alındı (hiç sipariş gelmiyordu, kullanıcı
     // talebiyle durduruldu) - otomatik ürün/fiyat/stok gönderimi geçici
     // olarak kapalı. Kod silinmedi, tekrar açmak için aşağıdaki 3 satırı
