@@ -482,6 +482,7 @@ export async function refreshTrendyolImages(db: D1Database): Promise<TrendyolIma
               xml_external_id AS xmlExternalId, trendyol_content_id AS contentId
        FROM products
        WHERE trendyol_content_id IS NOT NULL AND hover_image IS NOT NULL
+             AND trendyol_image_locked_at IS NULL
        ORDER BY id`,
     )
     .all<PendingProduct & { contentId: number }>();

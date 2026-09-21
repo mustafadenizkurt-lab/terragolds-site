@@ -178,6 +178,16 @@ export async function ensureTrendyolColumns(db: D1Database) {
   if (!names.has("trendyol_content_id")) {
     await db.prepare("ALTER TABLE products ADD COLUMN trendyol_content_id INTEGER").run();
   }
+  // Bazı ürünler Trendyol'da marka/logo/yasaklı kelime gibi sebeplerle pasife
+  // alınıyor, admin bunları Trendyol panelinden elle (kaynak görseli
+  // değiştirerek) düzeltiyor. Bu satır doluysa refreshTrendyolImages() (ve
+  // ileride eklenecek benzer toplu görsel gönderme araçları) bu ürünü hiç
+  // işlemiyor - yoksa D1'deki eski (henüz düzeltilmemiş, tedarikçi
+  // kaynaklı) görsel tekrar gönderilip elle yapılan düzeltmenin üzerine
+  // yazardı. bkz. /api/admin/products/[id]/lock-trendyol-image.
+  if (!names.has("trendyol_image_locked_at")) {
+    await db.prepare("ALTER TABLE products ADD COLUMN trendyol_image_locked_at TEXT").run();
+  }
   await db
     .prepare(
       "CREATE UNIQUE INDEX IF NOT EXISTS products_trendyol_barcode_unique ON products(trendyol_barcode) WHERE trendyol_barcode IS NOT NULL",
