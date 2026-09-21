@@ -79,6 +79,8 @@ const emptyProduct: ProductDraft = {
   stock: 1,
   image: "/stone-collection.jpg",
   hoverImage: "",
+  image3: "",
+  image4: "",
   badge: "",
   campaignLabel: "",
   discountPercent: 0,
@@ -411,7 +413,7 @@ export default function AdminClient({
 
   const uploadImage = async (
     event: React.ChangeEvent<HTMLInputElement>,
-    target: "image" | "hoverImage" = "image",
+    target: "image" | "hoverImage" | "image3" | "image4" = "image",
   ) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -427,7 +429,13 @@ export default function AdminClient({
       });
       const body = await readJson(response);
       setDraft((current) => ({ ...current, [target]: String(body.url) }));
-      flash(target === "image" ? "Ürün görseli yüklendi." : "İkinci görsel yüklendi.");
+      const uploadedLabel = {
+        image: "Ürün görseli yüklendi.",
+        hoverImage: "İkinci görsel yüklendi.",
+        image3: "Üçüncü görsel yüklendi.",
+        image4: "Dördüncü görsel yüklendi.",
+      }[target];
+      flash(uploadedLabel);
     } catch (uploadError) {
       setError(
         uploadError instanceof Error
@@ -1556,6 +1564,62 @@ export default function AdminClient({
                             setDraft({
                               ...draft,
                               hoverImage: event.target.value,
+                            })
+                          }
+                        />
+                      </label>
+                      <div className="admin-image-preview secondary">
+                        <img
+                          src={draft.image3 || "/stone-collection.jpg"}
+                          alt="Üçüncü görsel önizlemesi"
+                        />
+                      </div>
+                      <label className="admin-upload-button secondary">
+                        {uploading ? "Yükleniyor…" : "3. görsel yükle"}
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          onChange={(event) => uploadImage(event, "image3")}
+                          disabled={uploading}
+                        />
+                      </label>
+                      <label className="admin-field">
+                        <span>3. görsel bağlantısı</span>
+                        <input
+                          value={draft.image3 ?? ""}
+                          placeholder="Boş bırakılırsa galeriye eklenmez"
+                          onChange={(event) =>
+                            setDraft({
+                              ...draft,
+                              image3: event.target.value,
+                            })
+                          }
+                        />
+                      </label>
+                      <div className="admin-image-preview secondary">
+                        <img
+                          src={draft.image4 || "/stone-collection.jpg"}
+                          alt="Dördüncü görsel önizlemesi"
+                        />
+                      </div>
+                      <label className="admin-upload-button secondary">
+                        {uploading ? "Yükleniyor…" : "4. görsel yükle"}
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          onChange={(event) => uploadImage(event, "image4")}
+                          disabled={uploading}
+                        />
+                      </label>
+                      <label className="admin-field">
+                        <span>4. görsel bağlantısı</span>
+                        <input
+                          value={draft.image4 ?? ""}
+                          placeholder="Boş bırakılırsa galeriye eklenmez"
+                          onChange={(event) =>
+                            setDraft({
+                              ...draft,
+                              image4: event.target.value,
                             })
                           }
                         />

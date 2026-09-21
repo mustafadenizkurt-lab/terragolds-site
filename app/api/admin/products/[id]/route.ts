@@ -44,7 +44,7 @@ export async function PUT(request: Request, context: RouteContext) {
       .prepare(
         `UPDATE products
          SET name = ?, stone = ?, category = ?, price = ?, cost = ?, stock = ?,
-             image = ?, hover_image = ?, badge = ?, campaign_label = ?, discount_percent = ?,
+             image = ?, hover_image = ?, image3 = ?, image4 = ?, badge = ?, campaign_label = ?, discount_percent = ?,
              description = ?, status = ?,
              shopier_url = ?, shopier_product_id = ?,
              shopier_sync_status = ?, slug = ?, meta_title = ?, meta_description = ?,
@@ -62,6 +62,8 @@ export async function PUT(request: Request, context: RouteContext) {
         product.stock,
         product.image,
         product.hoverImage ?? null,
+        product.image3 ?? null,
+        product.image4 ?? null,
         product.badge ?? null,
         product.campaignLabel ?? null,
         product.discountPercent,

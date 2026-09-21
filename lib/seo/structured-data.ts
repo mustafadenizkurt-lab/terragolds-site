@@ -112,6 +112,8 @@ export type ProductSchemaInput = {
   description: string;
   image: string;
   hoverImage?: string | null;
+  image3?: string | null;
+  image4?: string | null;
   category: string;
   slug?: string;
   price: number;
@@ -123,7 +125,7 @@ export type ProductSchemaInput = {
 /** schema.org/Product for a single product detail page. */
 export function productSchema(product: ProductSchemaInput) {
   const url = `${SITE_URL}/products/${product.slug || product.id}`;
-  const images = [product.image, product.hoverImage]
+  const images = [product.image, product.hoverImage, product.image3, product.image4]
     .filter((value): value is string => Boolean(value))
     .map((image) => new URL(image, SITE_URL).toString());
 

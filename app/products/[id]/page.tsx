@@ -50,7 +50,7 @@ export async function generateMetadata({
       155,
     );
   const url = `https://www.terragolds.com/products/${product.slug || product.id}`;
-  const images = [product.image, product.hoverImage]
+  const images = [product.image, product.hoverImage, product.image3, product.image4]
     .filter(Boolean)
     .map((image) =>
       new URL(image as string, "https://www.terragolds.com").toString(),
@@ -105,6 +105,8 @@ export default async function ProductPage({ params }: ProductPageProps) {
         description: product.description,
         image: product.image,
         hoverImage: product.hoverImage,
+        image3: product.image3,
+        image4: product.image4,
         category: product.category,
         slug: product.slug,
         price: getDiscountedPrice(product),

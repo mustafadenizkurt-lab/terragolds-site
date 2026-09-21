@@ -97,7 +97,7 @@ export async function GET() {
       priority: "0.8",
       frequency: "weekly",
       lastmod: toLastmod(product.updatedAt),
-      images: [product.image, product.hoverImage]
+      images: [product.image, product.hoverImage, product.image3, product.image4]
         .filter((image): image is string => Boolean(image))
         .map((image) => new URL(image, siteUrl).toString()),
     })),
