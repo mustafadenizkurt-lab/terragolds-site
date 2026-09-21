@@ -4,6 +4,7 @@ import {
 } from "../../../../../lib/admin-auth";
 import { getD1 } from "../../../../../lib/store-db";
 import { pushInventoryToShopify } from "../../../../../lib/shopify/inventory";
+import { excludeSupplierProducts } from "../../../../../lib/xml-sync/excluded-products";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +32,8 @@ const actions = new Set<BulkAction>([
 ]);
 
 export async function PATCH(request: Request) {
-  if (!(await getAuthorizedAdmin(request))) return unauthorizedAdminResponse();
+  const admin = await getAuthorizedAdmin(request);
+  if (!admin) return unauthorizedAdminResponse();
 
   try {
     const body = (await request.json()) as Record<string, unknown>;
@@ -56,11 +58,28 @@ export async function PATCH(request: Request) {
     if (action === "delete") {
       const db = getD1();
       const placeholders = productIds.map(() => "?").join(", ");
+
+      // Tek ürün DELETE route'uyla (app/api/admin/products/[id]/route.ts)
+      // aynı mantık: tedarikçiye bağlı olanların kodu hariç tutma tablosuna
+      // eklenir - feed'de hâlâ varsa bir sonraki senkron artık onu hiç
+      // yeniden oluşturmuyor/güncellemiyor (bkz.
+      // lib/xml-sync/excluded-products.ts), satır taslağa alınsa da
+      // gerçekten silinse de bu koruma kalıcı kalır.
+      const toExclude = await db
+        .prepare(
+          `SELECT xml_supplier_id AS supplierId, xml_external_id AS externalId
+           FROM products WHERE id IN (${placeholders})
+             AND xml_supplier_id IS NOT NULL AND xml_external_id IS NOT NULL`,
+        )
+        .bind(...productIds)
+        .all<{ supplierId: number; externalId: string }>();
+      await excludeSupplierProducts(db, toExclude.results, admin.id);
+
       // Senkron ürünü (xml_sync_status = 'synced') gerçekten silinirse,
       // kodu tedarikçi feed'inde hâlâ varsa bir sonraki senkronda sıfırdan
-      // geri geliyordu - tek ürün DELETE route'undaki aynı mantık: taslağa
-      // alıp 'manual' işaretle, syncSupplier bir daha hiç dokunmasın. Elle
-      // eklenmiş ürünler (senkrona bağlı olmayan) gerçekten siliniyor.
+      // geri geliyordu - taslağa alıp 'manual' işaretle, syncSupplier bir
+      // daha hiç dokunmasın. Elle eklenmiş ürünler (senkrona bağlı olmayan)
+      // gerçekten siliniyor.
       const excluded = await db
         .prepare(
           `UPDATE products SET status = 'draft', xml_sync_status = 'manual', updated_at = CURRENT_TIMESTAMP

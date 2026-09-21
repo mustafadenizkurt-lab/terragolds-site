@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "2fb10ba9-e9f3-42fd-909b-85c7c2e8c9e2",
-  "prevId": "0f6a78bb-7888-4d45-9d3f-68a8ad4ed321",
+  "id": "9fc8dee2-e04f-402e-91c4-af00cbe2ca8c",
+  "prevId": "2fb10ba9-e9f3-42fd-909b-85c7c2e8c9e2",
   "tables": {
     "discount_codes": {
       "name": "discount_codes",
@@ -1610,6 +1610,13 @@
           "notNull": true,
           "autoincrement": false,
           "default": "CURRENT_TIMESTAMP"
+        },
+        "seo_description": {
+          "name": "seo_description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         }
       },
       "indexes": {

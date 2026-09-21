@@ -9,6 +9,7 @@ import { pushInventoryToShopify } from "../shopify/inventory";
 import { pushPriceToShopify } from "../shopify/price";
 import { pushStockAndPriceToTrendyol } from "../trendyol/sync";
 import { pushStockAndPriceToHepsiburada } from "../hepsiburada/sync";
+import { loadExcludedExternalIds } from "./excluded-products";
 
 export type SupplierMapping = {
   externalId?: string;
@@ -135,6 +136,7 @@ export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<
     const mapping = JSON.parse(supplier.fieldMapping || "{}") as SupplierMapping;
     const filters = JSON.parse(supplier.filters || "{}") as ImportFilters;
     const records = parseFeed(await fetchFeed(supplier.feedUrl));
+    const excludedExternalIds = await loadExcludedExternalIds(db, supplier.id);
     let imported = 0;
     let updated = 0;
     let skipped = 0;
@@ -157,6 +159,13 @@ export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<
           filters,
         )
       ) {
+        skipped += 1;
+        continue;
+      }
+      // Admin panelinden silinmiş (ve bu yüzden hariç tutulan) bir ürünün
+      // kodu - feed'de hâlâ görünse bile sıfırdan yeniden oluşturulmuyor.
+      // bkz. lib/xml-sync/excluded-products.ts.
+      if (excludedExternalIds.has(product.externalId)) {
         skipped += 1;
         continue;
       }
@@ -334,11 +343,17 @@ export async function repriceSupplierProducts(
 ): Promise<RepriceResult> {
   const mapping = JSON.parse(supplier.fieldMapping || "{}") as SupplierMapping;
   const records = parseFeed(await fetchFeed(supplier.feedUrl));
+  const excludedExternalIds = await loadExcludedExternalIds(db, supplier.id);
   let updated = 0;
   let skipped = 0;
   for (const record of records) {
     const product = mapRecord(record, mapping, supplier.defaultMarkupPercent);
     if (!product.externalId || product.price === null) {
+      skipped += 1;
+      continue;
+    }
+    // bkz. syncSupplier()'daki aynı kontrol - lib/xml-sync/excluded-products.ts
+    if (excludedExternalIds.has(product.externalId)) {
       skipped += 1;
       continue;
     }
@@ -389,6 +404,7 @@ export async function restockSupplierProducts(
 ): Promise<RestockResult> {
   const mapping = JSON.parse(supplier.fieldMapping || "{}") as SupplierMapping;
   const records = parseFeed(await fetchFeed(supplier.feedUrl));
+  const excludedExternalIds = await loadExcludedExternalIds(db, supplier.id);
 
   const existingRows = await db
     .prepare(
@@ -409,6 +425,12 @@ export async function restockSupplierProducts(
       continue;
     }
     seenExternalIds.add(product.externalId);
+
+    // bkz. syncSupplier()'daki aynı kontrol - lib/xml-sync/excluded-products.ts
+    if (excludedExternalIds.has(product.externalId)) {
+      skipped += 1;
+      continue;
+    }
 
     const existing = byExternalId.get(product.externalId);
     if (!existing || existing.stock === product.stock) {
@@ -489,6 +511,7 @@ export async function backfillHoverImages(
 ): Promise<HoverImageBackfillResult> {
   const mapping = JSON.parse(supplier.fieldMapping || "{}") as SupplierMapping;
   const records = parseFeed(await fetchFeed(supplier.feedUrl));
+  const excludedExternalIds = await loadExcludedExternalIds(db, supplier.id);
 
   const existingRows = await db
     .prepare(
@@ -503,6 +526,11 @@ export async function backfillHoverImages(
   for (const record of records) {
     const product = mapRecord(record, mapping, supplier.defaultMarkupPercent);
     if (!product.externalId || !product.hoverImage) {
+      skipped += 1;
+      continue;
+    }
+    // bkz. syncSupplier()'daki aynı kontrol - lib/xml-sync/excluded-products.ts
+    if (excludedExternalIds.has(product.externalId)) {
       skipped += 1;
       continue;
     }
