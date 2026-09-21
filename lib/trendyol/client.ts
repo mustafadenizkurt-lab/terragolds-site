@@ -260,6 +260,41 @@ export async function getProductByBarcode(barcode: string): Promise<TrendyolProd
   );
 }
 
+export type TrendyolUnapprovedProduct = {
+  barcode: string;
+  title: string;
+  brand?: string;
+  category?: string;
+  status: string; // "rejected" | "pendingApproval"
+  rejectReason?: string;
+  rejectReasonDetail?: string;
+  createDateTime?: number;
+  lastUpdateDate?: number;
+};
+
+// Trendyol "Ürün Filtreleme - Onaysız Ürün v2" (Product Filter - Unapproved
+// Product v2) servisi - reddedilmiş/onay bekleyen ürünleri, RED SEBEBİYLE
+// (rejectReason/rejectReasonDetail) birlikte döndürüyor. 200 ürünün marka/
+// logo yüzünden pasife alınma sebebini teşhis etmek için kullanılıyor -
+// salt-okunur, hiçbir şeyi değiştirmiyor.
+export async function getUnapprovedProducts(params: {
+  page?: number;
+  size?: number;
+} = {}): Promise<{
+  content: TrendyolUnapprovedProduct[];
+  totalElements: number;
+  totalPages: number;
+}> {
+  const { supplierId } = await getTrendyolCredentials();
+  const query = new URLSearchParams();
+  if (params.page !== undefined) query.set("page", String(params.page));
+  if (params.size !== undefined) query.set("size", String(params.size));
+  const search = query.toString();
+  return trendyolFetch(
+    `/product/sellers/${supplierId}/products/unapproved${search ? `?${search}` : ""}`,
+  );
+}
+
 export type TrendyolCategory = {
   id: number;
   name: string;
