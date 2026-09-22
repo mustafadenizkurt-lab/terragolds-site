@@ -10,11 +10,11 @@ import {
 // Hepsiburada kimlik bilgileri için ayrı bir şifreleme modülü yazmak yerine
 // aynı PAYMENT_CONFIG_ENCRYPTION_KEY ile bunu doğrudan tekrar kullanıyoruz.
 
-export type MarketplaceId = "trendyol" | "hepsiburada";
-export const marketplaceIds: MarketplaceId[] = ["trendyol", "hepsiburada"];
+export type MarketplaceId = "trendyol" | "hepsiburada" | "n11";
+export const marketplaceIds: MarketplaceId[] = ["trendyol", "hepsiburada", "n11"];
 
 export function isMarketplaceId(value: unknown): value is MarketplaceId {
-  return value === "trendyol" || value === "hepsiburada";
+  return value === "trendyol" || value === "hepsiburada" || value === "n11";
 }
 
 export type MarketplaceFieldDefinition = {
@@ -96,6 +96,28 @@ export const marketplaceCredentialDefinitions: Record<
         label: "Entegratör Adı",
         secret: false,
         placeholder: "Entegratör panelindeki adınız",
+        required: true,
+      },
+    ],
+  },
+  n11: {
+    id: "n11",
+    name: "N11",
+    shortDescription:
+      "N11 Satıcı API üzerinden ürün, stok ve sipariş senkronu.",
+    fields: [
+      {
+        key: "appKey",
+        label: "API Anahtarı (appKey)",
+        secret: false,
+        placeholder: "so.n11.com > Hesabım > API Hesapları",
+        required: true,
+      },
+      {
+        key: "appSecret",
+        label: "API Şifresi (appSecret)",
+        secret: true,
+        placeholder: "Kayıtlı e-postanıza gönderilen şifre",
         required: true,
       },
     ],

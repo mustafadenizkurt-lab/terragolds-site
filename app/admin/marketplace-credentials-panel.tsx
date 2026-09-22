@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-type MarketplaceId = "trendyol" | "hepsiburada";
+type MarketplaceId = "trendyol" | "hepsiburada" | "n11";
 
 type FieldDefinition = {
   key: string;
