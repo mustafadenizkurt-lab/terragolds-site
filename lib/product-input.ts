@@ -36,6 +36,8 @@ export function parseProductInput(payload: unknown): ProductInput {
     stock,
     image: String(body.image ?? "").trim() || "/stone-collection.jpg",
     hoverImage: String(body.hoverImage ?? "").trim() || undefined,
+    image3: String(body.image3 ?? "").trim() || undefined,
+    image4: String(body.image4 ?? "").trim() || undefined,
     badge: String(body.badge ?? "").trim() || undefined,
     campaignLabel: String(body.campaignLabel ?? "").trim() || undefined,
     discountPercent,

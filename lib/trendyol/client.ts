@@ -54,10 +54,17 @@ const MAX_RATE_LIMIT_RETRIES = 3;
 // hiç kimlik bilgisi girilmemişse devreye giren yedek yol.
 async function trendyolFetch<T>(
   path: string,
-  init: { method?: string; body?: unknown } = {},
+  init: { method?: string; body?: unknown; rateLimitKey?: string } = {},
   attempt = 0,
 ): Promise<T> {
-  const endpoint = path.split("?")[0];
+  // Varsayılan anahtar path'in kendisi (query hariç) - ama barkod gibi
+  // path'e GÖMÜLÜ değişken bir segment varsa (ör. getProductByBarcode),
+  // her çağrı FARKLI bir "endpoint" sayılıp sliding-window limiti hiç
+  // devreye girmezdi (her barkod kendi sıfırdan sayacıyla başlardı) -
+  // binlerce barkodu art arda tararken Trendyol'u fiilen hiç
+  // yavaşlatmadan yağmalayıp gerçek 429'lara çarpardık. Bu durumda
+  // çağıran taraf normalize edilmiş, SABİT bir rateLimitKey veriyor.
+  const endpoint = init.rateLimitKey ?? path.split("?")[0];
   await waitForRateLimit(endpoint);
 
   const { supplierId, apiKey, apiSecret } = await getTrendyolCredentials();
@@ -178,6 +185,16 @@ export async function ensureTrendyolColumns(db: D1Database) {
   if (!names.has("trendyol_content_id")) {
     await db.prepare("ALTER TABLE products ADD COLUMN trendyol_content_id INTEGER").run();
   }
+  // Bazı ürünler Trendyol'da marka/logo/yasaklı kelime gibi sebeplerle pasife
+  // alınıyor, admin bunları Trendyol panelinden elle (kaynak görseli
+  // değiştirerek) düzeltiyor. Bu satır doluysa refreshTrendyolImages() (ve
+  // ileride eklenecek benzer toplu görsel gönderme araçları) bu ürünü hiç
+  // işlemiyor - yoksa D1'deki eski (henüz düzeltilmemiş, tedarikçi
+  // kaynaklı) görsel tekrar gönderilip elle yapılan düzeltmenin üzerine
+  // yazardı. bkz. /api/admin/products/[id]/lock-trendyol-image.
+  if (!names.has("trendyol_image_locked_at")) {
+    await db.prepare("ALTER TABLE products ADD COLUMN trendyol_image_locked_at TEXT").run();
+  }
   await db
     .prepare(
       "CREATE UNIQUE INDEX IF NOT EXISTS products_trendyol_barcode_unique ON products(trendyol_barcode) WHERE trendyol_barcode IS NOT NULL",
@@ -257,6 +274,66 @@ export async function getProductByBarcode(barcode: string): Promise<TrendyolProd
   const { supplierId } = await getTrendyolCredentials();
   return trendyolFetch(
     `/product/sellers/${supplierId}/product/${encodeURIComponent(barcode)}`,
+    { rateLimitKey: `/product/sellers/${supplierId}/product/:barcode` },
+  );
+}
+
+export type TrendyolUnapprovedProduct = {
+  barcode: string;
+  title: string;
+  brand?: string;
+  category?: string;
+  status: string; // "rejected" | "pendingApproval"
+  rejectReason?: string;
+  rejectReasonDetail?: string;
+  createDateTime?: number;
+  lastUpdateDate?: number;
+};
+
+// Trendyol "Ürün Filtreleme - Onaysız Ürün v2" (Product Filter - Unapproved
+// Product v2) servisi - reddedilmiş/onay bekleyen ürünleri, RED SEBEBİYLE
+// (rejectReason/rejectReasonDetail) birlikte döndürüyor. 200 ürünün marka/
+// logo yüzünden pasife alınma sebebini teşhis etmek için kullanılıyor -
+// salt-okunur, hiçbir şeyi değiştirmiyor.
+export async function getUnapprovedProducts(params: {
+  page?: number;
+  size?: number;
+} = {}): Promise<{
+  content: TrendyolUnapprovedProduct[];
+  totalElements: number;
+  totalPages: number;
+}> {
+  const { supplierId } = await getTrendyolCredentials();
+  const query = new URLSearchParams();
+  if (params.page !== undefined) query.set("page", String(params.page));
+  if (params.size !== undefined) query.set("size", String(params.size));
+  const search = query.toString();
+  return trendyolFetch(
+    `/product/sellers/${supplierId}/products/unapproved${search ? `?${search}` : ""}`,
+  );
+}
+
+// Teşhis: bazı kaynaklar bu endpoint'in "approved" query parametresiyle de
+// (true/false/hiç verilmeden) çağrılabildiğini, approved=true verildiğinde
+// onaylı ürünlerin TAM içeriğini (images dahil) döndürebildiğini gösteriyor
+// - henüz doğrulanmadı. Ham yanıtı olduğu gibi döndürüyor ki gerçek alan
+// adlarını görüp doğru tipi sonradan yazabilelim. Trendyol'a elle
+// yüklenmiş düzeltilmiş görseli geri D1'e çekebilmek için araştırılıyor.
+export async function getProductsRaw(params: {
+  page?: number;
+  size?: number;
+  barcode?: string;
+  approved?: boolean;
+} = {}): Promise<unknown> {
+  const { supplierId } = await getTrendyolCredentials();
+  const query = new URLSearchParams();
+  if (params.page !== undefined) query.set("page", String(params.page));
+  if (params.size !== undefined) query.set("size", String(params.size));
+  if (params.barcode) query.set("barcode", params.barcode);
+  if (params.approved !== undefined) query.set("approved", String(params.approved));
+  const search = query.toString();
+  return trendyolFetch(
+    `/product/sellers/${supplierId}/products/unapproved${search ? `?${search}` : ""}`,
   );
 }
 

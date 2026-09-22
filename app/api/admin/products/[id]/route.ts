@@ -4,6 +4,9 @@ import { resolveProductSlug } from "../../../../../lib/product-slugs";
 import { ensureSeedData, getD1 } from "../../../../../lib/store-db";
 import { pushInventoryToShopify } from "../../../../../lib/shopify/inventory";
 import { excludeSupplierProducts } from "../../../../../lib/xml-sync/excluded-products";
+import { pushStockAndPriceToTrendyol } from "../../../../../lib/trendyol/sync";
+import { pushStockAndPriceToHepsiburada } from "../../../../../lib/hepsiburada/sync";
+import { ensureImageLockColumn } from "../../../../../lib/product-image-lock";
 
 export const dynamic = "force-dynamic";
 
@@ -23,16 +26,30 @@ export async function PUT(request: Request, context: RouteContext) {
     const product = parseProductInput(await request.json());
     await ensureSeedData();
     const db = getD1();
+    await ensureImageLockColumn(db);
     const slug = await resolveProductSlug(db, product.name, id, product.slug);
+
+    // Admin ana görseli (image) burada, kendi panelimizden elle değiştirirse
+    // (ör. Trendyol'da pasife alınmasına sebep olan tedarikçi kaynaklı
+    // logolu görseli düzeltmek için), bir sonraki XML senkronu bunu
+    // tedarikçinin orijinal görseliyle EZMESİN diye kilitliyoruz - bkz.
+    // lib/product-image-lock.ts ve syncSupplier()'daki CASE koruması.
+    const current = await db
+      .prepare("SELECT image FROM products WHERE id = ?")
+      .bind(id)
+      .first<{ image: string }>();
+    const imageChanged = Boolean(current) && current!.image !== product.image;
+
     const result = await db
       .prepare(
         `UPDATE products
          SET name = ?, stone = ?, category = ?, price = ?, cost = ?, stock = ?,
-             image = ?, hover_image = ?, badge = ?, campaign_label = ?, discount_percent = ?,
+             image = ?, hover_image = ?, image3 = ?, image4 = ?, badge = ?, campaign_label = ?, discount_percent = ?,
              description = ?, status = ?,
              shopier_url = ?, shopier_product_id = ?,
              shopier_sync_status = ?, slug = ?, meta_title = ?, meta_description = ?,
              featured = ?, sort_order = ?, is_daily_deal = ?, daily_deal_order = ?,
+             image_locked_at = CASE WHEN ? THEN CURRENT_TIMESTAMP ELSE image_locked_at END,
              updated_at = CURRENT_TIMESTAMP
          WHERE id = ?`,
       )
@@ -45,6 +62,8 @@ export async function PUT(request: Request, context: RouteContext) {
         product.stock,
         product.image,
         product.hoverImage ?? null,
+        product.image3 ?? null,
+        product.image4 ?? null,
         product.badge ?? null,
         product.campaignLabel ?? null,
         product.discountPercent,
@@ -60,6 +79,7 @@ export async function PUT(request: Request, context: RouteContext) {
         product.sortOrder,
         product.isDailyDeal ? 1 : 0,
         product.dailyDealOrder,
+        imageChanged ? 1 : 0,
         id,
       )
       .run();
@@ -117,6 +137,28 @@ export async function DELETE(request: Request, context: RouteContext) {
       [{ supplierId: product.xmlSupplierId, externalId: product.xmlExternalId }],
       admin.id,
     );
+  }
+
+  // Silme/hariç tutma sadece D1'i güncelliyordu - ürün Trendyol/Hepsiburada'da
+  // zaten listelenmişse, biz onu sildikten sonra da orada son bildirilen
+  // stok/fiyatla görünmeye devam ediyor, kimse fark etmeden sipariş
+  // alınabiliyordu. Satır silinmeden/taslağa alınmadan ÖNCE stoğu 0'a çekip
+  // pazaryerlerine bildiriyoruz (push* fonksiyonları zaten "hiç
+  // listelenmemişse no-op" davranışında, satırın hâlâ var olmasına ihtiyaç
+  // duyuyorlar - bu yüzden sıra önemli).
+  await db
+    .prepare("UPDATE products SET stock = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+    .bind(id)
+    .run();
+  try {
+    await pushStockAndPriceToTrendyol(db, id);
+  } catch {
+    // Self-heals on the next stock change or a manual price/stock backfill.
+  }
+  try {
+    await pushStockAndPriceToHepsiburada(db, id);
+  } catch {
+    // Self-heals on the next stock change or a manual price/stock backfill.
   }
 
   // A tedarikçi-senkron ürünü tamamen silinirse, o ürünün kodu feed'de hâlâ

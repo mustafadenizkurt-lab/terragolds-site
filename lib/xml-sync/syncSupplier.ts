@@ -10,6 +10,7 @@ import { pushPriceToShopify } from "../shopify/price";
 import { pushStockAndPriceToTrendyol } from "../trendyol/sync";
 import { pushStockAndPriceToHepsiburada } from "../hepsiburada/sync";
 import { loadExcludedExternalIds } from "./excluded-products";
+import { ensureImageLockColumn } from "../product-image-lock";
 
 export type SupplierMapping = {
   externalId?: string;
@@ -118,6 +119,7 @@ async function hasActiveRunningLog(db: D1Database, supplierId: number): Promise<
 }
 
 export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<SyncResult> {
+  await ensureImageLockColumn(db);
   // Clean up any orphaned row from a previous invocation first, then check
   // whether a genuinely still-running sync remains - only refuses to start
   // when one does, so this never blocks a normal run.
@@ -190,8 +192,14 @@ export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<
       }
       const matchedId = existing?.id;
       if (matchedId) {
+        // image_locked_at doluysa (admin bu ürünün görselini kendi panelimizden
+        // elle düzeltmişse - bkz. lib/product-image-lock.ts) tedarikçinin
+        // orijinal görseli buraya hiç yazılmıyor, mevcut (düzeltilmiş) görsel
+        // korunuyor. hover_image gibi diğer alanlar normal güncelleniyor.
         await db.prepare(
-          `UPDATE products SET name = ?, stone = ?, category = ?, price = ?, cost = ?, stock = ?, image = ?, hover_image = COALESCE(?, hover_image), description = ?, xml_sync_status = 'synced', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+          `UPDATE products SET name = ?, stone = ?, category = ?, price = ?, cost = ?, stock = ?,
+             image = CASE WHEN image_locked_at IS NULL THEN ? ELSE image END,
+             hover_image = COALESCE(?, hover_image), description = ?, xml_sync_status = 'synced', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
         ).bind(product.name, product.stone, product.category, product.price, product.cost, product.stock, product.image, product.hoverImage, product.description, matchedId).run();
         updated += 1;
         // D1 is the source of truth for stock - push this product's new
