@@ -190,9 +190,6 @@ export type N11CategoryAttributeValue = {
   value?: string;
 };
 
-// Alan adı (attributeValues) N11'in resmi entegrasyon dokümanında bu şekilde
-// doğrulandı - ilk sürümde tahmini olarak "values" kullanılmıştı, gerçek
-// dokümanla düzeltildi.
 export type N11CategoryAttribute = {
   id: number;
   name: string;
@@ -200,6 +197,22 @@ export type N11CategoryAttribute = {
   isCustomValue: boolean;
   isVariant?: boolean;
   attributeValues?: N11CategoryAttributeValue[];
+};
+
+// Gerçek ham yanıt (raw=1 ile doğrulandı) N11CategoryAttribute'tan FARKLI
+// alan adları kullanıyor - zarf da "attributes" değil "categoryAttributes".
+// Önceki sürüm yanlış anahtara baktığı için TÜM kategoriler için sessizce
+// boş dizi dönüyordu (panelde "özellik bulunamadı" görünüyordu ama aslında
+// veri vardı) - bu da sync.ts > attributesFor()'un hiçbir zorunlu özellik
+// göndermemesine, dolayısıyla N11'in "catalogId, barcode veya images ve
+// attributes aynı anda boş olamaz" reddine yol açıyordu.
+type N11RawCategoryAttribute = {
+  attributeId: number;
+  attributeName: string;
+  isMandatory: boolean;
+  isCustomValue: boolean;
+  isVariant?: boolean;
+  attributeValues?: { id: number; value?: string }[];
 };
 
 // GET /cdn/category/{categoryId}/attribute - bir kategorinin zorunlu/
@@ -210,9 +223,17 @@ export async function getCategoryAttributes(
   categoryId: number,
 ): Promise<N11CategoryAttribute[]> {
   const result = await n11Fetch<
-    N11CategoryAttribute[] | { attributes: N11CategoryAttribute[] }
+    N11RawCategoryAttribute[] | { categoryAttributes?: N11RawCategoryAttribute[] }
   >(`/cdn/category/${categoryId}/attribute`);
-  return Array.isArray(result) ? result : (result.attributes ?? []);
+  const raw = Array.isArray(result) ? result : (result.categoryAttributes ?? []);
+  return raw.map((attribute) => ({
+    id: attribute.attributeId,
+    name: attribute.attributeName,
+    isMandatory: attribute.isMandatory,
+    isCustomValue: attribute.isCustomValue,
+    isVariant: attribute.isVariant,
+    attributeValues: attribute.attributeValues,
+  }));
 }
 
 export async function getCategoryAttributesRaw(categoryId: number): Promise<unknown> {

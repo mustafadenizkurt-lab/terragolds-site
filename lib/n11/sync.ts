@@ -100,16 +100,41 @@ export function categoryIdFor(product: { category: string; name: string }): numb
   return categoryId;
 }
 
-// !!! HENÜZ DOLDURULMADI !!!
-// Trendyol'daki TRENDYOL_COMMON_ATTRIBUTES/TRENDYOL_EXTRA_ATTRIBUTES_BY_GROUP_SLUG
-// ile aynı amaç - N11'in her kategorisinin zorunlu (isMandatory=true)
-// özellikleri farklı, gerçek attributeId/valueId'ler admin panelindeki
-// "Kategori özellikleri" aracıyla (GET /cdn/category/{id}/attribute) kategori
-// eşlemesi netleştikten SONRA bulunup buraya eklenmeli.
+// N11'in "Bijuteri Yüzük" (1219213) kategorisi için GET /cdn/category/{id}/
+// attribute ham yanıtı doğrulandı: isMandatory=true olan SADECE iki özellik
+// var - "Marka" (attributeId 1, isCustomValue true - serbest metin) ve
+// "Cinsiyet" (attributeId 22, isCustomValue false - valueId ile seçilmeli).
+// Bu ikisi gönderilmeden N11 "catalogId, barcode veya images ve attributes
+// aynı anda boş olamaz" diyerek reddediyordu (client.ts'teki yanlış
+// "attributes" anahtarı yüzünden attributesFor() hep boş dönüyordu - o da
+// ayrıca düzeltildi). attributeId 1/22'nin diğer bijuteri kategorilerinde
+// (kolye/bileklik/küpe/2.el antika/şahmeran-halhal) de aynı zorunlu ikili
+// olduğu varsayılıyor (N11'in dokümanındaki örneklerde de aynı ID'ler farklı
+// kategorilerde tekrarlanıyor, yani hesap/kategori-geneli sabit ID'ler) -
+// canlıda doğrulanmadıysa bir sonraki senkronda farklı bir ret sebebiyle
+// ortaya çıkar.
+const N11_GENDER_VALUE_ID: Record<string, number> = {
+  erkek: 2467475,
+  kadın: 2467568,
+  unisex: 2467536,
+  çocuk: 16358103,
+};
+
+function genderValueIdFor(product: { category: string; name: string }): number {
+  const haystack = `${product.name} ${product.category}`.toLocaleLowerCase("tr-TR");
+  if (haystack.includes("erkek")) return N11_GENDER_VALUE_ID.erkek;
+  if (haystack.includes("unisex")) return N11_GENDER_VALUE_ID.unisex;
+  if (haystack.includes("çocuk")) return N11_GENDER_VALUE_ID.çocuk;
+  return N11_GENDER_VALUE_ID.kadın;
+}
+
 function attributesFor(
-  _product: { category: string; name: string },
+  product: { category: string; name: string },
 ): N11ProductAttribute[] {
-  return [];
+  return [
+    { id: 1, customValue: "Terragolds" }, // Marka
+    { id: 22, valueId: genderValueIdFor(product) }, // Cinsiyet
+  ];
 }
 
 // N11 en fazla kaç görsel kabul ediyor net değil - Trendyol'daki gibi ana
