@@ -17,7 +17,7 @@ export const categoryGroups: CategoryGroup[] = [
   { slug: "yuzuk", label: "Yüzük", labelEn: "Rings", keywords: ["yüzük"] },
   { slug: "kolyeler", label: "Kolyeler", labelEn: "Necklaces", keywords: ["kolye"] },
   { slug: "kupeler", label: "Küpeler", labelEn: "Earrings", keywords: ["küpe"] },
-  { slug: "bileklik", label: "Bileklik", labelEn: "Bracelets", keywords: ["bileklik"] },
+  { slug: "bileklik", label: "Bileklik", labelEn: "Bracelets", keywords: ["bileklik", "bilezik"] },
   {
     slug: "sahmeran-halhal",
     label: "Şahmeran ve Halhal",
