@@ -49,6 +49,13 @@ const N11_CATEGORY_BY_GROUP_SLUG: Record<string, number> = {
   kolyeler: 1219212, // Bijuteri Kolye
   yuzuk: 1219213, // Bijuteri Yüzük
   kupeler: 1219216, // Bijuteri Küpe
+  // "antika-vintage" grubundaki ürünler GERÇEKTEN ikinci el antika/koleksiyon
+  // parçaları (biblo, heykel, tablo, vazo, mumluk, antika porselen/bira
+  // bardağı VE antika yüzük/kolye gibi karışık ürün tipleri) - N11'de
+  // bunların hepsini kapsayan tek şemsiye kategori "2.El Antika & Koleksiyon"
+  // (üst seviye; alt kategorileri "2.El Antika Aksesuar" ve "2.El Antika Ev
+  // Dekorasyon" sadece yarısını kapsıyor, o yüzden üst seviye seçildi).
+  "antika-vintage": 1003526, // 2.El Antika & Koleksiyon
 };
 
 // "sahmeran-halhal" grubu sitede tek nav grubu ama N11'de bunun karşılığı
