@@ -52,38 +52,39 @@ export async function reconcileN11Tasks(
         result.stillProcessing += 1;
         continue;
       }
+      // Görev başına tek db.batch: yüzlerce sıralı UPDATE, Worker isteğini
+      // zaman aşımına uğratıyordu.
+      const okStmt = db.prepare(
+        `UPDATE products SET n11_verified_at = CURRENT_TIMESTAMP, n11_last_error = NULL
+         WHERE n11_stock_code = ? AND n11_task_id = ?`,
+      );
+      const failStmt = db.prepare(
+        `UPDATE products SET n11_task_id = NULL, n11_stock_code = NULL,
+           n11_synced_at = NULL, n11_price_synced = NULL, n11_last_error = ?
+         WHERE n11_stock_code = ? AND n11_task_id = ?`,
+      );
+      const statements: D1PreparedStatement[] = [];
       for (const sku of parsed.skus) {
         if (sku.ok || sku.alreadyExists) {
-          await db
-            .prepare(
-              `UPDATE products SET n11_verified_at = CURRENT_TIMESTAMP, n11_last_error = NULL
-               WHERE n11_stock_code = ? AND n11_task_id = ?`,
-            )
-            .bind(sku.stockCode, taskId)
-            .run();
+          statements.push(okStmt.bind(sku.stockCode, taskId));
           result.verified += 1;
         } else {
-          await db
-            .prepare(
-              `UPDATE products SET n11_task_id = NULL, n11_stock_code = NULL,
-                 n11_synced_at = NULL, n11_price_synced = NULL, n11_last_error = ?
-               WHERE n11_stock_code = ? AND n11_task_id = ?`,
-            )
-            .bind(sku.reason.slice(0, 500), sku.stockCode, taskId)
-            .run();
+          statements.push(failStmt.bind(sku.reason.slice(0, 500), sku.stockCode, taskId));
           result.failed += 1;
           result.failures.push({ stockCode: sku.stockCode, reason: sku.reason });
         }
       }
       // Görevde hiç sonucu listelenmeyen ürünler (nadir) sonsuza kadar
       // "doğrulanmamış" kalmasın diye görev PROCESSED ise kalanları da işaretle.
-      await db
-        .prepare(
-          `UPDATE products SET n11_verified_at = CURRENT_TIMESTAMP
-           WHERE n11_task_id = ? AND n11_verified_at IS NULL`,
-        )
-        .bind(taskId)
-        .run();
+      statements.push(
+        db
+          .prepare(
+            `UPDATE products SET n11_verified_at = CURRENT_TIMESTAMP
+             WHERE n11_task_id = ? AND n11_verified_at IS NULL`,
+          )
+          .bind(taskId),
+      );
+      await db.batch(statements);
     } catch (error) {
       result.errors.push(
         `Görev ${cleanId}: ${error instanceof Error ? error.message : "bilinmeyen hata"}`,
