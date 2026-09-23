@@ -127,3 +127,55 @@ test("mapN11OrderPayload sağlanan totalAmount'u satır toplamına tercih eder",
   // totalAmount verildiği için o kullanılmalı)
   assert.equal(mapped.totalAmount, 34990);
 });
+
+import {
+  attributesForCategory,
+  colorFor,
+  genderValueId,
+  ringSizeFor,
+} from "../lib/n11/attributes.ts";
+
+// Zorunlu özellik listeleri 9 kategorinin ham /cdn/category/{id}/attribute
+// yanıtından programatik olarak çıkarıldı (bkz. lib/n11/attributes.ts).
+test("attributesForCategory yüzük için Marka+Cinsiyet+Ölçü+Renk üretir", () => {
+  const attrs = attributesForCategory(1219213, {
+    category: "Bayan Yüzük ve Kombinler",
+    name: "Gümüş Renk Köşeli Yonca Model Zirkon Taşlı Kadın Yüzük",
+  });
+  assert.deepEqual(attrs.map((a) => a.id).sort((a, b) => a - b), [1, 22, 429, 1567]);
+  assert.equal(attrs.find((a) => a.id === 429).customValue, "Gümüş");
+  assert.equal(attrs.find((a) => a.id === 22).valueId, 2467568);
+});
+
+test("Cinsiyet değer ID'leri kategoriye özgü (kolyede yüzük ID'si kullanılmaz)", () => {
+  const p = { category: "Kolye", name: "Gold Renk Kadın Kolye" };
+  assert.equal(genderValueId(1219212, p), 2480474);
+  assert.equal(genderValueId(1219214, p), 2475283);
+  assert.equal(genderValueId(1219216, p), 2468071);
+  assert.equal(genderValueId(1191220, p), null);
+});
+
+test("Broş/Piercing/Şahmeran/Halhal Cinsiyet göndermez, Antika hiç özellik göndermez", () => {
+  const p = { category: "x", name: "Gold Renk Broş" };
+  for (const id of [1191220, 1191216, 1191217, 1191218]) {
+    assert.deepEqual(attributesForCategory(id, p).map((a) => a.id), [1, 429]);
+  }
+  assert.deepEqual(attributesForCategory(1003526, p), []);
+});
+
+test("kategori kuralı olmayan ID için hata fırlatır", () => {
+  assert.throws(() => attributesForCategory(999, { category: "x", name: "y" }));
+});
+
+test("colorFor ürün adındaki ilk rengi seçer, yoksa Diğer", () => {
+  assert.equal(colorFor({ name: "Gold Renk Nazar Boncuk Model Kadın Yüzük" }), "Altın");
+  assert.equal(colorFor({ name: "Pirinç Gümüş Renk Beyaz Sedefli Yonca Yüzük" }), "Gümüş");
+  assert.equal(colorFor({ name: "Rose Gold Kalpli Kolye" }), "Rose Gold");
+  assert.equal(colorFor({ name: "Nazar Boncuklu Kolye" }), "Diğer");
+});
+
+test("ringSizeFor numara/ayarlanabilir/varsayılan", () => {
+  assert.equal(ringSizeFor({ name: "Ayarlamalı Silver Renk Yüzük" }), "Ayarlanabilir");
+  assert.equal(ringSizeFor({ name: "Gold Yüzük No: 17" }), "17");
+  assert.equal(ringSizeFor({ name: "Gold Renk Kadın Yüzük" }), "Standart");
+});

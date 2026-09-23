@@ -7,6 +7,7 @@ import {
 } from "./client";
 import { getN11Credentials, type N11Credentials } from "./auth";
 import { roundToN11Price } from "./http-utils";
+import { attributesForCategory } from "./attributes";
 import { toAbsoluteImageUrl } from "../shopify/client";
 import { groupForCategory } from "../category-groups";
 
@@ -124,41 +125,13 @@ export function categoryIdFor(product: { category: string; name: string }): numb
   return categoryId;
 }
 
-// N11'in "Bijuteri Yüzük" (1219213) kategorisi için GET /cdn/category/{id}/
-// attribute ham yanıtı doğrulandı: isMandatory=true olan SADECE iki özellik
-// var - "Marka" (attributeId 1, isCustomValue true - serbest metin) ve
-// "Cinsiyet" (attributeId 22, isCustomValue false - valueId ile seçilmeli).
-// Bu ikisi gönderilmeden N11 "catalogId, barcode veya images ve attributes
-// aynı anda boş olamaz" diyerek reddediyordu (client.ts'teki yanlış
-// "attributes" anahtarı yüzünden attributesFor() hep boş dönüyordu - o da
-// ayrıca düzeltildi). attributeId 1/22'nin diğer bijuteri kategorilerinde
-// (kolye/bileklik/küpe/2.el antika/şahmeran-halhal) de aynı zorunlu ikili
-// olduğu varsayılıyor (N11'in dokümanındaki örneklerde de aynı ID'ler farklı
-// kategorilerde tekrarlanıyor, yani hesap/kategori-geneli sabit ID'ler) -
-// canlıda doğrulanmadıysa bir sonraki senkronda farklı bir ret sebebiyle
-// ortaya çıkar.
-const N11_GENDER_VALUE_ID: Record<string, number> = {
-  erkek: 2467475,
-  kadın: 2467568,
-  unisex: 2467536,
-  çocuk: 16358103,
-};
-
-function genderValueIdFor(product: { category: string; name: string }): number {
-  const haystack = `${product.name} ${product.category}`.toLocaleLowerCase("tr-TR");
-  if (haystack.includes("erkek")) return N11_GENDER_VALUE_ID.erkek;
-  if (haystack.includes("unisex")) return N11_GENDER_VALUE_ID.unisex;
-  if (haystack.includes("çocuk")) return N11_GENDER_VALUE_ID.çocuk;
-  return N11_GENDER_VALUE_ID.kadın;
-}
-
+// Zorunlu özellikler kategoriye özgü (Cinsiyet değer ID'leri bile kategoriden
+// kategoriye değişiyor) - kurallar ve gerekçe lib/n11/attributes.ts'te.
 function attributesFor(
-  product: { category: string; name: string },
+  categoryId: number,
+  product: { category: string; name: string; description?: string },
 ): N11ProductAttribute[] {
-  return [
-    { id: 1, customValue: "Terragolds" }, // Marka
-    { id: 22, valueId: genderValueIdFor(product) }, // Cinsiyet
-  ];
+  return attributesForCategory(categoryId, product);
 }
 
 // N11 en fazla kaç görsel kabul ediyor net değil - Trendyol'daki gibi ana
@@ -173,8 +146,9 @@ function toN11Product(
     .filter((url): url is string => Boolean(url));
   const stockCode = stockCodeFor(product);
   const price = roundToN11Price(product.price);
+  const categoryId = categoryIdFor(product);
   return {
-    categoryId: categoryIdFor(product),
+    categoryId,
     productMainId: stockCode,
     stockCode,
     // Gerçek bir GTIN'imiz yok (stockCode barkod değil) ama dokümanın her
@@ -198,7 +172,7 @@ function toN11Product(
     // başına makul bir üst sınır, işimize dair bir kısıtlama değil.
     maxPurchaseQuantity: 20,
     images: imageUrls.map((url, index) => ({ url, order: index + 1 })),
-    attributes: attributesFor(product),
+    attributes: attributesFor(categoryId, product),
   };
 }
 
