@@ -69,6 +69,17 @@ export default function N11SyncPanel({
     null,
   );
 
+  const [reconcileBusy, setReconcileBusy] = useState(false);
+  const [reconcileError, setReconcileError] = useState("");
+  const [reconcileResult, setReconcileResult] = useState<{
+    checkedTasks: number;
+    stillProcessing: number;
+    verified: number;
+    failed: number;
+    failures: { stockCode: string; reason: string }[];
+    errors: string[];
+  } | null>(null);
+
   const [taskId, setTaskId] = useState("");
   const [taskBusy, setTaskBusy] = useState(false);
   const [taskError, setTaskError] = useState("");
@@ -140,6 +151,22 @@ export default function N11SyncPanel({
       setTaskError(taskFail instanceof Error ? taskFail.message : "Görev durumu alınamadı.");
     } finally {
       setTaskBusy(false);
+    }
+  };
+
+  const reconcile = async () => {
+    setReconcileBusy(true);
+    setReconcileError("");
+    try {
+      const response = await fetch("/api/admin/n11/reconcile", { method: "POST", cache: "no-store" });
+      const body = (await response.json()) as NonNullable<typeof reconcileResult> & { error?: string };
+      if (!response.ok) throw new Error(body.error ?? "Doğrulama başarısız.");
+      setReconcileResult(body);
+      onNotice(`N11 doğrulama: ${body.verified} kabul, ${body.failed} red, ${body.stillProcessing} görev kuyrukta.`);
+    } catch (fail) {
+      setReconcileError(fail instanceof Error ? fail.message : "Doğrulama başarısız.");
+    } finally {
+      setReconcileBusy(false);
     }
   };
 
@@ -421,6 +448,58 @@ export default function N11SyncPanel({
               }}
               onFocus={(event) => event.currentTarget.select()}
             />
+          </div>
+        )}
+
+        <div className="admin-panel-heading" style={{ marginTop: 32 }}>
+          <div>
+            <h2>Sonuçları doğrula</h2>
+            <p>
+              N11 gönderimi asenkron: taskId almak kabul demek değil. Bu düğme
+              tamamlanmış görevleri sorgular, kabul edilenleri doğrulanmış
+              işaretler, reddedilenleri nedeniyle birlikte listeler ve yeniden
+              gönderilmemesi için ayırır.
+            </p>
+          </div>
+          <button
+            className="admin-primary-button"
+            type="button"
+            disabled={reconcileBusy}
+            onClick={() => void reconcile()}
+          >
+            {reconcileBusy ? "Doğrulanıyor…" : "Sonuçları doğrula"}
+          </button>
+        </div>
+        {reconcileError && (
+          <div className="admin-inline-error" role="alert">
+            {reconcileError}
+          </div>
+        )}
+        {reconcileResult && (
+          <div className="admin-bulk-toolbar">
+            <strong>{reconcileResult.verified} kabul</strong>
+            <span>{reconcileResult.failed} red</span>
+            <span>{reconcileResult.stillProcessing} görev kuyrukta</span>
+          </div>
+        )}
+        {reconcileResult && reconcileResult.failures.length > 0 && (
+          <div className="admin-supplier-table-wrap">
+            <table className="admin-supplier-table">
+              <thead>
+                <tr>
+                  <th>Stok kodu</th>
+                  <th>Red nedeni</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reconcileResult.failures.map((failure) => (
+                  <tr key={failure.stockCode}>
+                    <td>{failure.stockCode}</td>
+                    <td>{failure.reason}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
 

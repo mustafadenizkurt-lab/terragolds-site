@@ -5,6 +5,7 @@ import { dispatchApiRequest } from "./api-dispatch";
 import { restockActiveSuppliers, syncActiveSuppliers } from "../lib/xml-sync/syncSupplier";
 import { syncTrendyolOrders } from "../lib/trendyol/orders";
 import { syncN11Orders } from "../lib/n11/orders";
+import { reconcileN11Tasks } from "../lib/n11/reconcile";
 import { reconcilePendingPaytrOrders } from "../lib/paytr-reconcile";
 import { scanTrendyolArchivedProducts } from "../lib/trendyol/archived-scan";
 import { auditAndFixTrendyolPrices } from "../lib/trendyol/price-audit";
@@ -114,6 +115,7 @@ const worker = {
     // aynı şekilde sessizce yutuyor, kurulum tamamlanana kadar cron'u
     // bozmuyor.
     ctx.waitUntil(syncN11Orders(env.DB).catch(() => {}));
+    ctx.waitUntil(reconcileN11Tasks(env.DB).catch(() => {}));
     // Kübra Kurt siparişinde keşfedildi: PayTR'nin bildirim URL'si
     // (callback) bir siparişe hiç ulaşmayabiliyor - müşteriden gerçekten
     // para çekiliyor ama sipariş sonsuza kadar "pending" kalıyor, kimse

@@ -202,7 +202,7 @@ export async function syncProductsToN11(
       `SELECT id, name, description, price, stock, image, hover_image AS hoverImage, category,
               xml_external_id AS xmlExternalId
        FROM products
-       WHERE status = 'published' AND n11_task_id IS NULL
+       WHERE status = 'published' AND n11_task_id IS NULL AND n11_last_error IS NULL
        ORDER BY id LIMIT ?`,
     )
     .bind(batchSize)
@@ -211,7 +211,7 @@ export async function syncProductsToN11(
   const remainingCount = async () => {
     const row = await db
       .prepare(
-        "SELECT COUNT(*) AS c FROM products WHERE status = 'published' AND n11_task_id IS NULL",
+        "SELECT COUNT(*) AS c FROM products WHERE status = 'published' AND n11_task_id IS NULL AND n11_last_error IS NULL",
       )
       .first<{ c: number }>();
     return row?.c ?? 0;

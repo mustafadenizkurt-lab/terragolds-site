@@ -122,6 +122,16 @@ export async function ensureN11Columns(db: D1Database) {
   if (!names.has("n11_price_synced")) {
     await db.prepare("ALTER TABLE products ADD COLUMN n11_price_synced INTEGER").run();
   }
+  // N11 ürün gönderimi asenkron: taskId almak kabul anlamına gelmiyor.
+  // n11_last_error, reconcile.ts'in görev sonucundan okuduğu red nedeni (dolu
+  // ürünler otomatik yeniden gönderilmez); n11_verified_at ise N11'in
+  // gerçekten kabul ettiğini doğruladığı an.
+  if (!names.has("n11_last_error")) {
+    await db.prepare("ALTER TABLE products ADD COLUMN n11_last_error TEXT").run();
+  }
+  if (!names.has("n11_verified_at")) {
+    await db.prepare("ALTER TABLE products ADD COLUMN n11_verified_at TEXT").run();
+  }
   // Trendyol'daki trendyol_image_locked_at ile aynı amaç: admin N11 panelinden
   // elle düzeltilmiş bir görseli, ileride eklenecek toplu görsel yenileme
   // araçlarının üzerine yazmaması için (bkz. lib/product-image-lock.ts -

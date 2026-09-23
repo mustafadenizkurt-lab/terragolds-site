@@ -208,3 +208,24 @@ test("Çelik Yüzük/Bileklik zorunlu özellikleri", () => {
   assert.deepEqual(bracelet.map((a) => a.id).sort((a, b) => a - b), [1, 22, 429, 1494]);
   assert.equal(attributesForCategory(1219222, { category: "Küpe", name: "316L Küpe" }).length, 3);
 });
+
+import { parseTaskDetails } from "../lib/n11/task-parse.ts";
+
+test("parseTaskDetails SUCCESS/FAIL/mükerrer stok kodunu ayırır", () => {
+  const parsed = parseTaskDetails({
+    status: "PROCESSED",
+    skus: [
+      { itemCode: "A1", status: "SUCCESS", reasons: [] },
+      { itemCode: "B2", status: "FAIL", reasons: ["ürün grubu bilgisiyle uyumlu değil"] },
+      { itemCode: "C3", status: "FAIL", reasons: ["C3 seller stock code tarafınızdan kullanılmaktadır."] },
+    ],
+  });
+  assert.equal(parsed.done, true);
+  assert.deepEqual(parsed.skus.map((s) => [s.stockCode, s.ok, s.alreadyExists]), [
+    ["A1", true, false],
+    ["B2", false, false],
+    ["C3", false, true],
+  ]);
+  assert.equal(parseTaskDetails({ status: "IN_QUEUE", skus: [] }).done, false);
+  assert.deepEqual(parseTaskDetails(null).skus, []);
+});
