@@ -301,6 +301,11 @@ export default function ShippingPanel({
                           Hepsiburada
                         </small>
                       )}
+                      {order.salesChannel === "n11" && (
+                        <small className="admin-order-channel-badge">
+                          N11
+                        </small>
+                      )}
                       {order.giftWrap && (
                         <small className="admin-order-channel-badge gift">
                           🎁 Hediye

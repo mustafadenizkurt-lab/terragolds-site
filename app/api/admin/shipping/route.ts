@@ -17,6 +17,7 @@ import { ensureTrendyolOrdersTable } from "../../../../lib/trendyol/orders";
 import { fulfillTrendyolOrder } from "../../../../lib/trendyol/fulfillment";
 import { ensureHepsiburadaOrdersTable } from "../../../../lib/hepsiburada/orders";
 import { fulfillHepsiburadaOrder } from "../../../../lib/hepsiburada/fulfillment";
+import { ensureN11OrdersTable } from "../../../../lib/n11/orders";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,7 @@ export async function GET(request: Request) {
     await ensureShopifyOrdersTable(db);
     await ensureTrendyolOrdersTable(db);
     await ensureHepsiburadaOrdersTable(db);
+    await ensureN11OrdersTable(db);
     await ensureOrderCheckoutColumns(db);
     await db
       .prepare(
@@ -48,7 +50,7 @@ export async function GET(request: Request) {
       )
       .run();
 
-    const [orders, items, trackingSettings, shopifyOrders, trendyolOrders, hepsiburadaOrders] = await Promise.all([
+    const [orders, items, trackingSettings, shopifyOrders, trendyolOrders, hepsiburadaOrders, n11Orders] = await Promise.all([
       db
         .prepare(
           `SELECT id, status, customer_first_name, customer_last_name,
@@ -198,6 +200,44 @@ export async function GET(request: Request) {
                   tracking_number, shipped_at, delivered_at, items_json,
                   created_at
            FROM hepsiburada_orders
+           WHERE status IN ('pending', 'paid', 'shipped', 'delivered')
+           ORDER BY created_at DESC
+           LIMIT 150`,
+        )
+        .all<{
+          id: string;
+          status: string;
+          customer_first_name: string;
+          customer_last_name: string;
+          customer_email: string;
+          customer_phone: string;
+          shipping_address: string;
+          shipping_district: string;
+          shipping_city: string;
+          shipping_postcode: string;
+          subtotal_amount: number;
+          discount_amount: number;
+          shipping_amount: number;
+          total_amount: number;
+          currency: string;
+          customer_note: string;
+          shipping_carrier: string;
+          tracking_number: string;
+          shipped_at: string | null;
+          delivered_at: string | null;
+          items_json: string;
+          created_at: string;
+        }>(),
+      db
+        .prepare(
+          `SELECT id, status, customer_first_name, customer_last_name,
+                  customer_email, customer_phone, shipping_address,
+                  shipping_district, shipping_city, shipping_postcode,
+                  subtotal_amount, discount_amount, shipping_amount,
+                  total_amount, currency, customer_note, shipping_carrier,
+                  tracking_number, shipped_at, delivered_at, items_json,
+                  created_at
+           FROM n11_orders
            WHERE status IN ('pending', 'paid', 'shipped', 'delivered')
            ORDER BY created_at DESC
            LIMIT 150`,
@@ -473,11 +513,74 @@ export async function GET(request: Request) {
         };
       });
 
+    const n11ShippingOrders: AdminShippingOrder[] =
+      n11Orders.results.map((order) => {
+        let parsedItems: AdminShippingOrder["items"] = [];
+        try {
+          parsedItems = (
+            JSON.parse(order.items_json) as {
+              name: string;
+              quantity: number;
+              unitPrice: number;
+            }[]
+          ).map((item) => ({
+            name: item.name,
+            quantity: Number(item.quantity),
+            unitPrice: Number(item.unitPrice),
+          }));
+        } catch {
+          parsedItems = [];
+        }
+        return {
+          id: order.id,
+          status: order.status,
+          customerName:
+            `${order.customer_first_name} ${order.customer_last_name}`.trim(),
+          email: order.customer_email,
+          phone: order.customer_phone,
+          address: [
+            order.shipping_address,
+            order.shipping_district,
+            order.shipping_city,
+            order.shipping_postcode,
+          ]
+            .filter(Boolean)
+            .join(", "),
+          subtotalAmount: Number(order.subtotal_amount) || 0,
+          discountAmount: Number(order.discount_amount) || 0,
+          shippingAmount: Number(order.shipping_amount) || 0,
+          discountCode: null,
+          totalAmount: Number(order.total_amount) || 0,
+          currency: order.currency,
+          paymentProvider: "n11",
+          salesChannel: "n11",
+          customerNote: order.customer_note,
+          giftWrap: false,
+          giftMessage: "",
+          isCod: false,
+          shippingCarrier: order.shipping_carrier,
+          trackingNumber: order.tracking_number,
+          trackingUrl: createShippingTrackingUrl({
+            carrier: order.shipping_carrier,
+            trackingNumber: order.tracking_number,
+          }),
+          autoDeliverAt:
+            order.status === "shipped"
+              ? createAutoDeliverAt(order.shipped_at)
+              : null,
+          shippedAt: order.shipped_at,
+          deliveredAt: order.delivered_at,
+          createdAt: order.created_at,
+          items: parsedItems,
+        };
+      });
+
     const combinedOrders = [
       ...shippingOrders,
       ...shopifyShippingOrders,
       ...hepsiburadaShippingOrders,
       ...trendyolShippingOrders,
+      ...n11ShippingOrders,
     ].sort(
       (a, b) => (a.createdAt < b.createdAt ? 1 : -1),
     );
@@ -528,9 +631,10 @@ export async function PATCH(request: Request) {
     await ensureShopifyOrdersTable(db);
     await ensureTrendyolOrdersTable(db);
     await ensureHepsiburadaOrdersTable(db);
+    await ensureN11OrdersTable(db);
     await ensureOrderCheckoutColumns(db);
 
-    let table: "orders" | "shopify_orders" | "trendyol_orders" | "hepsiburada_orders" = "orders";
+    let table: "orders" | "shopify_orders" | "trendyol_orders" | "hepsiburada_orders" | "n11_orders" = "orders";
     let current = await db
       .prepare("SELECT status FROM orders WHERE id = ? LIMIT 1")
       .bind(id)
@@ -553,6 +657,13 @@ export async function PATCH(request: Request) {
       table = "hepsiburada_orders";
       current = await db
         .prepare("SELECT status FROM hepsiburada_orders WHERE id = ? LIMIT 1")
+        .bind(id)
+        .first<{ status: string }>();
+    }
+    if (!current) {
+      table = "n11_orders";
+      current = await db
+        .prepare("SELECT status FROM n11_orders WHERE id = ? LIMIT 1")
         .bind(id)
         .first<{ status: string }>();
     }
@@ -685,6 +796,13 @@ export async function PATCH(request: Request) {
         });
       }
     }
+
+    // N11 için kasıtlı olarak "shipped" bildirimi YOK - N11'in resmi
+    // entegrasyon dokümanına göre PUT /rest/order/v1/update şu an sadece
+    // "Picking" durumunu destekliyor, "Shipped"/"Delivered" desteklenmiyor
+    // (bkz. lib/n11/fulfillment.ts'teki karar notu - o zaten siparişi ilk
+    // aktarırken "Picking" bildirimini yapıyor). D1'deki durum güncellemesi
+    // (yukarıda zaten yazıldı) burada da tek gerçek kaynak olarak kalıyor.
 
     return Response.json({ ok: true });
   } catch (error) {
