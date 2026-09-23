@@ -30,18 +30,23 @@ function stockCodeFor(product: { id: number; xmlExternalId: string | null }): st
   return product.xmlExternalId || `TG-${product.id}`;
 }
 
-// !!! HENÜZ DOLDURULMADI !!!
-// Trendyol'daki TRENDYOL_CATEGORY_BY_GROUP_SLUG ile aynı amaç ama N11
-// tarafında gerçek kategori ID'lerini bulmak için admin panelinden bir
-// "Kategori ara" aracı gerekiyor (bkz. app/admin/n11-sync-panel.tsx +
-// /api/admin/n11/categories) - appKey/appSecret girilip N11 API'sine
-// gerçek bir istek atılabildiğinde bu tabloyu jewelry alt kategorileriyle
-// (Trendyol'daki gibi "... Çelik ..." tercih ederek) dolduracağız. Boşken
-// categoryIdFor() bilinçli olarak hata fırlatıyor - sahte/tahmini bir ID
-// ile ürün göndermek yanlış kategoride onaysız/reddedilen ürünlere yol
-// açabilir (Trendyol'da tam bu yüzden %100 başarısız bir batch yaşanmıştı,
-// bkz. sync.ts'teki "Çelik Yüzük" notu).
-const N11_CATEGORY_BY_GROUP_SLUG: Record<string, number> = {};
+// Trendyol'daki TRENDYOL_CATEGORY_BY_GROUP_SLUG ile aynı amaç. Admin
+// panelindeki "Kategori ara" aracıyla (appKey/appSecret girildikten sonra)
+// bulunan gerçek N11 kategori ID'leri buraya ekleniyor - kademeli olarak,
+// bir grup için ID bulununca hemen eklenir. Henüz eklenmemiş bir grup için
+// categoryIdFor() bilinçli olarak hata fırlatmaya devam ediyor - sahte/
+// tahmini bir ID ile ürün göndermek yanlış kategoride onaysız/reddedilen
+// ürünlere yol açabilir (Trendyol'da tam bu yüzden %100 başarısız bir batch
+// yaşanmıştı, bkz. sync.ts'teki "Çelik Yüzük" notu).
+//
+// bileklik: 1219214 "Bijuteri Bileklik" - Terragolds'ın sattığı çelik/
+// pirinç kaplama taklit takı bu kategoriye giriyor, "Altın Bileklik"/
+// "Gümüş Bileklik"/"Pırlanta Bileklik" gibi benzer isimli ama gerçek
+// kıymetli maden/taş kategorileri YANLIŞ (N11 kategori aramasında ilk
+// bakışta karıştırılabilir).
+const N11_CATEGORY_BY_GROUP_SLUG: Record<string, number> = {
+  bileklik: 1219214,
+};
 
 export function categoryIdFor(product: { category: string; name: string }): number {
   const group = groupForCategory(product.category);
