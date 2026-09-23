@@ -75,7 +75,23 @@ const N11_SAHMERAN_HALHAL_CATEGORY_BY_KEYWORD: { keyword: string; categoryId: nu
   { keyword: "şahmeran", categoryId: 1191217 }, // Şahmeran
 ];
 
+// "Broş" ve "Piercing" sitenin nav grupları arasında hiç yok (category-groups.ts
+// > categoryGroups içinde karşılığı yok) - bu yüzden groupForCategory() bunlar
+// için hep undefined dönüyor ve categoryIdFor() hata fırlatıp tüm batch'i
+// durduruyordu. Nav grubu eklemek yerine (sitenin müşteri tarafı navigasyonunu
+// etkiler) sadece N11 tarafında ham kategori adına bakan doğrudan bir eşleme.
+const N11_DIRECT_CATEGORY_BY_KEYWORD: { keyword: string; categoryId: number }[] = [
+  { keyword: "broş", categoryId: 1191220 }, // Broş (2.El Broş, İğne, Rozet DEĞİL - o ikinci el)
+  { keyword: "piercing", categoryId: 1191216 }, // Piercing & Hızma
+];
+
 export function categoryIdFor(product: { category: string; name: string }): number {
+  const directHaystack = product.category.toLocaleLowerCase("tr-TR");
+  const directMatch = N11_DIRECT_CATEGORY_BY_KEYWORD.find((entry) =>
+    directHaystack.includes(entry.keyword),
+  );
+  if (directMatch) return directMatch.categoryId;
+
   // "Takı" (jenerik "takı" anlamında) bazı ürünlerde category alanına yanlış
   // girilmiş - gerçek isimlerine bakınca hepsi kolye/küpe/bilezik/yüzük.
   // groupForCategory() bu jenerik değerle hiçbir gruba eşleşmediği için ürün
