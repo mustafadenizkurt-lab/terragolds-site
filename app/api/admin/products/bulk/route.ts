@@ -7,6 +7,7 @@ import { pushInventoryToShopify } from "../../../../../lib/shopify/inventory";
 import { excludeSupplierProducts } from "../../../../../lib/xml-sync/excluded-products";
 import { pushStockAndPriceToTrendyol } from "../../../../../lib/trendyol/sync";
 import { pushStockAndPriceToHepsiburada } from "../../../../../lib/hepsiburada/sync";
+import { pushStockAndPriceToN11 } from "../../../../../lib/n11/sync";
 
 export const dynamic = "force-dynamic";
 
@@ -78,11 +79,12 @@ export async function PATCH(request: Request) {
       await excludeSupplierProducts(db, toExclude.results, admin.id);
 
       // Tek ürün DELETE route'uyla aynı mantık: satır silinmeden/taslağa
-      // alınmadan ÖNCE stoğu 0'a çekip Trendyol/Hepsiburada'ya bildiriyoruz -
-      // yoksa ürün bizde silinse de pazaryerinde son bildirilen stokla
-      // görünmeye devam edip sipariş alınabiliyordu. push* fonksiyonları
-      // "hiç listelenmemişse no-op" davranışında, satırın hâlâ var olmasına
-      // ihtiyaç duyuyorlar - bu yüzden sıra önemli.
+      // alınmadan ÖNCE stoğu 0'a çekip Trendyol/Hepsiburada/N11'e
+      // bildiriyoruz - yoksa ürün bizde silinse de pazaryerinde son
+      // bildirilen stokla görünmeye devam edip sipariş alınabiliyordu.
+      // push* fonksiyonları "hiç listelenmemişse no-op" davranışında,
+      // satırın hâlâ var olmasına ihtiyaç duyuyorlar - bu yüzden sıra
+      // önemli.
       await db
         .prepare(
           `UPDATE products SET stock = 0, updated_at = CURRENT_TIMESTAMP WHERE id IN (${placeholders})`,
@@ -97,6 +99,11 @@ export async function PATCH(request: Request) {
         }
         try {
           await pushStockAndPriceToHepsiburada(db, productId);
+        } catch {
+          // Self-heals on the next stock change or a manual price/stock backfill.
+        }
+        try {
+          await pushStockAndPriceToN11(db, productId);
         } catch {
           // Self-heals on the next stock change or a manual price/stock backfill.
         }

@@ -6,6 +6,7 @@ import { pushInventoryToShopify } from "../../../../../lib/shopify/inventory";
 import { excludeSupplierProducts } from "../../../../../lib/xml-sync/excluded-products";
 import { pushStockAndPriceToTrendyol } from "../../../../../lib/trendyol/sync";
 import { pushStockAndPriceToHepsiburada } from "../../../../../lib/hepsiburada/sync";
+import { pushStockAndPriceToN11 } from "../../../../../lib/n11/sync";
 import { ensureImageLockColumn } from "../../../../../lib/product-image-lock";
 
 export const dynamic = "force-dynamic";
@@ -139,11 +140,11 @@ export async function DELETE(request: Request, context: RouteContext) {
     );
   }
 
-  // Silme/hariç tutma sadece D1'i güncelliyordu - ürün Trendyol/Hepsiburada'da
-  // zaten listelenmişse, biz onu sildikten sonra da orada son bildirilen
-  // stok/fiyatla görünmeye devam ediyor, kimse fark etmeden sipariş
-  // alınabiliyordu. Satır silinmeden/taslağa alınmadan ÖNCE stoğu 0'a çekip
-  // pazaryerlerine bildiriyoruz (push* fonksiyonları zaten "hiç
+  // Silme/hariç tutma sadece D1'i güncelliyordu - ürün Trendyol/Hepsiburada/
+  // N11'de zaten listelenmişse, biz onu sildikten sonra da orada son
+  // bildirilen stok/fiyatla görünmeye devam ediyor, kimse fark etmeden
+  // sipariş alınabiliyordu. Satır silinmeden/taslağa alınmadan ÖNCE stoğu
+  // 0'a çekip pazaryerlerine bildiriyoruz (push* fonksiyonları zaten "hiç
   // listelenmemişse no-op" davranışında, satırın hâlâ var olmasına ihtiyaç
   // duyuyorlar - bu yüzden sıra önemli).
   await db
@@ -157,6 +158,11 @@ export async function DELETE(request: Request, context: RouteContext) {
   }
   try {
     await pushStockAndPriceToHepsiburada(db, id);
+  } catch {
+    // Self-heals on the next stock change or a manual price/stock backfill.
+  }
+  try {
+    await pushStockAndPriceToN11(db, id);
   } catch {
     // Self-heals on the next stock change or a manual price/stock backfill.
   }
