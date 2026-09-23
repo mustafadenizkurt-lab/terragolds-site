@@ -122,8 +122,10 @@ function toN11Product(
     categoryId: categoryIdFor(product),
     productMainId: stockCode,
     stockCode,
-    // barcode kasıtlı olarak gönderilmiyor - bkz. client.ts > N11Product
-    // tipi yorumu (gerçek bir GTIN'imiz yok, stockCode barkod değil).
+    // Gerçek bir GTIN'imiz yok (stockCode barkod değil) ama dokümanın her
+    // örneğinde alan açıkça null gönderiliyor - bkz. client.ts > N11Product
+    // tipi yorumu.
+    barcode: null,
     catalogId: null,
     title: product.name,
     // N11 muhtemelen boş açıklamayı reddediyor (Trendyol'da doğrulanmış bir
@@ -137,6 +139,9 @@ function toN11Product(
     currencyType: "TL",
     preparingDay: settings.preparingDay,
     shipmentTemplate: settings.shipmentTemplate,
+    // Dokümanın her örneğinde gönderiliyor (opsiyonel olsa da) - alıcı
+    // başına makul bir üst sınır, işimize dair bir kısıtlama değil.
+    maxPurchaseQuantity: 20,
     images: imageUrls.map((url, index) => ({ url, order: index + 1 })),
     attributes: attributesFor(product),
   };
