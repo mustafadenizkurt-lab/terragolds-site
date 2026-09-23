@@ -179,3 +179,32 @@ test("ringSizeFor numara/ayarlanabilir/varsayılan", () => {
   assert.equal(ringSizeFor({ name: "Gold Yüzük No: 17" }), "17");
   assert.equal(ringSizeFor({ name: "Gold Renk Kadın Yüzük" }), "Standart");
 });
+
+import { steelCategoryId } from "../lib/n11/attributes.ts";
+
+test("316L/çelik ürünler Çelik Takılar kategorilerine yönlenir", () => {
+  assert.equal(steelCategoryId("kolyeler", "316L Çelik Altın Renk 60 cm İtalyan Zincir Kolye"), 1219218);
+  assert.equal(steelCategoryId("bileklik", "316L Çelik Gold Renk Bileklik"), 1219220);
+  assert.equal(steelCategoryId("yuzuk", "Çelik Gümüş Yüzük"), 1219219);
+  assert.equal(steelCategoryId("kupeler", "316L Çelik Küpe"), 1219222);
+  assert.equal(steelCategoryId("kolyeler", "316L Çelik Kolye Küpe Set"), 1219223);
+  assert.equal(steelCategoryId("kolyeler", "Gold Renk Pirinç Kolye"), undefined);
+  assert.equal(steelCategoryId("antika-vintage", "Çelik Biblo"), undefined);
+});
+
+test("Çelik Kolye zincir uzunluğu adındaki cm'den valueId, yoksa Standart", () => {
+  const cm60 = attributesForCategory(1219218, { category: "Kolye", name: "316L Çelik Altın Renk 60 cm Kolye" });
+  assert.equal(cm60.find((a) => a.id === 947).valueId, 3348176);
+  const none = attributesForCategory(1219218, { category: "Kolye", name: "316L Çelik Kalp Kolye" });
+  assert.equal(none.find((a) => a.id === 947).valueId, 3347022);
+  assert.deepEqual(none.map((a) => a.id).sort((a, b) => a - b), [1, 22, 429, 947]);
+});
+
+test("Çelik Yüzük/Bileklik zorunlu özellikleri", () => {
+  const ring = attributesForCategory(1219219, { category: "Yüzük", name: "316L Çelik Ayarlamalı Yüzük" });
+  assert.equal(ring.find((a) => a.id === 620).valueId, 3344396);
+  assert.deepEqual(ring.map((a) => a.id).sort((a, b) => a - b), [1, 22, 429, 620]);
+  const bracelet = attributesForCategory(1219220, { category: "Bileklik", name: "316L Çelik Bileklik" });
+  assert.deepEqual(bracelet.map((a) => a.id).sort((a, b) => a - b), [1, 22, 429, 1494]);
+  assert.equal(attributesForCategory(1219222, { category: "Küpe", name: "316L Küpe" }).length, 3);
+});

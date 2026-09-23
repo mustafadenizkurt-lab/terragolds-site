@@ -7,7 +7,7 @@ import {
 } from "./client";
 import { getN11Credentials, type N11Credentials } from "./auth";
 import { roundToN11Price } from "./http-utils";
-import { attributesForCategory } from "./attributes";
+import { attributesForCategory, steelCategoryId } from "./attributes";
 import { toAbsoluteImageUrl } from "../shopify/client";
 import { groupForCategory } from "../category-groups";
 
@@ -113,6 +113,9 @@ export function categoryIdFor(product: { category: string; name: string }): numb
       `N11 kategori eşlemesi belirsiz: "${product.category}" ne "halhal" ne "şahmeran" içeriyor.`,
     );
   }
+
+  const steelId = steelCategoryId(group?.slug, product.name);
+  if (steelId) return steelId;
 
   const categoryId = group && N11_CATEGORY_BY_GROUP_SLUG[group.slug];
   if (!categoryId) {
@@ -225,7 +228,9 @@ export async function syncProductsToN11(
     const credentials = await getN11Credentials();
     const n11Products = pending.results.map((product) => toN11Product(product, credentials));
     const task = await createProduct(n11Products, credentials.integrator);
-    const taskId = task.id ?? "";
+    // N11 taskId'yi JSON sayısı olarak döndürüyor; string'e çevrilmezse D1'e
+    // REAL olarak bağlanıp "3344070382.0" şeklinde kaydediliyordu.
+    const taskId = String(task.id ?? "");
     for (const product of pending.results) {
       await db
         .prepare(
