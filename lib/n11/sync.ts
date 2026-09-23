@@ -159,7 +159,17 @@ function toN11Product(
     // tipi yorumu.
     barcode: null,
     catalogId: null,
-    title: product.name,
+    // N11'in resmi hata tablosu bunu doğruluyor: "ürün başlık alanı n11
+    // kataloğu ile eşleşiyor olabilir, bu durumda ürün başlığını
+    // farklılaştırmak için sonuna kod ekleyebilirsiniz." Bizim tedarikçi
+    // feed'inde birçok FARKLI ürün (farklı görsel/tasarım) aynı jenerik
+    // başlığı paylaşıyor (ör. "Pirinç Gümüş Renk Zirkon Taşlı Kadın Küpe")
+    // - Renk/Cinsiyet gibi zorunlu özellikler de aynı kalınca N11 bunları
+    // "aynı attributes kullanılmış" (mükerrer) diye reddediyordu. stockCode
+    // eklemek başlığı tekilleştirip hem bu mükerrer reddi hem de N11'in
+    // genel kataloğuyla yanlış eşleşme ("ürün grubuyla uyumlu değil",
+    // "Marka Eşleşmesi") ihtimalini azaltıyor.
+    title: `${product.name} - ${stockCode}`,
     // N11 muhtemelen boş açıklamayı reddediyor (Trendyol'da doğrulanmış bir
     // davranış) - D1'de birkaç ürünün açıklaması boş olabileceği için aynı
     // önlem: ürün adına düşülüyor.
