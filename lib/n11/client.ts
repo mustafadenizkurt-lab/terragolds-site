@@ -236,7 +236,13 @@ export type N11Product = {
   categoryId: number;
   productMainId: string;
   stockCode: string;
-  barcode: string;
+  // Zorunlu DEĞİL (resmi dokümanda "Hayır") - sadece gerçek ulusal barkod/
+  // GTIN için (dokümandaki örnekler hep sayısal, ör. 8806094924862).
+  // Bizim iç stok kodumuz (BYK4277 gibi alfasayısal) gerçek bir barkod
+  // değil - buraya yazmak N11'in doğrulamasını başarısız ediyordu ("Apide
+  // doğrulama işlemi başarısız oldu", 2/2 ürün reddedildi - ilk gerçek
+  // gönderim denemesinde keşfedildi).
+  barcode?: string;
   title: string;
   description: string;
   quantity: number;
