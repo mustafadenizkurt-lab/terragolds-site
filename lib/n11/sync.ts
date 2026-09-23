@@ -124,6 +124,7 @@ function toN11Product(
     stockCode,
     // barcode kasıtlı olarak gönderilmiyor - bkz. client.ts > N11Product
     // tipi yorumu (gerçek bir GTIN'imiz yok, stockCode barkod değil).
+    catalogId: null,
     title: product.name,
     // N11 muhtemelen boş açıklamayı reddediyor (Trendyol'da doğrulanmış bir
     // davranış) - D1'de birkaç ürünün açıklaması boş olabileceği için aynı

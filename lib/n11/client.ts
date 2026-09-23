@@ -246,12 +246,18 @@ export type N11Product = {
   productMainId: string;
   stockCode: string;
   // Zorunlu DEĞİL (resmi dokümanda "Hayır") - sadece gerçek ulusal barkod/
-  // GTIN için (dokümandaki örnekler hep sayısal, ör. 8806094924862).
-  // Bizim iç stok kodumuz (BYK4277 gibi alfasayısal) gerçek bir barkod
-  // değil - buraya yazmak N11'in doğrulamasını başarısız ediyordu ("Apide
-  // doğrulama işlemi başarısız oldu", 2/2 ürün reddedildi - ilk gerçek
-  // gönderim denemesinde keşfedildi).
+  // GTIN için (dokümandaki örnekler hep sayısal, ör. 8806094924862). Bizim
+  // iç stok kodumuz (BYK4277 gibi alfasayısal) gerçek bir barkod değil, bu
+  // yüzden hiç gönderilmiyor - ama bunu kaldırmak TASK_ERR_001'i tek
+  // başına ÇÖZMEDİ (aynı jenerik hata farklı ürünlerle de tekrarlandı),
+  // sorun başka bir yerde.
   barcode?: string;
+  // Dokümanın HER örneğinde bu alan atlanmıyor, açıkça null olarak
+  // gönderiliyor - zorunlu olmasa da (Hayır) bazı katı deserializer'lar
+  // isteğe bağlı alanın bile alanın KENDİSİNİN var olmasını isteyebiliyor.
+  // TASK_ERR_001 hatasını teşhis ederken denenen düşük riskli bir uyum
+  // adımı.
+  catalogId: null;
   title: string;
   description: string;
   quantity: number;
