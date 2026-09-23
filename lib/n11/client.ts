@@ -247,11 +247,11 @@ export type N11Product = {
   stockCode: string;
   // Zorunlu DEĞİL (resmi dokümanda "Hayır") - sadece gerçek ulusal barkod/
   // GTIN için (dokümandaki örnekler hep sayısal, ör. 8806094924862). Bizim
-  // iç stok kodumuz (BYK4277 gibi alfasayısal) gerçek bir barkod değil, bu
-  // yüzden hiç gönderilmiyor - ama bunu kaldırmak TASK_ERR_001'i tek
-  // başına ÇÖZMEDİ (aynı jenerik hata farklı ürünlerle de tekrarlandı),
-  // sorun başka bir yerde.
-  barcode?: string;
+  // iç stok kodumuz (BYK4277 gibi alfasayısal) gerçek bir barkod değil, ama
+  // dokümanın HER örneğinde bu alan (değer olmasa da) açıkça null olarak
+  // gönderiliyor, hiç atlanmıyor - o yüzden alanı tamamen kaldırmak yerine
+  // null gönderiyoruz (catalogId'deki aynı gerekçe).
+  barcode: null;
   // Dokümanın HER örneğinde bu alan atlanmıyor, açıkça null olarak
   // gönderiliyor - zorunlu olmasa da (Hayır) bazı katı deserializer'lar
   // isteğe bağlı alanın bile alanın KENDİSİNİN var olmasını isteyebiliyor.
@@ -267,6 +267,11 @@ export type N11Product = {
   currencyType: "TL";
   preparingDay: number;
   shipmentTemplate: string;
+  // Zorunlu DEĞİL (resmi dokümanda "Hayır") ama dokümanın HER örneğinde
+  // gönderiliyor (hep 5) - maxPurchaseQuantity=0 gönderilmemesi için burada
+  // sabit makul bir üst sınır kullanıyoruz (Trendyol/Hepsiburada tarafında
+  // eşdeğeri yok, N11'e özgü).
+  maxPurchaseQuantity: number;
   images: N11ProductImage[];
   attributes?: N11ProductAttribute[];
 };
