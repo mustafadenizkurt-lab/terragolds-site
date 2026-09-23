@@ -66,6 +66,12 @@ const N11_CATEGORY_BY_GROUP_SLUG: Record<string, number> = {
 // etmek gerekiyor.
 const N11_SAHMERAN_HALHAL_CATEGORY_BY_KEYWORD: { keyword: string; categoryId: number }[] = [
   { keyword: "halhal", categoryId: 1191218 }, // Halhal
+  // D1'deki gerçek kategori adı boşluklu "Hal Hal" olabiliyor (bkz.
+  // category-groups.ts > sahmeran-halhal grubunun "hal hal" keyword'ü) -
+  // bu varyant eksikti, tek bir "Hal Hal" ürünü tüm batch'i (100 ürün)
+  // reddettiriyordu (categoryIdFor() attığı hata pending.results.map()'i
+  // baştan patlatıyor).
+  { keyword: "hal hal", categoryId: 1191218 }, // Halhal (boşluklu yazım)
   { keyword: "şahmeran", categoryId: 1191217 }, // Şahmeran
 ];
 
