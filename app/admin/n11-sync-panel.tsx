@@ -401,20 +401,17 @@ export default function N11SyncPanel({
         )}
         {lastResult && lastResult.errors.length > 0 && (
           <div className="admin-supplier-table-wrap">
-            <table className="admin-supplier-table">
-              <thead>
-                <tr>
-                  <th>Hata</th>
-                </tr>
-              </thead>
-              <tbody>
-                {lastResult.errors.map((message, index) => (
-                  <tr key={index}>
-                    <td>{message}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            {/* Tablo hücresi taşan uzun hata metinlerini (özellikle N11'in
+                ham API yanıtını içerenleri) mobilde kesip kopyalanamaz hale
+                getiriyordu - salt-okunur, sarmalı, dokunup seçilip
+                kopyalanabilen bir metin alanı kullanılıyor. */}
+            <textarea
+              readOnly
+              value={lastResult.errors.join("\n\n")}
+              rows={Math.min(10, lastResult.errors.length * 3)}
+              style={{ width: "100%", fontFamily: "monospace", fontSize: 12 }}
+              onFocus={(event) => event.currentTarget.select()}
+            />
           </div>
         )}
 
