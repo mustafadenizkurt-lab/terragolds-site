@@ -408,8 +408,17 @@ export default function N11SyncPanel({
             <textarea
               readOnly
               value={lastResult.errors.join("\n\n")}
-              rows={Math.min(10, lastResult.errors.length * 3)}
-              style={{ width: "100%", fontFamily: "monospace", fontSize: 12 }}
+              rows={Math.min(14, lastResult.errors.length * 4)}
+              style={{
+                width: "100%",
+                maxWidth: "100%",
+                boxSizing: "border-box",
+                fontFamily: "monospace",
+                fontSize: 12,
+                whiteSpace: "pre-wrap",
+                overflowWrap: "anywhere",
+                wordBreak: "break-all",
+              }}
               onFocus={(event) => event.currentTarget.select()}
             />
           </div>
