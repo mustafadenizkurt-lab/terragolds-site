@@ -140,6 +140,14 @@ export async function ensureN11Columns(db: D1Database) {
   if (!names.has("n11_image_locked_at")) {
     await db.prepare("ALTER TABLE products ADD COLUMN n11_image_locked_at TEXT").run();
   }
+  // Site fiyatından (products.price) bağımsız, sadece N11'e giden dinamik
+  // fiyat - bkz. lib/n11/pricing.ts (Trendyol'daki trendyol_override_price
+  // ile aynı desen). Burada da (pricing.ts'in kendi ensure fonksiyonuna ek
+  // olarak) garanti ediliyor çünkü pushStockAndPriceToN11/pushPendingN11Prices
+  // bu kolonu pricing.ts hiç çağrılmamış olsa bile okuyor.
+  if (!names.has("n11_override_price")) {
+    await db.prepare("ALTER TABLE products ADD COLUMN n11_override_price INTEGER").run();
+  }
   await db
     .prepare(
       "CREATE UNIQUE INDEX IF NOT EXISTS products_n11_stock_code_unique ON products(n11_stock_code) WHERE n11_stock_code IS NOT NULL",

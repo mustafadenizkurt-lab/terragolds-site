@@ -2,6 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { buildN11Headers, roundToN11Price } from "../lib/n11/http-utils.ts";
 import { mapN11OrderPayload } from "../lib/n11/order-mapping.ts";
+import {
+  computeRequiredPrice,
+  n11EffectiveCommissionRate,
+  n11ListPriceFor,
+  N11_SHIPPING_COST,
+} from "../lib/n11/pricing-formula.ts";
 
 // N11'in resmi entegrasyon dokümanındaki (kullanıcının indirdiği PDF/DOCX)
 // product-create/update, price-stock-update ve shipmentPackages
@@ -228,4 +234,30 @@ test("parseTaskDetails SUCCESS/FAIL/mükerrer stok kodunu ayırır", () => {
   ]);
   assert.equal(parseTaskDetails({ status: "IN_QUEUE", skus: [] }).done, false);
   assert.deepEqual(parseTaskDetails(null).skus, []);
+});
+
+test("computeRequiredPrice maliyet 100 TL için beklenen fiyatı üretir", () => {
+  // productCostWithVat = 100 * 1.2 = 120
+  // totalCost = 120 + 85 (N11_SHIPPING_COST) = 205
+  // targetProfit = 120 * 0.5 = 60
+  // requiredPrice = (205 + 60) / (1 - efektifKomisyon)
+  const result = computeRequiredPrice(100);
+  assert.ok(Math.abs(result - 265 / (1 - n11EffectiveCommissionRate())) < 1e-9);
+});
+
+test("computeRequiredPrice maliyet arttıkça gerekli fiyatı da artırır", () => {
+  const low = computeRequiredPrice(50);
+  const high = computeRequiredPrice(200);
+  assert.ok(high > low);
+});
+
+test("computeRequiredPrice maliyet 0 için sadece sabit maliyeti (kargo) yansıtır", () => {
+  const result = computeRequiredPrice(0);
+  assert.ok(Math.abs(result - N11_SHIPPING_COST / (1 - n11EffectiveCommissionRate())) < 1e-9);
+});
+
+test("n11ListPriceFor satış fiyatının üzerinde bir liste fiyatı üretir", () => {
+  const listPrice = n11ListPriceFor(1000);
+  assert.ok(listPrice > 1000);
+  assert.equal(listPrice, Math.round(1000 * 1.01));
 });

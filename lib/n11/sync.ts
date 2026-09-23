@@ -8,6 +8,7 @@ import {
 import { getN11Credentials, type N11Credentials } from "./auth";
 import { roundToN11Price } from "./http-utils";
 import { attributesForCategory, steelCategoryId } from "./attributes";
+import { n11ListPriceFor } from "./pricing-formula";
 import { toAbsoluteImageUrl } from "../shopify/client";
 import { groupForCategory } from "../category-groups";
 
@@ -16,6 +17,7 @@ type PendingProduct = {
   name: string;
   description: string;
   price: number;
+  n11OverridePrice: number | null;
   stock: number;
   image: string;
   hoverImage: string | null;
@@ -148,7 +150,10 @@ function toN11Product(
     .map((url) => (url ? toAbsoluteImageUrl(url) : null))
     .filter((url): url is string => Boolean(url));
   const stockCode = stockCodeFor(product);
-  const price = roundToN11Price(product.price);
+  // N11'e giden fiyat site fiyatından bağımsız - komisyon+KDV+hizmet
+  // bedeli+stopaj sonrası hedef kâr marjını koruyan n11_override_price
+  // varsa o kullanılır (bkz. lib/n11/pricing.ts), yoksa site fiyatına düşer.
+  const price = roundToN11Price(product.n11OverridePrice ?? product.price);
   const categoryId = categoryIdFor(product);
   return {
     categoryId,
@@ -176,7 +181,7 @@ function toN11Product(
     description: product.description.trim() || product.name,
     quantity: product.stock,
     salePrice: price,
-    listPrice: price,
+    listPrice: n11ListPriceFor(price),
     vatRate: 20,
     currencyType: "TL",
     preparingDay: settings.preparingDay,
@@ -209,8 +214,8 @@ export async function syncProductsToN11(
 
   const pending = await db
     .prepare(
-      `SELECT id, name, description, price, stock, image, hover_image AS hoverImage, category,
-              xml_external_id AS xmlExternalId
+      `SELECT id, name, description, price, n11_override_price AS n11OverridePrice, stock,
+              image, hover_image AS hoverImage, category, xml_external_id AS xmlExternalId
        FROM products
        WHERE status = 'published' AND n11_task_id IS NULL AND n11_last_error IS NULL
        ORDER BY id LIMIT ?`,
@@ -260,8 +265,9 @@ export async function syncProductsToN11(
 }
 
 // D1 kaynak (source of truth) - Trendyol'daki pushStockAndPriceToTrendyol
-// ile aynı prensip (override fiyat kavramı N11 için henüz eklenmedi,
-// doğrudan site fiyatı gönderiliyor).
+// ile aynı prensip. n11_override_price varsa (bkz. lib/n11/pricing.ts) site
+// fiyatı yerine o gönderilir - n11_price_synced de karşılaştırma tutarlı
+// kalsın diye her zaman GERÇEKTEN gönderilen (efektif) fiyatı tutar.
 export async function pushStockAndPriceToN11(
   db: D1Database,
   productId: number,
@@ -270,23 +276,30 @@ export async function pushStockAndPriceToN11(
 
   const product = await db
     .prepare(
-      `SELECT price, stock, n11_stock_code AS n11StockCode
+      `SELECT price, n11_override_price AS n11OverridePrice, stock,
+              n11_stock_code AS n11StockCode
        FROM products WHERE id = ?`,
     )
     .bind(productId)
-    .first<{ price: number; stock: number; n11StockCode: string | null }>();
+    .first<{
+      price: number;
+      n11OverridePrice: number | null;
+      stock: number;
+      n11StockCode: string | null;
+    }>();
 
   if (!product?.n11StockCode) return;
 
   const credentials = await getN11Credentials();
-  const price = roundToN11Price(product.price);
+  const effectivePrice = product.n11OverridePrice ?? product.price;
+  const price = roundToN11Price(effectivePrice);
   await updateStockAndPrice(
     [
       {
         stockCode: product.n11StockCode,
         quantity: product.stock,
         salePrice: price,
-        listPrice: price,
+        listPrice: n11ListPriceFor(price),
         currencyType: "TL",
       },
     ],
@@ -295,7 +308,7 @@ export async function pushStockAndPriceToN11(
 
   await db
     .prepare("UPDATE products SET n11_price_synced = ? WHERE id = ?")
-    .bind(product.price, productId)
+    .bind(effectivePrice, productId)
     .run();
 }
 
@@ -315,23 +328,29 @@ export async function pushPendingN11Prices(
 ): Promise<N11PricePushResult> {
   await ensureN11Columns(db);
 
+  // n11_override_price varsa (bkz. lib/n11/pricing.ts) hedef fiyat odur,
+  // yoksa site fiyatına düşülür - drift tespiti (n11_price_synced ile
+  // kıyas) her zaman bu EFEKTİF fiyata göre yapılmalı, yoksa override
+  // uygulanmış bir ürün site fiyatı değişmediği sürece hiç yeniden
+  // gönderilmez sanılır.
   const pending = await db
     .prepare(
-      `SELECT id, stock, price, n11_stock_code AS n11StockCode
+      `SELECT id, stock, price, n11_override_price AS n11OverridePrice,
+              n11_stock_code AS n11StockCode
        FROM products
        WHERE n11_stock_code IS NOT NULL
-         AND (n11_price_synced IS NULL OR n11_price_synced != price)
+         AND (n11_price_synced IS NULL OR n11_price_synced != COALESCE(n11_override_price, price))
        ORDER BY id LIMIT ?`,
     )
     .bind(batchSize)
-    .all<{ id: number; stock: number; price: number; n11StockCode: string }>();
+    .all<{ id: number; stock: number; price: number; n11OverridePrice: number | null; n11StockCode: string }>();
 
   const remainingCount = async () => {
     const row = await db
       .prepare(
         `SELECT COUNT(*) AS c FROM products
          WHERE n11_stock_code IS NOT NULL
-           AND (n11_price_synced IS NULL OR n11_price_synced != price)`,
+           AND (n11_price_synced IS NULL OR n11_price_synced != COALESCE(n11_override_price, price))`,
       )
       .first<{ c: number }>();
     return row?.c ?? 0;
@@ -341,16 +360,19 @@ export async function pushPendingN11Prices(
     return { pushed: 0, failed: 0, remaining: 0, errors: [] };
   }
 
+  const effectivePriceFor = (row: { price: number; n11OverridePrice: number | null }) =>
+    row.n11OverridePrice ?? row.price;
+
   try {
     const credentials = await getN11Credentials();
     await updateStockAndPrice(
       pending.results.map((row) => {
-        const price = roundToN11Price(row.price);
+        const price = roundToN11Price(effectivePriceFor(row));
         return {
           stockCode: row.n11StockCode,
           quantity: row.stock,
           salePrice: price,
-          listPrice: price,
+          listPrice: n11ListPriceFor(price),
           currencyType: "TL",
         };
       }),
@@ -366,7 +388,7 @@ export async function pushPendingN11Prices(
   }
 
   const updateStmt = db.prepare("UPDATE products SET n11_price_synced = ? WHERE id = ?");
-  await db.batch(pending.results.map((row) => updateStmt.bind(row.price, row.id)));
+  await db.batch(pending.results.map((row) => updateStmt.bind(effectivePriceFor(row), row.id)));
 
   return { pushed: pending.results.length, failed: 0, remaining: await remainingCount(), errors: [] };
 }
