@@ -39,13 +39,16 @@ function stockCodeFor(product: { id: number; xmlExternalId: string | null }): st
 // ürünlere yol açabilir (Trendyol'da tam bu yüzden %100 başarısız bir batch
 // yaşanmıştı, bkz. sync.ts'teki "Çelik Yüzük" notu).
 //
-// bileklik: 1219214 "Bijuteri Bileklik" - Terragolds'ın sattığı çelik/
-// pirinç kaplama taklit takı bu kategoriye giriyor, "Altın Bileklik"/
-// "Gümüş Bileklik"/"Pırlanta Bileklik" gibi benzer isimli ama gerçek
+// Her grupta aynı desen: N11'de "Bijuteri ..." kategorisi doğru olan -
+// "Altın ...", "Gümüş ..." ve "Pırlanta ..." benzer isimli ama gerçek
 // kıymetli maden/taş kategorileri YANLIŞ (N11 kategori aramasında ilk
-// bakışta karıştırılabilir).
+// bakışta karıştırılabilir), Terragolds çelik/pirinç kaplama taklit takı
+// satıyor.
 const N11_CATEGORY_BY_GROUP_SLUG: Record<string, number> = {
-  bileklik: 1219214,
+  bileklik: 1219214, // Bijuteri Bileklik
+  kolyeler: 1219212, // Bijuteri Kolye
+  yuzuk: 1219213, // Bijuteri Yüzük
+  kupeler: 1219216, // Bijuteri Küpe
 };
 
 export function categoryIdFor(product: { category: string; name: string }): number {
