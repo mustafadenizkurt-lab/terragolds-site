@@ -74,23 +74,32 @@ async function n11Fetch<T>(
   }
 
   if (!response.ok) {
-    let message = await response.text();
+    const rawBody = await response.text();
+    let message = rawBody;
     try {
-      const parsed = JSON.parse(message) as N11ErrorPayload;
+      const parsed = JSON.parse(rawBody) as N11ErrorPayload;
       const fromErrors = parsed.errors
         ?.map((error) => [error.code, error.message].filter(Boolean).join(": "))
         .filter(Boolean)
         .join(", ");
-      message = fromErrors || parsed.message || parsed.errorMessage || message;
+      message = fromErrors || parsed.message || parsed.errorMessage || rawBody;
     } catch {
       // N11 bu sefer JSON döndürmedi - ham gövdeyle devam et.
     }
+    // Teşhis: ayrıştırdığımız "message" alanı N11'in gerçek şikayetini
+    // (hangi alan, neden) hep içermiyor - varsayılan errors[].code/message
+    // alan adları yanlış çıkabilir. Ham gövdeyi de hata metnine ekliyoruz
+    // ki admin panelinde görünen hata, N11'in TAM ne dediğini kaybetmesin
+    // (2 üst üste "Apide doğrulama işlemi başarısız oldu" denemesi hiçbir
+    // ayrıntı vermedi - bu, ayrıştırmanın gerçek alanları kaçırdığından
+    // şüphelendiriyor).
+    const detail = message === rawBody ? "" : ` — HAM YANIT: ${rawBody.slice(0, 1000)}`;
     if (response.status === 401 || response.status === 403) {
       throw new Error(
-        `N11 kimlik doğrulama hatası (${response.status}): appKey/appSecret'i kontrol edin. ${message}`,
+        `N11 kimlik doğrulama hatası (${response.status}): appKey/appSecret'i kontrol edin. ${message}${detail}`,
       );
     }
-    throw new Error(`N11 API isteği başarısız (${response.status}): ${message}`);
+    throw new Error(`N11 API isteği başarısız (${response.status}): ${message}${detail}`);
   }
 
   return response.json() as Promise<T>;
