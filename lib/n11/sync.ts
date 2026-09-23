@@ -5,6 +5,8 @@ import {
   type N11Product,
   type N11ProductAttribute,
 } from "./client";
+import { getN11Credentials, type N11Credentials } from "./auth";
+import { roundToN11Price } from "./http-utils";
 import { toAbsoluteImageUrl } from "../shopify/client";
 import { groupForCategory } from "../category-groups";
 
@@ -67,12 +69,17 @@ function attributesFor(
 }
 
 // N11 en fazla kaç görsel kabul ediyor net değil - Trendyol'daki gibi ana
-// görsel (image) + hover görseli (hoverImage) sırasıyla gönderiliyor.
-function toN11Product(product: PendingProduct): N11Product {
+// görsel (image) + hover görseli (hoverImage) sırasıyla, N11'in resmi
+// şemasındaki order alanıyla (1, 2, ...) gönderiliyor.
+function toN11Product(
+  product: PendingProduct,
+  settings: Pick<N11Credentials, "shipmentTemplate" | "preparingDay">,
+): N11Product {
   const imageUrls = [product.image, product.hoverImage]
     .map((url) => (url ? toAbsoluteImageUrl(url) : null))
     .filter((url): url is string => Boolean(url));
   const stockCode = stockCodeFor(product);
+  const price = roundToN11Price(product.price);
   return {
     categoryId: categoryIdFor(product),
     productMainId: stockCode,
@@ -84,11 +91,13 @@ function toN11Product(product: PendingProduct): N11Product {
     // önlem: ürün adına düşülüyor.
     description: product.description.trim() || product.name,
     quantity: product.stock,
-    salePrice: product.price,
-    listPrice: product.price,
+    salePrice: price,
+    listPrice: price,
     vatRate: 20,
     currencyType: "TL",
-    images: imageUrls.map((url) => ({ url })),
+    preparingDay: settings.preparingDay,
+    shipmentTemplate: settings.shipmentTemplate,
+    images: imageUrls.map((url, index) => ({ url, order: index + 1 })),
     attributes: attributesFor(product),
   };
 }
@@ -139,9 +148,10 @@ export async function syncProductsToN11(
   let failed = 0;
   const errors: string[] = [];
   try {
-    const n11Products = pending.results.map(toN11Product);
-    const task = await createProduct(n11Products);
-    const taskId = task.taskId ?? task.id ?? "";
+    const credentials = await getN11Credentials();
+    const n11Products = pending.results.map((product) => toN11Product(product, credentials));
+    const task = await createProduct(n11Products, credentials.integrator);
+    const taskId = task.id ?? "";
     for (const product of pending.results) {
       await db
         .prepare(
@@ -179,14 +189,20 @@ export async function pushStockAndPriceToN11(
 
   if (!product?.n11StockCode) return;
 
-  await updateStockAndPrice([
-    {
-      stockCode: product.n11StockCode,
-      quantity: product.stock,
-      salePrice: product.price,
-      listPrice: product.price,
-    },
-  ]);
+  const credentials = await getN11Credentials();
+  const price = roundToN11Price(product.price);
+  await updateStockAndPrice(
+    [
+      {
+        stockCode: product.n11StockCode,
+        quantity: product.stock,
+        salePrice: price,
+        listPrice: price,
+        currencyType: "TL",
+      },
+    ],
+    credentials.integrator,
+  );
 
   await db
     .prepare("UPDATE products SET n11_price_synced = ? WHERE id = ?")
@@ -237,13 +253,19 @@ export async function pushPendingN11Prices(
   }
 
   try {
+    const credentials = await getN11Credentials();
     await updateStockAndPrice(
-      pending.results.map((row) => ({
-        stockCode: row.n11StockCode,
-        quantity: row.stock,
-        salePrice: row.price,
-        listPrice: row.price,
-      })),
+      pending.results.map((row) => {
+        const price = roundToN11Price(row.price);
+        return {
+          stockCode: row.n11StockCode,
+          quantity: row.stock,
+          salePrice: price,
+          listPrice: price,
+          currencyType: "TL",
+        };
+      }),
+      credentials.integrator,
     );
   } catch (error) {
     return {

@@ -8,6 +8,9 @@ export type N11OrderLineItem = {
   name: string;
   quantity: number;
   unitPrice: number;
+  // "Picking" onayında (PUT /rest/order/v1/update) gönderilmesi gereken
+  // satır kimliği - N11'in resmi dokümanındaki orderLineId.
+  lineId: number | null;
 };
 
 export type MappedN11Order = {
@@ -36,10 +39,10 @@ function toKurus(amount: number | undefined): number {
   return Number.isFinite(amount) ? Math.round((amount as number) * 100) : 0;
 }
 
-// N11'in gerçek durum sözlüğü (ör. "New"/"Picking"/"Shipped"/"Delivered"/
-// "Cancelled") üçüncü taraf kaynaklarda net doğrulanmadı - normalize edilmiş
-// metinde bilinen anahtar kelimeler aranıyor, eşleşmezse "paid" varsayılıyor
-// (Trendyol'daki mapStatus ile aynı temkinli yaklaşım).
+// N11'in shipmentPackageStatus sözlüğü (resmi dokümanda "Picking" dışındaki
+// değerler örneklenmedi) - normalize edilmiş metinde bilinen anahtar
+// kelimeler aranıyor, eşleşmezse "paid" varsayılıyor (Trendyol'daki
+// mapStatus ile aynı temkinli yaklaşım).
 function mapStatus(n11Status: string): string {
   const normalized = (n11Status ?? "").trim().toLocaleLowerCase("tr-TR");
   if (normalized.includes("ship")) return "shipped";
@@ -51,8 +54,8 @@ function mapStatus(n11Status: string): string {
 
 export function mapN11OrderPayload(payload: {
   orderNumber: string;
-  status: string;
-  totalAmount: number;
+  shipmentPackageStatus: string;
+  totalAmount?: number;
   discountAmount?: number;
   customerFirstName?: string;
   customerLastName?: string;
@@ -68,23 +71,30 @@ export function mapN11OrderPayload(payload: {
   };
   lines: {
     stockCode: string;
-    productName: string;
+    productName?: string;
     quantity: number;
     price: number;
     productId?: number;
+    orderLineId?: number;
   }[];
 }): MappedN11Order {
   const address = payload.shippingAddress;
   const items: N11OrderLineItem[] = (payload.lines ?? []).map((line) => ({
     productId: line.productId ?? null,
-    name: line.productName,
+    name: line.productName ?? line.stockCode,
     quantity: line.quantity,
     unitPrice: toKurus(line.price),
+    lineId: line.orderLineId ?? null,
   }));
+
+  // totalAmount resmi dokümanda örneklenmedi (sadece billingAddress/
+  // shippingAddress/orderNumber/lines/shipmentPackageStatus doğrulandı) -
+  // varsa kullanılıyor, yoksa satır toplamından hesaplanıyor.
+  const computedTotal = items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
 
   return {
     orderNumber: payload.orderNumber,
-    status: mapStatus(payload.status),
+    status: mapStatus(payload.shipmentPackageStatus),
     customerFirstName: payload.customerFirstName ?? "",
     customerLastName: payload.customerLastName ?? "",
     customerEmail: payload.customerEmail ?? "",
@@ -94,7 +104,7 @@ export function mapN11OrderPayload(payload: {
     shippingCity: address?.city ?? "",
     shippingPostcode: address?.postalCode ?? "",
     shippingCountry: address?.countryCode ?? "TR",
-    totalAmount: toKurus(payload.totalAmount),
+    totalAmount: payload.totalAmount !== undefined ? toKurus(payload.totalAmount) : computedTotal,
     discountAmount: toKurus(payload.discountAmount),
     currency: "TRY",
     trackingNumber: payload.trackingNumber ?? "",

@@ -1,5 +1,6 @@
 import { mapN11OrderPayload, type MappedN11Order } from "./order-mapping";
 import { getOrders, type N11OrderPackage } from "./client";
+import { acknowledgeN11Order } from "./fulfillment";
 
 export async function ensureN11OrdersTable(db: D1Database) {
   // trendyol_orders/hepsiburada_orders ile birebir aynı gerekçe: ana
@@ -52,7 +53,7 @@ export async function importN11Order(
 
   const mapped: MappedN11Order = mapN11OrderPayload({
     orderNumber: payload.orderNumber,
-    status: payload.status,
+    shipmentPackageStatus: payload.shipmentPackageStatus,
     totalAmount: payload.totalAmount,
     discountAmount: payload.discountAmount,
     customerFirstName: payload.customerFirstName,
@@ -66,14 +67,16 @@ export async function importN11Order(
       quantity: line.quantity,
       price: line.price,
       productId: line.productId,
+      orderLineId: line.orderLineId,
     })),
   });
   const subtotalAmount = mapped.items.reduce(
     (sum, item) => sum + item.unitPrice * item.quantity,
     0,
   );
+  const packageId = payload.shipmentPackageId ?? payload.id;
 
-  await db
+  const result = await db
     .prepare(
       `INSERT OR IGNORE INTO n11_orders (
         id, status, customer_first_name, customer_last_name, customer_email,
@@ -100,11 +103,29 @@ export async function importN11Order(
       mapped.totalAmount,
       mapped.currency,
       mapped.trackingNumber,
-      String(payload.id),
+      packageId !== undefined ? String(packageId) : null,
       JSON.stringify(mapped.items),
       JSON.stringify(payload),
     )
     .run();
+
+  // Sadece İLK kez görülen (yeni eklenen) siparişte N11'e "hazırlanıyor"
+  // bilgisini bildir - INSERT OR IGNORE ile atlanan (zaten bilinen) bir
+  // sipariş için tekrar tekrar Picking isteği atmaya gerek yok. N11'in
+  // desteklediği tek sipariş güncellemesi bu olduğu için (bkz.
+  // fulfillment.ts'teki karar notu) "kargoya verildi" bildirimi yerine
+  // "sipariş kabul edildi/hazırlanıyor" bildirimi olarak kullanılıyor.
+  if (result.meta.changes > 0) {
+    const lineIds = mapped.items
+      .map((item) => item.lineId)
+      .filter((id): id is number => id !== null);
+    try {
+      await acknowledgeN11Order(lineIds);
+    } catch {
+      // Sipariş D1'e zaten kaydedildi - N11'e Picking bildirimi
+      // başarısız olsa bile admin panelde sipariş görünmeye devam etmeli.
+    }
+  }
 }
 
 export type N11OrderSyncResult = {
@@ -118,13 +139,16 @@ export type N11OrderSyncResult = {
 export async function syncN11Orders(db: D1Database): Promise<N11OrderSyncResult> {
   await ensureN11OrdersTable(db);
 
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  // N11'in resmi dokümanına göre startDate/endDate GMT+3 ms epoch (ISO
+  // string DEĞİL) - önceki sürüm bunu ISO string olarak gönderiyordu.
+  const now = Date.now();
+  const sevenDaysAgoMs = now - 7 * 24 * 60 * 60 * 1000;
   let imported = 0;
   const errors: string[] = [];
   try {
     const { content } = await getOrders({
-      startDate: sevenDaysAgo,
-      endDate: new Date().toISOString(),
+      startDate: sevenDaysAgoMs,
+      endDate: now,
       size: 200,
     });
     for (const order of content) {

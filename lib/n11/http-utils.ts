@@ -16,3 +16,12 @@ export function buildN11Headers(
     appsecret: appSecret,
   };
 }
+
+// Kullanıcının N11'den indirdiği resmi entegrasyon dokümanı fiyat
+// alanlarında "virgül değil nokta, 2 ondalık hane zorunlu" diyor - JSON
+// zaten ondalık ayıracı olarak nokta kullandığından tek gerçek risk kayan
+// nokta yuvarlama hatası (ör. 129.999999999998). Bu yüzden her fiyat N11'e
+// gitmeden önce buradan geçiriliyor.
+export function roundToN11Price(value: number): number {
+  return Math.round(value * 100) / 100;
+}

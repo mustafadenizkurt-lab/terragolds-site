@@ -27,8 +27,8 @@ type CategoryAttribute = {
   name: string;
   isMandatory: boolean;
   isCustomValue: boolean;
-  isVariant: boolean;
-  values?: { id: number; name: string }[];
+  isVariant?: boolean;
+  attributeValues?: { id: number; name?: string; value?: string }[];
 };
 
 // Kimlik bilgileri bu ekranın en üstündeki MarketplaceCredentialsPanel'den
@@ -68,6 +68,11 @@ export default function N11SyncPanel({
   const [attributeResults, setAttributeResults] = useState<CategoryAttribute[] | null>(
     null,
   );
+
+  const [taskId, setTaskId] = useState("");
+  const [taskBusy, setTaskBusy] = useState(false);
+  const [taskError, setTaskError] = useState("");
+  const [taskResult, setTaskResult] = useState<unknown>(null);
 
   const searchCategories = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -116,6 +121,25 @@ export default function N11SyncPanel({
       );
     } finally {
       setAttributeBusy(false);
+    }
+  };
+
+  const checkTaskStatus = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setTaskBusy(true);
+    setTaskError("");
+    try {
+      const response = await fetch(
+        `/api/admin/n11/task-status?taskId=${encodeURIComponent(taskId)}`,
+        { cache: "no-store" },
+      );
+      const body = (await response.json()) as { result?: unknown; error?: string };
+      if (!response.ok) throw new Error(body.error ?? "Görev durumu alınamadı.");
+      setTaskResult(body.result ?? null);
+    } catch (taskFail) {
+      setTaskError(taskFail instanceof Error ? taskFail.message : "Görev durumu alınamadı.");
+    } finally {
+      setTaskBusy(false);
     }
   };
 
@@ -314,9 +338,9 @@ export default function N11SyncPanel({
                     <td>{attribute.isMandatory ? "Evet" : "Hayır"}</td>
                     <td>{attribute.isCustomValue ? "Evet" : "Hayır"}</td>
                     <td>
-                      {(attribute.values ?? [])
+                      {(attribute.attributeValues ?? [])
                         .slice(0, 5)
-                        .map((value) => `${value.name} (${value.id})`)
+                        .map((value) => `${value.name ?? value.value ?? "?"} (${value.id})`)
                         .join(", ")}
                     </td>
                   </tr>
@@ -392,6 +416,46 @@ export default function N11SyncPanel({
               </tbody>
             </table>
           </div>
+        )}
+
+        <div className="admin-panel-heading" style={{ marginTop: 32 }}>
+          <div>
+            <h2>Görev durumu sorgula</h2>
+            <p>
+              Yukarıdaki gönderim asenkron - N11 hemen bir taskId döner ama
+              ürünün gerçekten kabul mü edildiği, reddedildiyse hangi
+              sebeple, ancak bu sorguyla netleşir.
+            </p>
+          </div>
+        </div>
+        <form className="admin-field-grid" onSubmit={checkTaskStatus}>
+          <label className="admin-field">
+            <span>taskId</span>
+            <input
+              value={taskId}
+              onChange={(event) => setTaskId(event.target.value)}
+              placeholder="Gönderim sonrası dönen görev kimliği"
+              required
+            />
+          </label>
+          <button
+            className="admin-primary-button"
+            type="submit"
+            disabled={taskBusy}
+            style={{ alignSelf: "flex-end" }}
+          >
+            {taskBusy ? "Sorgulanıyor…" : "Durumu getir"}
+          </button>
+        </form>
+        {taskError && (
+          <div className="admin-inline-error" role="alert">
+            {taskError}
+          </div>
+        )}
+        {taskResult !== null && (
+          <pre className="admin-supplier-table-wrap" style={{ padding: 12, overflow: "auto" }}>
+            {JSON.stringify(taskResult, null, 2)}
+          </pre>
         )}
 
         <div className="admin-panel-heading" style={{ marginTop: 32 }}>

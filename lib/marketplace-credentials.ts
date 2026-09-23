@@ -120,6 +120,27 @@ export const marketplaceCredentialDefinitions: Record<
         placeholder: "Kayıtlı e-postanıza gönderilen şifre",
         required: true,
       },
+      {
+        key: "integrator",
+        label: "Entegratör Adı",
+        secret: false,
+        placeholder: "N11 Ortak Girişi başvurunuzda onaylanan entegratör adı",
+        required: true,
+      },
+      {
+        key: "shipmentTemplate",
+        label: "Kargo Şablonu",
+        secret: false,
+        placeholder: "N11 Satıcı Paneli > Kargo Şablonları'ndaki şablon adı",
+        required: true,
+      },
+      {
+        key: "preparingDay",
+        label: "Hazırlanma Süresi (gün)",
+        secret: false,
+        placeholder: "ör. 3",
+        required: true,
+      },
     ],
   },
 };

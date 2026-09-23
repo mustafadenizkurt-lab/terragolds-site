@@ -1,12 +1,15 @@
 import { getN11Credentials, buildN11Headers } from "./auth";
 
 // N11'in resmi geliştirici portalı (developer.n11.com) bot korumalı olduğu
-// için taban URL ve uç noktalar üçüncü taraf entegrasyon kaynaklarından
-// (magazadestek.n11.com, codeilla.com.tr) derlendi - Trendyol client.ts'te
-// olduğu gibi developers.trendyol.com'dan birebir doğrulanmadı. İlk gerçek
-// istekte (kimlik bilgileri admin panelinden girildikten sonra) alan
-// adları/uç nokta yolları sapma gösterirse buradaki tipler ve yollar
-// güncellenmeli - ham (raw) fonksiyonlar bu yüzden bilhassa korunuyor.
+// için doğrudan WebFetch ile erişilemedi - ama kullanıcının N11'den indirdiği
+// resmi entegrasyon dokümanından (PDF/DOCX) gerçek uç nokta yolları, gövde
+// şemaları ve alan adları elle aktarıldı (product-create/update/price-stock
+// gövdesi {payload:{integrator, skus:[...]}}, sipariş güncellemede sadece
+// "Picking" durumu, tarihler ms epoch vb.). Yine de örnek YANITLARIN tam
+// zarfı (task-details/product-query envelope'u, sipariş paketinin id alan
+// adı) dokümanda örneklenmedi - bu belirsiz noktalar ham (raw) fonksiyonlar
+// veya esnek/opsiyonel tipler ile işaretlendi, ilk gerçek istekte netleşince
+// güncellenmeli.
 const N11_API_BASE = "https://api.n11.com";
 
 type N11ErrorPayload = {
@@ -174,16 +177,20 @@ export function flattenN11Categories(
 
 export type N11CategoryAttributeValue = {
   id: number;
-  name: string;
+  name?: string;
+  value?: string;
 };
 
+// Alan adı (attributeValues) N11'in resmi entegrasyon dokümanında bu şekilde
+// doğrulandı - ilk sürümde tahmini olarak "values" kullanılmıştı, gerçek
+// dokümanla düzeltildi.
 export type N11CategoryAttribute = {
   id: number;
   name: string;
   isMandatory: boolean;
   isCustomValue: boolean;
-  isVariant: boolean;
-  values?: N11CategoryAttributeValue[];
+  isVariant?: boolean;
+  attributeValues?: N11CategoryAttributeValue[];
 };
 
 // GET /cdn/category/{categoryId}/attribute - bir kategorinin zorunlu/
@@ -205,19 +212,31 @@ export async function getCategoryAttributesRaw(categoryId: number): Promise<unkn
 
 // --- Ürün ---
 
+// Alan adları N11'in resmi entegrasyon dokümanındaki product-create/
+// product-update şemasıyla birebir - id/valueId/customValue (Trendyol'daki
+// attributeId değil).
 export type N11ProductAttribute = {
-  attributeId: number;
+  id: number;
   // isCustomValue=true olan özellikler için customValue serbest metin,
   // aksi halde N11'in kendi değer listesinden valueId gönderilmeli (bkz.
-  // getCategoryAttributes).
+  // getCategoryAttributes > attributeValues).
   valueId?: number;
   customValue?: string;
 };
 
+export type N11ProductImage = {
+  url: string;
+  order: number;
+};
+
+// N11'in resmi dokümanındaki product-create/product-update sku şeması.
+// preparingDay/shipmentTemplate hesap-genelinde sabitler (bkz.
+// getN11Credentials) - her sku'ya aynı değerle gömülüyor.
 export type N11Product = {
   categoryId: number;
   productMainId: string;
   stockCode: string;
+  barcode: string;
   title: string;
   description: string;
   quantity: number;
@@ -225,38 +244,43 @@ export type N11Product = {
   listPrice: number;
   vatRate: number;
   currencyType: "TL";
-  images: { url: string }[];
+  preparingDay: number;
+  shipmentTemplate: string;
+  images: N11ProductImage[];
   attributes?: N11ProductAttribute[];
-  // barcode alanı Codeilla'nın derlediği zorunlu alan listesinde açıkça
-  // GEÇMİYOR (Trendyol'un aksine) - ama pek çok pazaryeri entegrasyonunda
-  // fiilen isteniyor, bu yüzden gönderiliyor ama opsiyonel işaretlendi.
-  // İlk gerçek istekte N11 bunu reddederse (veya zorunlu isterse) burası
-  // güncellenmeli.
-  barcode?: string;
 };
 
-// POST /ms/product/tasks/product-create - "tasks" segmenti asenkron bir
-// işlem kuyruğuna işaret ediyor (Trendyol'un batchRequestId'siyle benzer),
-// ama görev durumunu SORGULAYAN uç nokta üçüncü taraf kaynaklarda
-// belirtilmemiş - taskId burada ham olarak saklanıyor, gerçek durumunu
-// N11 satıcı panelinden kontrol etmek gerekiyor ilk entegrasyon testinde.
+// POST /ms/product/tasks/product-create ve .../product-update - N11'in
+// resmi dokümanına göre gövde {payload:{integrator, skus:[...]}} şeklinde
+// sarmalanıyor (Trendyol'un batchRequestId'sinden farklı) ve yanıt
+// {id (taskId), type, status, reasons} - asenkron, gerçek kabul/red
+// durumunu getTaskDetails() (task-details/page-query) ile sorgulamak
+// gerekiyor.
 export type N11TaskResult = {
-  taskId?: string;
   id?: string;
+  type?: string;
+  status?: string;
+  reasons?: unknown;
   [key: string]: unknown;
 };
 
-export async function createProduct(products: N11Product[]): Promise<N11TaskResult> {
+export async function createProduct(
+  products: N11Product[],
+  integrator: string,
+): Promise<N11TaskResult> {
   return n11Fetch("/ms/product/tasks/product-create", {
     method: "POST",
-    body: { products },
+    body: { payload: { integrator, skus: products } },
   });
 }
 
-export async function updateProduct(products: N11Product[]): Promise<N11TaskResult> {
+export async function updateProduct(
+  products: N11Product[],
+  integrator: string,
+): Promise<N11TaskResult> {
   return n11Fetch("/ms/product/tasks/product-update", {
     method: "POST",
-    body: { products },
+    body: { payload: { integrator, skus: products } },
   });
 }
 
@@ -265,40 +289,93 @@ export type N11PriceStockItem = {
   quantity: number;
   salePrice: number;
   listPrice: number;
+  currencyType: "TL";
 };
 
 // D1 tek gerçek kaynak - Trendyol/Hepsiburada entegrasyonlarıyla aynı
 // prensip: N11 tarafında yapılan bir değişiklik asla D1'e geri okunmaz.
 export async function updateStockAndPrice(
   items: N11PriceStockItem[],
+  integrator: string,
 ): Promise<N11TaskResult> {
   return n11Fetch("/ms/product/tasks/price-stock-update", {
     method: "POST",
-    body: { products: items },
+    body: { payload: { integrator, skus: items } },
   });
+}
+
+// POST /ms/product/task-details/page-query - product-create/update/
+// price-stock-update'in asenkron sonucunu sorgular. Yanıt zarfının tam
+// şekli (content mi, skus mu) resmi dokümanda netleşmedi - bu yüzden ham
+// döndürülüyor, admin panelindeki "Görev durumu sorgula" aracı JSON'ı
+// olduğu gibi gösteriyor.
+export async function getTaskDetails(
+  taskId: string,
+  page = 0,
+  size = 100,
+): Promise<unknown> {
+  return n11Fetch("/ms/product/task-details/page-query", {
+    method: "POST",
+    body: { taskId, pageable: { page, size } },
+  });
+}
+
+// GET /ms/product-query - satıcının kendi ürünlerini listeler. Şu an sadece
+// teşhis amaçlı (ham) - Terragolds D1'i tek gerçek kaynak olarak kullandığı
+// için bu uç noktanın sonucu D1'e geri yazılmıyor.
+export async function getMyProductsRaw(
+  params: {
+    id?: number;
+    productMainId?: string;
+    stockCode?: string;
+    saleStatus?: string;
+    productStatus?: string;
+    brandName?: string;
+    categoryIds?: string;
+    page?: number;
+    size?: number;
+  } = {},
+): Promise<unknown> {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined) query.set(key, String(value));
+  }
+  const search = query.toString();
+  return n11Fetch(`/ms/product-query${search ? `?${search}` : ""}`);
 }
 
 // --- Sipariş ---
 
+// Alan adları N11'in resmi dokümanındaki shipmentPackages yanıtıyla
+// birebir - orderLineId, "Picking" onayında (PUT /rest/order/v1/update)
+// gönderilmesi gereken lineId ile aynı değer.
 export type N11OrderLine = {
   productId?: number;
   stockCode: string;
-  productName: string;
+  productName?: string;
   quantity: number;
   price: number;
+  sellerInvoiceAmount?: number;
+  orderLineId: number;
+  orderItemLineItemStatusName?: string;
 };
 
 export type N11OrderPackage = {
-  id: number; // shipmentPackageId
+  // Paket kimliği alanının gerçek adı (id / shipmentPackageId) resmi
+  // dokümanda örnek yanıtla teyit edilmedi - ikisi de kabul ediliyor,
+  // bkz. order-mapping.ts.
+  id?: number;
+  shipmentPackageId?: number;
   orderNumber: string;
-  status: string;
-  totalAmount: number;
+  shipmentPackageStatus: string;
+  totalAmount?: number;
   discountAmount?: number;
   customerFirstName?: string;
   customerLastName?: string;
   customerEmail?: string;
   orderDate?: string;
   trackingNumber?: string;
+  billingAddress?: Record<string, unknown>;
   shippingAddress?: {
     address?: string;
     district?: string;
@@ -311,17 +388,23 @@ export type N11OrderPackage = {
 };
 
 // GET /rest/delivery/v1/shipmentPackages - sipariş/kargo paketlerini döner.
+// startDate/endDate GMT+3 milisaniye epoch (ISO string DEĞİL) - N11'in
+// resmi dokümanında böyle belirtiliyor.
 export async function getOrders(params: {
-  startDate?: string;
-  endDate?: string;
+  startDate?: number;
+  endDate?: number;
+  status?: string;
   page?: number;
   size?: number;
+  orderByDirection?: "ASC" | "DESC";
 } = {}): Promise<{ content: N11OrderPackage[]; totalElements?: number }> {
   const query = new URLSearchParams();
-  if (params.startDate) query.set("startDate", params.startDate);
-  if (params.endDate) query.set("endDate", params.endDate);
+  if (params.startDate !== undefined) query.set("startDate", String(params.startDate));
+  if (params.endDate !== undefined) query.set("endDate", String(params.endDate));
+  if (params.status) query.set("status", params.status);
   if (params.page !== undefined) query.set("page", String(params.page));
   if (params.size !== undefined) query.set("size", String(params.size));
+  if (params.orderByDirection) query.set("orderByDirection", params.orderByDirection);
   const search = query.toString();
   return n11Fetch(`/rest/delivery/v1/shipmentPackages${search ? `?${search}` : ""}`);
 }
@@ -332,20 +415,15 @@ export async function getOrdersRaw(params: Record<string, string> = {}): Promise
   return n11Fetch(`/rest/delivery/v1/shipmentPackages${search ? `?${search}` : ""}`);
 }
 
-// PUT /rest/order/v1/update - Terragolds admin kargo durumunu değiştirdiği
-// TEK yer (Trendyol/Hepsiburada ile aynı tek yönlü kural): sadece N11'e
-// "kargoya verildi" bilgisini bildirir, hiçbir durumu N11'den geri okumaz.
-export async function updateOrderStatus(
-  shipmentPackageId: number,
-  input: { status: "Shipped" | "Delivered"; trackingNumber?: string; cargoProviderName?: string },
-): Promise<void> {
+// PUT /rest/order/v1/update - N11'in resmi dokümanına göre şu an SADECE
+// "Picking" durumu destekleniyor (Trendyol/Hepsiburada'daki gibi bir
+// "Shipped" + kargo takip no bildirimi N11 tarafında henüz YOK). Bu yüzden
+// Terragolds admin panelindeki "kargoya verildi" akışına bağlanmıyor -
+// bkz. lib/n11/fulfillment.ts'teki karar notu.
+export async function updateOrderStatus(lineIds: number[]): Promise<void> {
+  if (lineIds.length === 0) return;
   await n11Fetch("/rest/order/v1/update", {
     method: "PUT",
-    body: {
-      shipmentPackageId,
-      status: input.status,
-      trackingNumber: input.trackingNumber,
-      cargoProviderName: input.cargoProviderName,
-    },
+    body: { lines: lineIds.map((lineId) => ({ lineId })), status: "Picking" },
   });
 }
