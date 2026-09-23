@@ -76,7 +76,15 @@ const N11_SAHMERAN_HALHAL_CATEGORY_BY_KEYWORD: { keyword: string; categoryId: nu
 ];
 
 export function categoryIdFor(product: { category: string; name: string }): number {
-  const group = groupForCategory(product.category);
+  // "Takı" (jenerik "takı" anlamında) bazı ürünlerde category alanına yanlış
+  // girilmiş - gerçek isimlerine bakınca hepsi kolye/küpe/bilezik/yüzük.
+  // groupForCategory() bu jenerik değerle hiçbir gruba eşleşmediği için ürün
+  // adına düşüp oradan doğru grubu buluyoruz.
+  const categoryForGrouping =
+    product.category.trim().toLocaleLowerCase("tr-TR") === "takı"
+      ? product.name
+      : product.category;
+  const group = groupForCategory(categoryForGrouping);
 
   if (group?.slug === "sahmeran-halhal") {
     const haystack = product.category.toLocaleLowerCase("tr-TR");
