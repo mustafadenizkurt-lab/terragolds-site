@@ -493,9 +493,12 @@ export default function N11SyncPanel({
             <h2>Siparişleri çek</h2>
             <p>
               Son 7 günün N11 siparişlerini D1&apos;e aktarır (webhook değil,
-              dönemsel çekme). Kargoya verme durumu sadece bu admin
-              panelinden değiştirilir ve tek yönlü olarak N11&apos;e
-              bildirilir.
+              dönemsel çekme). Sipariş ilk çekildiğinde N11&apos;e otomatik
+              olarak &quot;hazırlanıyor&quot; (Picking) bilgisi bildirilir -
+              N11&apos;in resmi API&apos;si şu an başka bir durum güncellemesi
+              (ör. kargoya verildi) desteklemiyor, o yüzden kargo durumu
+              sadece bu panelde (D1&apos;de) takip edilir, N11&apos;e ayrıca
+              bildirilmez.
             </p>
           </div>
           <button
