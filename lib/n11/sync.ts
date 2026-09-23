@@ -51,8 +51,31 @@ const N11_CATEGORY_BY_GROUP_SLUG: Record<string, number> = {
   kupeler: 1219216, // Bijuteri Küpe
 };
 
+// "sahmeran-halhal" grubu sitede tek nav grubu ama N11'de bunun karşılığı
+// TEK bir kategori değil - Şahmeran ve Halhal N11'de tamamen ayrı iki
+// kategori (üstelik burada diğer gruplardaki gibi bir "Bijuteri" ayrımı da
+// yok, direkt tek kategoriler). Bu yüzden bu grup için N11_CATEGORY_BY_GROUP_SLUG
+// yeterli değil - ürünün gerçek (ham) kategori adına bakıp ikisini ayırt
+// etmek gerekiyor.
+const N11_SAHMERAN_HALHAL_CATEGORY_BY_KEYWORD: { keyword: string; categoryId: number }[] = [
+  { keyword: "halhal", categoryId: 1191218 }, // Halhal
+  { keyword: "şahmeran", categoryId: 1191217 }, // Şahmeran
+];
+
 export function categoryIdFor(product: { category: string; name: string }): number {
   const group = groupForCategory(product.category);
+
+  if (group?.slug === "sahmeran-halhal") {
+    const haystack = product.category.toLocaleLowerCase("tr-TR");
+    const match = N11_SAHMERAN_HALHAL_CATEGORY_BY_KEYWORD.find((entry) =>
+      haystack.includes(entry.keyword),
+    );
+    if (match) return match.categoryId;
+    throw new Error(
+      `N11 kategori eşlemesi belirsiz: "${product.category}" ne "halhal" ne "şahmeran" içeriyor.`,
+    );
+  }
+
   const categoryId = group && N11_CATEGORY_BY_GROUP_SLUG[group.slug];
   if (!categoryId) {
     throw new Error(
