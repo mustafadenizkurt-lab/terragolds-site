@@ -6,6 +6,7 @@ type PendingProduct = {
   name: string;
   description: string;
   price: number;
+  hepsiburadaOverridePrice: number | null;
   stock: number;
   image: string;
   xmlExternalId: string | null;
@@ -30,7 +31,10 @@ function toHepsiburadaProduct(product: PendingProduct): HepsiburadaProduct {
     productName: product.name,
     categoryId: "",
     brand: "Terragolds",
-    price: product.price,
+    // Site fiyatından bağımsız, komisyon sonrası hedef kâr marjını koruyan
+    // hepsiburada_override_price varsa o kullanılır (bkz.
+    // lib/hepsiburada/pricing.ts), yoksa site fiyatına düşer.
+    price: product.hepsiburadaOverridePrice ?? product.price,
     availableStock: product.stock,
     description: product.description,
     images: imageUrl ? [imageUrl] : [],
@@ -55,8 +59,9 @@ export async function syncProductsToHepsiburada(
 
   const pending = await db
     .prepare(
-      `SELECT id, name, description, price, stock, image,
-              xml_external_id AS xmlExternalId
+      `SELECT id, name, description, price,
+              hepsiburada_override_price AS hepsiburadaOverridePrice,
+              stock, image, xml_external_id AS xmlExternalId
        FROM products
        WHERE status = 'published' AND hepsiburada_listing_id IS NULL
        ORDER BY id LIMIT ?`,
@@ -103,13 +108,17 @@ export async function syncProductsToHepsiburada(
 
 type StockPriceRow = {
   price: number;
+  hepsiburadaOverridePrice: number | null;
   stock: number;
   hepsiburadaSku: string | null;
 };
 
 // D1 kaynak (source of truth) - pushStockAndPriceToTrendyol ile aynı
 // prensip: Hepsiburada da stok ve fiyatı tek bir endpoint'te birlikte
-// istiyor.
+// istiyor. hepsiburada_override_price varsa (bkz. lib/hepsiburada/
+// pricing.ts) site fiyatı yerine o gönderilir - hepsiburada_price_synced de
+// karşılaştırma tutarlı kalsın diye her zaman GERÇEKTEN gönderilen
+// (efektif) fiyatı tutar.
 export async function pushStockAndPriceToHepsiburada(
   db: D1Database,
   productId: number,
@@ -118,7 +127,8 @@ export async function pushStockAndPriceToHepsiburada(
 
   const product = await db
     .prepare(
-      `SELECT price, stock, hepsiburada_sku AS hepsiburadaSku
+      `SELECT price, hepsiburada_override_price AS hepsiburadaOverridePrice,
+              stock, hepsiburada_sku AS hepsiburadaSku
        FROM products WHERE id = ?`,
     )
     .bind(productId)
@@ -129,17 +139,18 @@ export async function pushStockAndPriceToHepsiburada(
   // stok/fiyatla gönderir.
   if (!product?.hepsiburadaSku) return;
 
+  const effectivePrice = product.hepsiburadaOverridePrice ?? product.price;
   await updateStockAndPrice([
     {
       merchantSku: product.hepsiburadaSku,
       availableStock: product.stock,
-      price: product.price,
+      price: effectivePrice,
     },
   ]);
 
   await db
     .prepare("UPDATE products SET hepsiburada_price_synced = ? WHERE id = ?")
-    .bind(product.price, productId)
+    .bind(effectivePrice, productId)
     .run();
 }
 
@@ -159,11 +170,15 @@ export async function pushPendingHepsiburadaPrices(
 ): Promise<HepsiburadaPricePushResult> {
   await ensureHepsiburadaColumns(db);
 
+  // hepsiburada_override_price varsa (bkz. lib/hepsiburada/pricing.ts)
+  // hedef fiyat odur - drift tespiti her zaman bu EFEKTİF fiyata göre
+  // yapılmalı, yoksa override uygulanmış bir ürün site fiyatı değişmediği
+  // sürece hiç yeniden gönderilmez sanılır.
   const pending = await db
     .prepare(
       `SELECT id FROM products
        WHERE hepsiburada_sku IS NOT NULL
-         AND (hepsiburada_price_synced IS NULL OR hepsiburada_price_synced != price)
+         AND (hepsiburada_price_synced IS NULL OR hepsiburada_price_synced != COALESCE(hepsiburada_override_price, price))
        ORDER BY id LIMIT ?`,
     )
     .bind(batchSize)
@@ -174,7 +189,7 @@ export async function pushPendingHepsiburadaPrices(
       .prepare(
         `SELECT COUNT(*) AS c FROM products
          WHERE hepsiburada_sku IS NOT NULL
-           AND (hepsiburada_price_synced IS NULL OR hepsiburada_price_synced != price)`,
+           AND (hepsiburada_price_synced IS NULL OR hepsiburada_price_synced != COALESCE(hepsiburada_override_price, price))`,
       )
       .first<{ c: number }>();
     return row?.c ?? 0;
