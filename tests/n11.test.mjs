@@ -256,10 +256,12 @@ test("computeRequiredPrice maliyet 0 için sadece sabit maliyeti (kargo) yansıt
   assert.ok(Math.abs(result - N11_SHIPPING_COST / (1 - n11EffectiveCommissionRate())) < 1e-9);
 });
 
-test("n11ListPriceFor satış fiyatının üzerinde bir liste fiyatı üretir", () => {
-  const listPrice = n11ListPriceFor(1000);
-  assert.ok(listPrice > 1000);
-  assert.equal(listPrice, Math.round(1000 * 1.01));
+test("n11ListPriceFor satış fiyatının %10 indirimli göründüğü bir liste fiyatı üretir", () => {
+  const listPrice = n11ListPriceFor(900);
+  assert.ok(listPrice > 900);
+  assert.equal(listPrice, Math.round(900 / 0.9));
+  // 900, 1000'in %10 indirimlisi olarak görünmeli
+  assert.equal(Math.round(listPrice * 0.9), 900);
 });
 
 import { parseProductQueryPage } from "../lib/n11/task-parse.ts";
