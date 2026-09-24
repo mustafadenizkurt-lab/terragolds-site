@@ -4,6 +4,7 @@ import {
 } from "../../../../../lib/admin-auth";
 import {
   buildHepsiburadaAuthHeader,
+  buildHepsiburadaUserAgent,
   getHepsiburadaCredentials,
 } from "../../../../../lib/hepsiburada/auth";
 import { HEPSIBURADA_LISTING_API_BASE } from "../../../../../lib/hepsiburada/client";
@@ -26,7 +27,7 @@ export async function GET(request: Request) {
   const authUserOverride = params.get("authUser");
   try {
     const { merchantId, secretKey, integratorName } = await getHepsiburadaCredentials();
-    const userAgent = override || integratorName;
+    const userAgent = buildHepsiburadaUserAgent(override || integratorName);
     const response = await fetch(
       `${HEPSIBURADA_LISTING_API_BASE}/listings/merchantid/${merchantId}?limit=1`,
       {
