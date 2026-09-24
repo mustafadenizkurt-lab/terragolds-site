@@ -292,3 +292,11 @@ test("buildN11Title kısa adı olduğu gibi bırakır, uzun adı 100 karaktere k
   assert.ok(title.endsWith(" - BKO7290"));
   assert.ok(!title.includes("  "));
 });
+
+import { stripMetalColorWords } from "../lib/n11/http-utils.ts";
+
+test("stripMetalColorWords başlıktan maden adını çıkarır, geri kalanı korur", () => {
+  assert.equal(stripMetalColorWords("Pirinç Gümüş Renk Zirkon Taşlı Kadın Bileklik"), "Pirinç Zirkon Taşlı Kadın Bileklik");
+  assert.equal(stripMetalColorWords("Gold Renk Yıldız Model Kolye"), "Yıldız Model Kolye");
+  assert.equal(stripMetalColorWords("Zirkon Taşlı Kadın Küpe"), "Zirkon Taşlı Kadın Küpe");
+});

@@ -45,3 +45,16 @@ export function buildN11Title(name: string, stockCode: string): string {
   }
   return `${prefix}${trimmed}${suffix}`;
 }
+
+// Deney: N11'in katalog sınıflandırıcısı başlıktaki "Gümüş"/"Silver"/"Altın"
+// sözcüğüne bakıp ürünü GERÇEK madenden sanıyor ("...Gümüş Bileklik
+// kategorisinde önerebilirsiniz" / "fahiş fiyat düşüklüğü, min 600 TL").
+// Renk bilgisi zorunlu Renk özelliğinde (429) zaten gidiyor; bu fonksiyon
+// başlıktaki "<maden> Renk" ifadesini çıkarır.
+export function stripMetalColorWords(name: string): string {
+  return name
+    .replace(/\b(gümüş|silver|altın|gold)\s+renk(?:li)?\b/gi, "")
+    .replace(/\b(gümüş|silver|altın|gold)\b/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}

@@ -7,7 +7,7 @@ import {
   type N11ProductAttribute,
 } from "./client";
 import { getN11Credentials, type N11Credentials } from "./auth";
-import { buildN11Title, roundToN11Price } from "./http-utils";
+import { buildN11Title, roundToN11Price, stripMetalColorWords } from "./http-utils";
 import { attributesForCategory } from "./attributes";
 import { CATALOG_REJECTED_MESSAGE } from "./reconcile";
 import { n11ListPriceFor } from "./pricing-formula";
@@ -444,6 +444,48 @@ export async function resubmitRejectedToN11(
     await db.batch(rows.results.map((row) => stmt.bind(result.taskId, row.id)));
     result.resubmitted = rows.results.length;
     result.stockCodes = products.map((product) => product.stockCode);
+  } catch (error) {
+    result.errors.push(error instanceof Error ? error.message : "bilinmeyen hata");
+  }
+  return result;
+}
+
+// Başlık deneyi (bkz. http-utils.ts > stripMetalColorWords): aynı ürünü YENİ
+// stok koduyla (<kod>-T) ve maden adı çıkarılmış başlıkla gönderir. D1'deki
+// asıl kayda dokunmaz. Sonuç product-query/reconcile ile stok koduna göre
+// izlenir.
+export async function sendN11TitleExperiment(
+  db: D1Database,
+  stockCodes: string[],
+): Promise<{ sent: number; taskId: string; newStockCodes: string[]; errors: string[] }> {
+  await ensureN11Columns(db);
+  const codes = stockCodes.slice(0, 20);
+  const result = { sent: 0, taskId: "", newStockCodes: [] as string[], errors: [] as string[] };
+  if (codes.length === 0) return result;
+  const rows = await db
+    .prepare(
+      `SELECT id, name, description, price, n11_override_price AS n11OverridePrice, stock,
+              image, hover_image AS hoverImage, category, xml_external_id AS xmlExternalId
+       FROM products WHERE xml_external_id IN (${codes.map(() => "?").join(",")})`,
+    )
+    .bind(...codes)
+    .all<PendingProduct>();
+  try {
+    const credentials = await getN11Credentials();
+    const products = rows.results.map((row) => {
+      const base = toN11Product(row, credentials);
+      const stockCode = `${base.stockCode}-T`;
+      return {
+        ...base,
+        stockCode,
+        productMainId: stockCode,
+        title: buildN11Title(stripMetalColorWords(row.name), stockCode),
+      };
+    });
+    const task = await createProduct(products, credentials.integrator);
+    result.taskId = String(task.id ?? "");
+    result.sent = products.length;
+    result.newStockCodes = products.map((product) => product.stockCode);
   } catch (error) {
     result.errors.push(error instanceof Error ? error.message : "bilinmeyen hata");
   }
