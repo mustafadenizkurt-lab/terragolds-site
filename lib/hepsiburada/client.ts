@@ -268,6 +268,7 @@ export type HepsiburadaImportResponse = {
 // trackingId ile sonucu ayrıca sorgulamak gerekir.
 export async function importProductsFile(
   items: unknown[],
+  path = "/product/api/products/import",
 ): Promise<{ status: number; body: string }> {
   const { merchantId, secretKey, integratorName } = await getHepsiburadaCredentials();
   const form = new FormData();
@@ -276,7 +277,7 @@ export async function importProductsFile(
     new Blob([JSON.stringify(items)], { type: "application/json" }),
     "integrator.json",
   );
-  const response = await fetch(`${HEPSIBURADA_PRODUCT_API_BASE}/product/api/products/import`, {
+  const response = await fetch(`${HEPSIBURADA_PRODUCT_API_BASE}${path}`, {
     method: "POST",
     headers: {
       authorization: buildHepsiburadaAuthHeader(merchantId, secretKey),

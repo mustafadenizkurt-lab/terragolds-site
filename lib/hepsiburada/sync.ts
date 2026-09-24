@@ -222,6 +222,7 @@ export async function pushPendingHepsiburadaPrices(
 export async function importHepsiburadaTest(
   db: D1Database,
   stockCodes: string[],
+  importPath?: string,
 ): Promise<{ sent: number; skipped: string[]; status: number; body: string; items: unknown[] }> {
   const codes = stockCodes.slice(0, 5);
   const rows = await db
@@ -264,6 +265,6 @@ export async function importHepsiburadaTest(
     );
   }
   if (items.length === 0) return { sent: 0, skipped, status: 0, body: "", items };
-  const result = await importProductsFile(items);
+  const result = await importProductsFile(items, importPath);
   return { sent: items.length, skipped, status: result.status, body: result.body, items };
 }

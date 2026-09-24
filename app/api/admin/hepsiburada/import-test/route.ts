@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 // şemasıyla gönderir, ham yanıtı döner, D1'e yazmaz. Sadece POST.
 export async function POST(request: Request) {
   if (!(await getAuthorizedAdmin(request))) return unauthorizedAdminResponse();
-  const body = (await request.json().catch(() => ({}))) as { stockCodes?: string[] };
+  const body = (await request.json().catch(() => ({}))) as { stockCodes?: string[]; endpoint?: string };
   try {
     return Response.json(await importHepsiburadaTest(getD1(), body.stockCodes ?? []));
   } catch (error) {
