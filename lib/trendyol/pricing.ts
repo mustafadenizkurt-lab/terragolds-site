@@ -1,6 +1,6 @@
 import { updateStockAndPrice } from "./client";
 import { categoryIdFor } from "./sync";
-import { commissionRateFor, computeRequiredPrice, LIST_PRICE_MARKUP_RATE } from "./pricing-formula";
+import { effectiveCommissionRateFor, computeRequiredPrice, LIST_PRICE_MARKUP_RATE } from "./pricing-formula";
 
 // --- Dinamik fiyatlama: maliyet + kargo + komisyon sonrası en az maliyetin
 // %50'si net kâr kalacak şekilde Trendyol satış fiyatını hesaplar ---
@@ -111,7 +111,10 @@ export async function previewTrendyolDynamicPricing(db: D1Database): Promise<Dyn
         id: product.id,
         name: product.name,
         categoryId,
-        commissionRate: commissionRateFor(categoryId),
+        // Komisyon üzerine KDV dahil gerçek efektif oran (bkz.
+        // pricing-formula.ts > effectiveCommissionRateFor) - sadece ham
+        // komisyon oranını göstermek gerçek maliyeti eksik yansıtırdı.
+        commissionRate: effectiveCommissionRateFor(categoryId),
         cost: product.cost,
         currentPrice,
         requiredPrice,

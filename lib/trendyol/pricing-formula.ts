@@ -7,6 +7,11 @@ export const ORDER_FEE = 29; // TL, sipariş başına sabit (tek ürünlük sipa
 export const SHIPPING_COST = 80; // TL, sabit
 export const VAT_RATE = 0.2; // tedarikçi faturasına göre sabit
 export const DEFAULT_COMMISSION_RATE = 0.22;
+// Web araştırmasıyla doğrulandı (N11/Hepsiburada'daki gibi): Trendyol'un
+// kestiği komisyon TUTARININ üzerine ayrıca KDV ekleniyor (ürün fiyatının
+// değil, komisyonun KDV'si) - önceki sürümde bu atlanmıştı, gerçek net kâr
+// hesaplanandan biraz daha düşük çıkıyordu.
+export const COMMISSION_VAT_RATE = 0.2;
 export const MIN_PROFIT_MARGIN_RATE = 0.5;
 export const LIST_PRICE_MARKUP_RATE = 0.01; // listPrice, salePrice'ın %1 üstü
 
@@ -22,14 +27,18 @@ export function commissionRateFor(categoryId: number): number {
   return CATEGORY_COMMISSION_RATES[categoryId] ?? DEFAULT_COMMISSION_RATE;
 }
 
+export function effectiveCommissionRateFor(categoryId: number): number {
+  return commissionRateFor(categoryId) * (1 + COMMISSION_VAT_RATE);
+}
+
 // requiredPrice: bu fiyatın altına düşülürse hedef net kâr marjı
 // tutturulamaz. cost, D1'de KDV HARİÇ tedarikçi maliyeti olarak tutuluyor
 // (bkz. lib/xml-sync/calculatePrice.ts VAT_RATE yorumu) - KDV önce maliyete
-// eklenip üstüne kâr hedefi ve komisyon geri hesaplanıyor.
+// eklenip üstüne kâr hedefi ve efektif komisyon oranı (komisyon üzerine KDV
+// dahil) geri hesaplanıyor.
 export function computeRequiredPrice(cost: number, categoryId: number): number {
-  const commissionRate = commissionRateFor(categoryId);
   const productCostWithVat = cost * (1 + VAT_RATE);
   const totalCost = productCostWithVat + ORDER_FEE + SHIPPING_COST;
   const targetProfit = productCostWithVat * MIN_PROFIT_MARGIN_RATE;
-  return (totalCost + targetProfit) / (1 - commissionRate);
+  return (totalCost + targetProfit) / (1 - effectiveCommissionRateFor(categoryId));
 }
