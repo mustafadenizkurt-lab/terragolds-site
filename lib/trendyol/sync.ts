@@ -255,7 +255,7 @@ export async function syncProductsToTrendyol(
 
   const pending = await db
     .prepare(
-      `SELECT id, name, description, price, stock, image, hover_image AS hoverImage, category,
+      `SELECT id, name, COALESCE(NULLIF(seo_description, ''), description) AS description, price, stock, image, hover_image AS hoverImage, category,
               xml_external_id AS xmlExternalId
        FROM products
        WHERE status = 'published' AND trendyol_listing_id IS NULL
@@ -478,7 +478,7 @@ export async function refreshTrendyolImages(db: D1Database): Promise<TrendyolIma
 
   const pending = await db
     .prepare(
-      `SELECT id, name, description, price, stock, image, hover_image AS hoverImage, category,
+      `SELECT id, name, COALESCE(NULLIF(seo_description, ''), description) AS description, price, stock, image, hover_image AS hoverImage, category,
               xml_external_id AS xmlExternalId, trendyol_content_id AS contentId
        FROM products
        WHERE trendyol_content_id IS NOT NULL AND hover_image IS NOT NULL
@@ -533,7 +533,7 @@ export async function updateProductsCategoryOnTrendyol(
   const placeholders = productIds.map(() => "?").join(",");
   const products = await db
     .prepare(
-      `SELECT id, name, description, price, stock, image, hover_image AS hoverImage, category,
+      `SELECT id, name, COALESCE(NULLIF(seo_description, ''), description) AS description, price, stock, image, hover_image AS hoverImage, category,
               xml_external_id AS xmlExternalId
        FROM products WHERE id IN (${placeholders})`,
     )
