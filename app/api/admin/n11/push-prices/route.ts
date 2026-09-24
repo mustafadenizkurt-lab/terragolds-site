@@ -4,15 +4,34 @@ import { getD1 } from "../../../../../lib/store-db";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(request: Request) {
+// ?all=1 (veya body.all): tek istekte remaining=0 olana kadar arka arkaya
+// çağırır - listPrice formülü gibi TÜM zaten senkron ürünleri etkileyen bir
+// değişiklikten sonra (bkz. lib/n11/pricing-formula.ts >
+// LIST_PRICE_DISCOUNT_RATE) binlerce ürünü tek tek/birkaç kez tetiklemek
+// yerine tek tıkla bitirebilmek için. Her tur en fazla 1000 ürün - N11'e tek
+// bir updateStockAndPrice çağrısı (I/O ağırlıklı, Worker CPU süresini pek
+// tüketmiyor), 3-4 tur toplamda birkaç saniye sürer.
+const MAX_ROUNDS = 20;
+
+async function runAll(db: D1Database, batchSize: number) {
+  const totals = { pushed: 0, failed: 0, remaining: 0, errors: [] as string[], rounds: 0 };
+  for (let i = 0; i < MAX_ROUNDS; i += 1) {
+    const round = await pushPendingN11Prices(db, batchSize);
+    totals.pushed += round.pushed;
+    totals.failed += round.failed;
+    totals.remaining = round.remaining;
+    totals.errors.push(...round.errors);
+    totals.rounds += 1;
+    if (round.remaining === 0 || round.pushed === 0 || round.errors.length > 0) break;
+  }
+  return totals;
+}
+
+async function run(request: Request, batchSize: number, all: boolean) {
   if (!(await getAuthorizedAdmin(request))) return unauthorizedAdminResponse();
   const db = getD1();
-  const body = (await request.json().catch(() => ({}))) as {
-    batchSize?: number;
-  };
-  const batchSize = Math.min(1000, Math.max(1, Number(body.batchSize) || 100));
   try {
-    const result = await pushPendingN11Prices(db, batchSize);
+    const result = all ? await runAll(db, batchSize) : await pushPendingN11Prices(db, batchSize);
     return Response.json(result);
   } catch (error) {
     return Response.json(
@@ -23,4 +42,19 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
+}
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const batchSize = Math.min(1000, Math.max(1, Number(searchParams.get("batchSize")) || 1000));
+  return run(request, batchSize, searchParams.get("all") === "1");
+}
+
+export async function POST(request: Request) {
+  const body = (await request.json().catch(() => ({}))) as {
+    batchSize?: number;
+    all?: boolean;
+  };
+  const batchSize = Math.min(1000, Math.max(1, Number(body.batchSize) || 100));
+  return run(request, batchSize, Boolean(body.all));
 }
