@@ -81,6 +81,17 @@ export async function ensureHepsiburadaColumns(db: D1Database) {
   // (pricing.ts'in kendi ensure fonksiyonuna ek olarak) garanti ediliyor
   // çünkü pushStockAndPriceToHepsiburada/pushPendingHepsiburadaPrices bu
   // kolonu pricing.ts hiç çağrılmamış olsa bile okuyor.
+  // Hepsiburada ürün içe aktarma asenkron: trackingId almak kabul anlamına
+  // gelmiyor (gerçek örnek: importStatus FAILED "Access denied for merchant").
+  // hepsiburada_last_error red/hata nedeni (dolu ürünler otomatik yeniden
+  // gönderilmez), hepsiburada_verified_at Hepsiburada'nın işlemi hata
+  // olmadan tamamladığı an.
+  if (!names.has("hepsiburada_last_error")) {
+    await db.prepare("ALTER TABLE products ADD COLUMN hepsiburada_last_error TEXT").run();
+  }
+  if (!names.has("hepsiburada_verified_at")) {
+    await db.prepare("ALTER TABLE products ADD COLUMN hepsiburada_verified_at TEXT").run();
+  }
   if (!names.has("hepsiburada_override_price")) {
     await db.prepare("ALTER TABLE products ADD COLUMN hepsiburada_override_price INTEGER").run();
   }
@@ -286,4 +297,13 @@ export async function importProductsFile(
     body: form,
   });
   return { status: response.status, body: await response.text() };
+}
+
+// GET /product/api/products/status/{trackingId} - içe aktarma sonucu (gerçek
+// yanıttan doğrulandı; ham döner, ayrıştırma import-parse.ts'te).
+export async function getImportStatus(trackingId: string): Promise<unknown> {
+  return hepsiburadaFetch(
+    HEPSIBURADA_PRODUCT_API_BASE,
+    `/product/api/products/status/${encodeURIComponent(trackingId)}`,
+  );
 }

@@ -1,47 +1,13 @@
-import { ensureHepsiburadaColumns, createProduct, importProductsFile, updateStockAndPrice, type HepsiburadaProduct } from "./client";
+import { ensureHepsiburadaColumns, importProductsFile, updateStockAndPrice } from "./client";
 import { getHepsiburadaCredentials } from "./auth";
 import { buildImportItem, hepsiburadaCategoryFor, isMaleProduct, type HepsiburadaImportItem } from "./attributes";
 import { toAbsoluteImageUrl } from "../shopify/client";
-
-type PendingProduct = {
-  id: number;
-  name: string;
-  description: string;
-  price: number;
-  hepsiburadaOverridePrice: number | null;
-  stock: number;
-  image: string;
-  xmlExternalId: string | null;
-};
 
 // Hepsiburada her ürün için bir merchantSku (bizim kendi ürün kodumuz)
 // zorunlu tutuyor - tedarikçi ürün kodumuz (xml_external_id) varsa onu
 // kullanıyoruz, yoksa kendi id'mizden türetilmiş bir kod.
 function merchantSkuFor(product: { id: number; xmlExternalId: string | null }): string {
   return product.xmlExternalId || `TG-${product.id}`;
-}
-
-// NOT (bilinen eksik - lib/trendyol/sync.ts'teki ile aynı durum): Hepsiburada
-// her üründe geçerli bir kategori ID bekliyor (kendi kategori ağacından).
-// categoryId burada boş string ile dolduruluyor; gerçek senkron çalışmadan
-// önce site kategorilerimizi Hepsiburada'nın kategori ağacına eşleyen bir
-// yapı eklenmesi gerekecek.
-function toHepsiburadaProduct(product: PendingProduct): HepsiburadaProduct {
-  const imageUrl = toAbsoluteImageUrl(product.image);
-  return {
-    merchantSku: merchantSkuFor(product),
-    productName: product.name,
-    categoryId: "",
-    brand: "Terragolds",
-    // Site fiyatından bağımsız, komisyon sonrası hedef kâr marjını koruyan
-    // hepsiburada_override_price varsa o kullanılır (bkz.
-    // lib/hepsiburada/pricing.ts), yoksa site fiyatına düşer.
-    price: product.hepsiburadaOverridePrice ?? product.price,
-    availableStock: product.stock,
-    description: product.description,
-    images: imageUrl ? [imageUrl] : [],
-    vatRate: 20,
-  };
 }
 
 export type HepsiburadaSyncResult = {
@@ -51,61 +17,100 @@ export type HepsiburadaSyncResult = {
   errors: string[];
 };
 
-// syncProductsToShopify/syncProductsToTrendyol ile aynı desen: yayındaki,
-// henüz gönderilmemiş ürünleri bir seferde batchSize kadar gönderir.
+// Yayındaki, henüz gönderilmemiş ürünleri GERÇEK Hepsiburada şemasıyla
+// (kategori + zorunlu özellikler, multipart içe aktarma) gönderir. trackingId
+// hepsiburada_listing_id'ye yazılır AMA bu kabul demek değil - sonuç
+// reconcileHepsiburadaImports ile doğrulanır. Kategori karşılığı olmayan
+// ürünler (Şahmeran, Antika, Saat...) hepsiburada_last_error ile işaretlenip
+// tekrar tekrar denenmez.
 export async function syncProductsToHepsiburada(
   db: D1Database,
   batchSize = 25,
 ): Promise<HepsiburadaSyncResult> {
   await ensureHepsiburadaColumns(db);
-
-  const pending = await db
-    .prepare(
-      `SELECT id, name, description, price,
-              hepsiburada_override_price AS hepsiburadaOverridePrice,
-              stock, image, xml_external_id AS xmlExternalId
-       FROM products
-       WHERE status = 'published' AND hepsiburada_listing_id IS NULL
-       ORDER BY id LIMIT ?`,
-    )
-    .bind(batchSize)
-    .all<PendingProduct>();
+  const pendingWhere =
+    "status = 'published' AND hepsiburada_listing_id IS NULL AND hepsiburada_last_error IS NULL";
 
   const remainingCount = async () => {
     const row = await db
-      .prepare(
-        "SELECT COUNT(*) AS c FROM products WHERE status = 'published' AND hepsiburada_listing_id IS NULL",
-      )
+      .prepare(`SELECT COUNT(*) AS c FROM products WHERE ${pendingWhere}`)
       .first<{ c: number }>();
     return row?.c ?? 0;
   };
 
-  if (pending.results.length === 0) {
-    return { created: 0, failed: 0, remaining: 0, errors: [] };
-  }
+  const pending = await db
+    .prepare(
+      `SELECT id, name, COALESCE(NULLIF(seo_description, ''), description) AS description,
+              image, hover_image AS hoverImage, category, xml_external_id AS xmlExternalId
+       FROM products WHERE ${pendingWhere} ORDER BY id LIMIT ?`,
+    )
+    .bind(batchSize)
+    .all<{
+      id: number;
+      name: string;
+      description: string;
+      image: string;
+      hoverImage: string | null;
+      category: string;
+      xmlExternalId: string | null;
+    }>();
+  if (pending.results.length === 0) return { created: 0, failed: 0, remaining: 0, errors: [] };
 
-  let created = 0;
-  let failed = 0;
   const errors: string[] = [];
+  let failed = 0;
   try {
-    const hepsiburadaProducts = pending.results.map(toHepsiburadaProduct);
-    const { trackingId } = await createProduct(hepsiburadaProducts);
-    for (const product of pending.results) {
-      await db
-        .prepare(
-          `UPDATE products SET hepsiburada_sku = ?, hepsiburada_listing_id = ?,
-           hepsiburada_synced_at = CURRENT_TIMESTAMP WHERE id = ?`,
-        )
-        .bind(merchantSkuFor(product), trackingId, product.id)
-        .run();
-      created += 1;
+    const { merchantId } = await getHepsiburadaCredentials();
+    const items: HepsiburadaImportItem[] = [];
+    const sent: typeof pending.results = [];
+    const unmapped: number[] = [];
+    for (const row of pending.results) {
+      const categoryId = hepsiburadaCategoryFor(row);
+      if (!categoryId) {
+        unmapped.push(row.id);
+        continue;
+      }
+      items.push(
+        buildImportItem({
+          merchantId,
+          categoryId,
+          merchantSku: merchantSkuFor(row),
+          title: row.name,
+          description: row.description?.trim() || row.name,
+          images: [row.image, row.hoverImage]
+            .map((url) => (url ? toAbsoluteImageUrl(url) : null))
+            .filter((url): url is string => Boolean(url)),
+          male: isMaleProduct(row),
+        }),
+      );
+      sent.push(row);
     }
+    if (unmapped.length > 0) {
+      const stmt = db.prepare("UPDATE products SET hepsiburada_last_error = ? WHERE id = ?");
+      await db.batch(
+        unmapped.map((id) => stmt.bind("Hepsiburada kategori eşlemesi yok (Şahmeran/Antika/Saat vb.)", id)),
+      );
+    }
+    let created = 0;
+    if (items.length > 0) {
+      const result = await importProductsFile(items);
+      const parsed = JSON.parse(result.body || "{}") as { data?: { trackingId?: string } };
+      const trackingId = parsed.data?.trackingId;
+      if (result.status !== 200 || !trackingId) {
+        throw new Error(`Hepsiburada içe aktarma başarısız (${result.status}): ${result.body.slice(0, 300)}`);
+      }
+      const stmt = db.prepare(
+        `UPDATE products SET hepsiburada_sku = ?, hepsiburada_listing_id = ?,
+           hepsiburada_synced_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      );
+      await db.batch(sent.map((row) => stmt.bind(merchantSkuFor(row), trackingId, row.id)));
+      created = sent.length;
+    }
+    return { created, failed, remaining: await remainingCount(), errors };
   } catch (error) {
     failed = pending.results.length;
     errors.push(error instanceof Error ? error.message : "bilinmeyen hata");
+    return { created: 0, failed, remaining: await remainingCount(), errors };
   }
-
-  return { created, failed, remaining: await remainingCount(), errors };
 }
 
 type StockPriceRow = {

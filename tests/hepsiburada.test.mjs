@@ -173,3 +173,24 @@ test("buildImportItem zorunlu özellikleri üretir, yüzükte cinsiyet ekler", (
   const kolye = buildImportItem({ merchantId: "M1", categoryId: HB_CATEGORY.kolye, merchantSku: "K1", title: "K", description: "d", images: ["https://x/a.jpg"], male: false });
   assert.equal(kolye.attributes.cinsiyet, undefined);
 });
+
+import { parseImportStatus } from "../lib/hepsiburada/import-parse.ts";
+
+test("parseImportStatus yetki reddi, hata ve bekleyen durumları ayırır", () => {
+  const denied = parseImportStatus({
+    data: [{ merchantSku: "A", importStatus: "FAILED", importMessages: [{ severity: "ERROR", message: "Access denied for merchant X" }] }],
+  });
+  assert.equal(denied[0].outcome, "accessDenied");
+  const failed = parseImportStatus({
+    data: [{ merchantSku: "B", importStatus: "FAILED", importMessages: [{ severity: "ERROR", message: "Marka bulunamadı" }] }],
+  });
+  assert.equal(failed[0].outcome, "failed");
+  assert.match(failed[0].reason, /Marka/);
+  const pending = parseImportStatus({ data: [{ merchantSku: "C", importStatus: "IN_PROGRESS", importMessages: [] }] });
+  assert.equal(pending[0].outcome, "pending");
+  const ok = parseImportStatus({
+    data: [{ merchantSku: "D", importStatus: "SUCCESS", productStatus: "WAITING_FOR_APPROVAL", importMessages: [] }],
+  });
+  assert.equal(ok[0].outcome, "success");
+  assert.deepEqual(parseImportStatus(null), []);
+});
