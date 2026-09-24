@@ -161,7 +161,7 @@ test("hepsiburadaCategoryFor sitedeki kategorileri Hepsiburada Bijuteri kategori
 
 test("buildImportItem zorunlu özellikleri üretir, yüzükte cinsiyet ekler", () => {
   const item = buildImportItem({
-    merchantId: "M1", categoryId: HB_CATEGORY.yuzuk, merchantSku: "BYK1",
+    merchantId: "M1", categoryId: HB_CATEGORY.yuzuk, productId: 1, price: 239, stock: 5, merchantSku: "BYK1",
     title: "Zirkon Yüzük", description: "Açıklama", images: ["https://x/a.jpg", "https://x/b.jpg"], male: false,
   });
   assert.equal(item.merchant, "M1");
@@ -170,7 +170,7 @@ test("buildImportItem zorunlu özellikleri üretir, yüzükte cinsiyet ekler", (
   }
   assert.equal(item.attributes.Image2, "https://x/b.jpg");
   assert.equal(item.attributes.cinsiyet, "Kadın");
-  const kolye = buildImportItem({ merchantId: "M1", categoryId: HB_CATEGORY.kolye, merchantSku: "K1", title: "K", description: "d", images: ["https://x/a.jpg"], male: false });
+  const kolye = buildImportItem({ merchantId: "M1", categoryId: HB_CATEGORY.kolye, productId: 2, price: 10, stock: 1, merchantSku: "K1", title: "K", description: "d", images: ["https://x/a.jpg"], male: false });
   assert.equal(kolye.attributes.cinsiyet, undefined);
 });
 
@@ -193,4 +193,30 @@ test("parseImportStatus yetki reddi, hata ve bekleyen durumları ayırır", () =
   });
   assert.equal(ok[0].outcome, "success");
   assert.deepEqual(parseImportStatus(null), []);
+});
+
+import { internalEan13, normalizeMerchantSku, hepsiburadaTitle, hepsiburadaPrice } from "../lib/hepsiburada/attributes.ts";
+
+test("internalEan13 geçerli, tekil 13 haneli barkod üretir", () => {
+  const ean = internalEan13(8444);
+  assert.match(ean, /^2\d{12}$/);
+  let sum = 0;
+  for (let i = 0; i < 12; i += 1) sum += Number(ean[i]) * (i % 2 === 0 ? 1 : 3);
+  assert.equal((10 - (sum % 10)) % 10, Number(ean[12]));
+  assert.notEqual(internalEan13(8444), internalEan13(8445));
+  assert.equal(internalEan13(8444), internalEan13(8444));
+});
+
+test("merchantSku büyük harf/boşluksuz, başlık marka ile başlar, fiyat virgüllü", () => {
+  assert.equal(normalizeMerchantSku(" bkp 8444 "), "BKP8444");
+  assert.equal(hepsiburadaTitle("gold renk zirkon taşlı 316L kadın küpe"), "Terragolds Gold Renk Zirkon Taşlı 316L Kadın Küpe");
+  assert.equal(hepsiburadaTitle("Terragolds Kolye"), "Terragolds Kolye");
+  assert.equal(hepsiburadaPrice(14.5), "14,50");
+  assert.equal(hepsiburadaPrice(239), "239,00");
+});
+
+test("parseImportStatus resmi durumlar: PROCESSING bekler, MISSING_INFO hata, SUCCESS başarı", () => {
+  assert.equal(parseImportStatus({ data: [{ merchantSku: "A", importStatus: "PROCESSING", importMessages: [] }] })[0].outcome, "pending");
+  assert.equal(parseImportStatus({ data: [{ merchantSku: "B", importStatus: "SUCCESS", productStatus: "MISSING_INFO", validationResults: [{ attributeName: "Renk", message: "gerekli" }], importMessages: [] }] })[0].outcome, "failed");
+  assert.equal(parseImportStatus({ data: [{ merchantSku: "C", importStatus: "SUCCESS", productStatus: "WAITING", importMessages: [] }] })[0].outcome, "success");
 });

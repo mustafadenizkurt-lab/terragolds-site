@@ -41,6 +41,7 @@ export async function syncProductsToHepsiburada(
   const pending = await db
     .prepare(
       `SELECT id, name, COALESCE(NULLIF(seo_description, ''), description) AS description,
+              price, hepsiburada_override_price AS overridePrice, stock,
               image, hover_image AS hoverImage, category, xml_external_id AS xmlExternalId
        FROM products WHERE ${pendingWhere} ORDER BY id LIMIT ?`,
     )
@@ -49,6 +50,9 @@ export async function syncProductsToHepsiburada(
       id: number;
       name: string;
       description: string;
+      price: number;
+      overridePrice: number | null;
+      stock: number;
       image: string;
       hoverImage: string | null;
       category: string;
@@ -73,6 +77,9 @@ export async function syncProductsToHepsiburada(
         buildImportItem({
           merchantId,
           categoryId,
+          productId: row.id,
+          price: row.overridePrice ?? row.price,
+          stock: row.stock,
           merchantSku: merchantSkuFor(row),
           title: row.name,
           description: row.description?.trim() || row.name,
@@ -233,6 +240,7 @@ export async function importHepsiburadaTest(
   const rows = await db
     .prepare(
       `SELECT id, name, COALESCE(NULLIF(seo_description, ''), description) AS description,
+              price, hepsiburada_override_price AS overridePrice, stock,
               image, hover_image AS hoverImage, category, xml_external_id AS xmlExternalId
        FROM products WHERE xml_external_id IN (${codes.map(() => "?").join(",")})`,
     )
@@ -241,6 +249,9 @@ export async function importHepsiburadaTest(
       id: number;
       name: string;
       description: string;
+      price: number;
+      overridePrice: number | null;
+      stock: number;
       image: string;
       hoverImage: string | null;
       category: string;
@@ -259,6 +270,9 @@ export async function importHepsiburadaTest(
       buildImportItem({
         merchantId,
         categoryId,
+        productId: row.id,
+        price: row.overridePrice ?? row.price,
+        stock: row.stock,
         merchantSku: merchantSkuFor(row),
         title: row.name,
         description: row.description?.trim() || row.name,

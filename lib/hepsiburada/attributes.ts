@@ -60,22 +60,73 @@ export type HepsiburadaImportItem = {
   attributes: Record<string, string>;
 };
 
+// Hepsiburada Barcode alanı EAN-13 bekliyor (13 hane, sağlama toplamlı;
+// resmi rehber: "Barkod 13 karakterden oluşup kendi içinde bir algoritmaya
+// sahip olmalıdır"). Ürünlerimizin gerçek GTIN'i yok - EAN-13'ün mağaza içi
+// kullanım için ayrılmış "2" ön ekiyle (20-29) ürün id'sinden deterministik
+// ve tekil bir barkod üretiyoruz. Hepsiburada kataloğunda karşılığı olmayacağı
+// için ürünler "İncelenecek" (giriş ekibi kontrolü) statüsüne düşer.
+export function internalEan13(productId: number): string {
+  const body = "2" + String(productId).padStart(11, "0").slice(-11);
+  let sum = 0;
+  for (let i = 0; i < 12; i += 1) sum += Number(body[i]) * (i % 2 === 0 ? 1 : 3);
+  const check = (10 - (sum % 10)) % 10;
+  return body + String(check);
+}
+
+// merchantSku büyük harf ve boşluksuz gönderilmeli (resmi rehber).
+export function normalizeMerchantSku(value: string): string {
+  return value.replace(/\s+/g, "").toLocaleUpperCase("en-US");
+}
+
+// Resmi ürün adı kuralları: marka ile başlamalı, her kelimenin ilk harfi
+// büyük, model kodları (rakam içeren) olduğu gibi/büyük.
+export function hepsiburadaTitle(name: string, brand = "Terragolds"): string {
+  const words = name
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) =>
+      /\d/.test(word)
+        ? word.toLocaleUpperCase("tr-TR")
+        : word.charAt(0).toLocaleUpperCase("tr-TR") + word.slice(1).toLocaleLowerCase("tr-TR"),
+    );
+  const title = words.join(" ");
+  return title.toLocaleLowerCase("tr-TR").startsWith(brand.toLocaleLowerCase("tr-TR"))
+    ? title
+    : `${brand} ${title}`;
+}
+
+// Fiyat: virgülle, en fazla 2 hane ("14,50") - resmi rehber.
+export function hepsiburadaPrice(value: number): string {
+  return (Math.round(value * 100) / 100).toFixed(2).replace(".", ",");
+}
+
 export function buildImportItem(input: {
   merchantId: string;
   categoryId: number;
+  productId: number;
   merchantSku: string;
   title: string;
   description: string;
   images: string[];
   male: boolean;
+  price: number;
+  stock: number;
 }): HepsiburadaImportItem {
+  const merchantSku = normalizeMerchantSku(input.merchantSku);
   const attributes: Record<string, string> = {
-    merchantSku: input.merchantSku,
-    Barcode: input.merchantSku,
-    UrunAdi: input.title,
+    merchantSku,
+    VaryantGroupID: merchantSku,
+    Barcode: internalEan13(input.productId),
+    UrunAdi: hepsiburadaTitle(input.title),
     UrunAciklamasi: input.description,
     Marka: "Terragolds",
     tax_vat_rate: "20",
+    // Fiyat/stok ürünle birlikte gönderilirse, ürün onaylanınca bu değerlerle
+    // otomatik satışa açılır (resmi rehber) - ayrı listing çağrısı gerekmez.
+    price: hepsiburadaPrice(input.price),
+    stock: String(Math.max(0, Math.floor(input.stock))),
   };
   input.images.slice(0, 5).forEach((url, index) => {
     attributes[`Image${index + 1}`] = url;

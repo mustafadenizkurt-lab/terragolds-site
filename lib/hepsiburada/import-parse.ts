@@ -10,10 +10,7 @@ export type ParsedImportItem = {
 // GET /product/api/products/status/{trackingId} yanıtı (gerçek yanıttan):
 // { data: [{ merchantSku, importStatus: "FAILED"|..., productStatus,
 //   importMessages: [{severity, message}], validationResults, rejectReasonsMessages }] }
-// importStatus'un başarı değerleri henüz canlıda görülmedi (yetki reddi
-// yüzünden hep FAILED geldi) - bu yüzden başarı, "FAILED değil ve ERROR mesajı
-// yok ve (productStatus dolu ya da importStatus tamamlanmış görünüyor)" diye
-// temkinli tanımlanıyor; belirsiz durumlar "pending" kalır.
+// Belirsiz durumlar "pending" kalır (yanlışlıkla başarı saymamak için).
 export function parseImportStatus(raw: unknown): ParsedImportItem[] {
   const data = ((raw ?? {}) as { data?: unknown }).data;
   const list = Array.isArray(data) ? data : [];
@@ -36,15 +33,22 @@ export function parseImportStatus(raw: unknown): ParsedImportItem[] {
     const importStatus = String(entry.importStatus ?? "").toUpperCase();
     const productStatus = entry.productStatus == null ? null : String(entry.productStatus);
 
+    // Resmi durum değerleri (developers.hepsiburada.com): importStatus =
+    // PROCESSING | SUCCESS | FAILED; productStatus = WAITING (incelenecek) |
+    // MISSING_INFO | MATCHED (satışa hazır) | PRE_MATCHED (eşleşen) | REJECTED |
+    // MATCHED_WITH_STAGED | CREATED.
+    const blockedProductStatus = ["MISSING_INFO", "REJECTED"].includes(String(productStatus));
     let outcome: ParsedImportItem["outcome"];
     if (errorMessages.some((message) => /access denied/i.test(message))) outcome = "accessDenied";
-    else if (importStatus === "FAILED" || errorMessages.length > 0 || rejects.length > 0)
-      outcome = "failed";
     else if (
-      productStatus !== null ||
-      ["SUCCESS", "DONE", "COMPLETED", "FINISHED"].includes(importStatus)
+      importStatus === "FAILED" ||
+      errorMessages.length > 0 ||
+      rejects.length > 0 ||
+      blockedProductStatus
     )
-      outcome = "success";
+      outcome = "failed";
+    else if (importStatus === "PROCESSING") outcome = "pending";
+    else if (importStatus === "SUCCESS" || productStatus !== null) outcome = "success";
     else outcome = "pending";
     return { merchantSku: String(entry.merchantSku ?? ""), outcome, reason, productStatus };
   });
