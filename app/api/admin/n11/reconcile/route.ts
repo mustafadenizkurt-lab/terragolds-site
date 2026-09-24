@@ -4,7 +4,11 @@ import { getD1 } from "../../../../../lib/store-db";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(request: Request) {
+// GET ile de tetiklenebiliyor - resubmit-rejected route'undaki GET/POST
+// deseniyle aynı gerekçe: admin paneli butonu zaten POST kullanıyor, ama
+// cron'un bir sonraki çalışmasını beklemeden linke tıklayarak da manuel
+// tetikleyebilmek için.
+async function run(request: Request) {
   if (!(await getAuthorizedAdmin(request))) return unauthorizedAdminResponse();
   try {
     const db = getD1();
@@ -17,4 +21,12 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
+}
+
+export async function GET(request: Request) {
+  return run(request);
+}
+
+export async function POST(request: Request) {
+  return run(request);
 }
