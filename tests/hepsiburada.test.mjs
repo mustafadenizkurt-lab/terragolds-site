@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildHepsiburadaAuthHeader, buildHepsiburadaUserAgent } from "../lib/hepsiburada/http-utils.ts";
+import { buildHepsiburadaAuthHeader, buildHepsiburadaUserAgent, normalizeIntegratorName } from "../lib/hepsiburada/http-utils.ts";
 import { mapHepsiburadaOrderPayload } from "../lib/hepsiburada/order-mapping.ts";
 import { computeRequiredPrice, effectiveCommissionRate } from "../lib/hepsiburada/pricing-formula.ts";
 
@@ -136,4 +136,11 @@ test("computeRequiredPrice maliyet arttıkça gerekli fiyatı da artırır", () 
 test("computeRequiredPrice maliyet 0 için sadece sabit maliyetleri (kargo+sipariş) yansıtır", () => {
   const result = computeRequiredPrice(0);
   assert.ok(Math.abs(result - 109 / (1 - effectiveCommissionRate())) < 1e-9);
+});
+
+
+test("entegratör adı noktasız ı ve boşluklardan arındırılır (401 nedeni)", () => {
+  assert.equal(normalizeIntegratorName("selfıt_dev"), "selfit_dev");
+  assert.equal(normalizeIntegratorName("  selfit_dev \n"), "selfit_dev");
+  assert.equal(buildHepsiburadaUserAgent("selfıt_dev"), "selfit_dev");
 });
