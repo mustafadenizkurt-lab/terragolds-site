@@ -21,7 +21,9 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   if (!(await getAuthorizedAdmin(request))) return unauthorizedAdminResponse();
 
-  const override = new URL(request.url).searchParams.get("userAgent");
+  const params = new URL(request.url).searchParams;
+  const override = params.get("userAgent");
+  const authUserOverride = params.get("authUser");
   try {
     const { merchantId, secretKey, integratorName } = await getHepsiburadaCredentials();
     const userAgent = override || integratorName;
@@ -29,7 +31,7 @@ export async function GET(request: Request) {
       `${HEPSIBURADA_LISTING_API_BASE}/listings/merchantid/${merchantId}?limit=1`,
       {
         headers: {
-          authorization: buildHepsiburadaAuthHeader(merchantId, secretKey),
+          authorization: buildHepsiburadaAuthHeader(authUserOverride || merchantId, secretKey),
           "user-agent": userAgent,
         },
       },
@@ -39,6 +41,15 @@ export async function GET(request: Request) {
       ok: response.ok,
       status: response.status,
       userAgentUsed: userAgent,
+      authUserUsed: authUserOverride || merchantId,
+      // Sadece meta bilgi (anahtarın kendisi ASLA döndürülmez): boşluk/özel
+      // karakter ve uzunluk, yanlış yapıştırma ihtimalini ayıklamak için.
+      secretMeta: {
+        length: secretKey.length,
+        hasWhitespace: /\s/.test(secretKey),
+        alphanumericOnly: /^[A-Za-z0-9]+$/.test(secretKey),
+      },
+      integratorName,
       body: text.slice(0, 1500),
     });
   } catch (error) {
