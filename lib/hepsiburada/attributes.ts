@@ -44,7 +44,7 @@ export function hepsiburadaCategoryFor(product: {
   if (category.includes("broş")) return HB_CATEGORY.bros;
   if (category.includes("halhal") || category.includes("hal hal")) return HB_CATEGORY.halhal;
   if (category.includes("şahmeran") || category.includes("antika") || category.includes("vintage")) return null;
-  if (category.includes("saat") || category.includes("kombin")) return null;
+  if (category.includes("saat")) return null;
   const text = category.trim() === "takı" ? name : category;
   if (text.includes("yüzük")) return male ? HB_CATEGORY.erkekYuzuk : HB_CATEGORY.yuzuk;
   if (text.includes("kolye")) return male ? HB_CATEGORY.erkekKolye : HB_CATEGORY.kolye;
