@@ -174,10 +174,14 @@ function toN11Product(
     // başlığı paylaşıyor (ör. "Pirinç Gümüş Renk Zirkon Taşlı Kadın Küpe")
     // - Renk/Cinsiyet gibi zorunlu özellikler de aynı kalınca N11 bunları
     // "aynı attributes kullanılmış" (mükerrer) diye reddediyordu. stockCode
-    // eklemek başlığı tekilleştirip hem bu mükerrer reddi hem de N11'in
-    // genel kataloğuyla yanlış eşleşme ("ürün grubuyla uyumlu değil",
-    // "Marka Eşleşmesi") ihtimalini azaltıyor.
-    title: `${product.name} - ${stockCode}`,
+    // eklemek bu belirli reddi çözdü, ama "Bu ürün sistemde mevcuttur" diye
+    // N11'in kendi ana kataloğuna birebir eşleştirip reddettiği ayrı bir
+    // grup (1252 ürün) hâlâ vardı - sadece sona kod eklemek bu eşleşmeyi
+    // engellemedi. Başa marka adını da eklemek deneniyor: ürünü N11'in
+    // gözünde "jenerik/markasız" değil "Terragolds markalı" bir ürün olarak
+    // işaretleyip kendi kataloğundaki markasız/başka satıcı tasarımıyla
+    // otomatik eşleşmesini azaltmak amacıyla.
+    title: `Terragolds ${product.name} - ${stockCode}`,
     // N11 muhtemelen boş açıklamayı reddediyor (Trendyol'da doğrulanmış bir
     // davranış) - D1'de birkaç ürünün açıklaması boş olabileceği için aynı
     // önlem: ürün adına düşülüyor.
