@@ -163,7 +163,7 @@ test("Cinsiyet değer ID'leri kategoriye özgü (kolyede yüzük ID'si kullanıl
 
 test("Broş/Piercing/Şahmeran/Halhal Cinsiyet göndermez, Antika hiç özellik göndermez", () => {
   const p = { category: "x", name: "Gold Renk Broş" };
-  for (const id of [1191220, 1191216, 1191217, 1191218]) {
+  for (const id of [1191220, 1191217, 1191218]) {
     assert.deepEqual(attributesForCategory(id, p).map((a) => a.id), [1, 429]);
   }
   assert.deepEqual(attributesForCategory(1003526, p), []);
@@ -299,4 +299,16 @@ test("stripMetalColorWords başlıktan maden adını çıkarır, geri kalanı ko
   assert.equal(stripMetalColorWords("Pirinç Gümüş Renk Zirkon Taşlı Kadın Bileklik"), "Pirinç Zirkon Taşlı Kadın Bileklik");
   assert.equal(stripMetalColorWords("Gold Renk Yıldız Model Kolye"), "Yıldız Model Kolye");
   assert.equal(stripMetalColorWords("Zirkon Taşlı Kadın Küpe"), "Zirkon Taşlı Kadın Küpe");
+});
+
+test("Bijuteri Kolye Zincir Uzunluğu, Bileklik/Piercing Beden (N11 sonradan zorunlu yaptı)", () => {
+  const necklace = attributesForCategory(1219212, { category: "Kolye", name: "Gold Renk 60 cm Zincir Kadın Kolye" });
+  assert.deepEqual(necklace.map((a) => a.id).sort((a, b) => a - b), [1, 22, 429, 947]);
+  assert.equal(necklace.find((a) => a.id === 947).valueId, 2480601);
+  assert.equal(attributesForCategory(1219212, { category: "Kolye", name: "Kalp Kolye" }).find((a) => a.id === 947).valueId, 4773996);
+  const bracelet = attributesForCategory(1219214, { category: "Bileklik", name: "Zirkon Taşlı Bileklik" });
+  assert.deepEqual(bracelet.map((a) => a.id).sort((a, b) => a - b), [1, 22, 429, 1494]);
+  assert.equal(bracelet.find((a) => a.id === 1494).customValue, "Standart");
+  assert.equal(attributesForCategory(1219214, { category: "Bileklik", name: "Ayarlamalı Bileklik" }).find((a) => a.id === 1494).customValue, "Ayarlanabilir");
+  assert.deepEqual(attributesForCategory(1191216, { category: "Piercing", name: "Piercing" }).map((a) => a.id).sort((a, b) => a - b), [1, 429, 1494]);
 });

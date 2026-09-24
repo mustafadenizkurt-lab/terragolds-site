@@ -6,8 +6,13 @@ export type N11Attribute = { id: number; valueId?: number; customValue?: string 
 // GET /cdn/category/{id}/attribute ham yanıtından (9 kategorinin TAMAMI
 // programatik olarak taranarak) çıkarılan gerçek isMandatory=true listeleri:
 //   Bijuteri Yüzük (1219213):    Cinsiyet(22) + Marka(1) + Ölçü(1567) + Renk(429)
-//   Bijuteri Kolye/Bileklik/Küpe (1219212/1219214/1219216): Cinsiyet(22) + Marka(1) + Renk(429)
-//   Broş/Piercing/Şahmeran/Halhal (1191220/1191216/1191217/1191218): Marka(1) + Renk(429)
+//   Bijuteri Kolye (1219212):    Cinsiyet + Marka + Renk + Zincir Uzunluğu(947, valueId)
+//   Bijuteri Bileklik (1219214): Cinsiyet + Marka + Renk + Beden(1494, serbest metin)
+//   Bijuteri Küpe (1219216):     Cinsiyet + Marka + Renk
+//   Piercing (1191216):          Marka + Renk + Beden(1494)
+//   Broş/Şahmeran/Halhal (1191220/1191217/1191218): Marka(1) + Renk(429)
+//   (Kolye/Bileklik/Piercing'deki ek özellikler ilk taramadan SONRA N11
+//   tarafından zorunlu yapıldı - bkz. CategoryRule.bijuChain/beden.)
 //   2.El Antika & Koleksiyon (1003526): zorunlu özellik YOK (Marka/Renk/
 //     Cinsiyet bu kategoride hiç tanımlı değil - göndermek geçersiz ID olur)
 type CategoryRule = {
@@ -15,6 +20,12 @@ type CategoryRule = {
   size: boolean;
   brandAndColor: boolean;
   steel?: "chain" | "ring" | "bracelet" | "plain";
+  // N11 bu kategorilerin zorunlu özelliklerini SONRADAN genişletti (ilk tarama
+  // Kolye/Bileklik için sadece Cinsiyet+Marka+Renk buldu; yeniden taramada
+  // Kolye'ye Zincir Uzunluğu(947, valueId), Bileklik ve Piercing'e
+  // Beden(1494, serbest metin) eklenmişti) - katalog reddinin ana nedeni.
+  bijuChain?: boolean;
+  beden?: boolean;
 };
 
 // "Çelik Takılar" (paslanmaz çelik) N11'de "Bijuteri"den AYRI bir ağaç;
@@ -54,11 +65,11 @@ const RULES: Record<number, CategoryRule> = {
   1219222: { gender: true, size: false, brandAndColor: true, steel: "plain" },
   1219223: { gender: true, size: false, brandAndColor: true, steel: "plain" },
   1219213: { gender: true, size: true, brandAndColor: true },
-  1219212: { gender: true, size: false, brandAndColor: true },
-  1219214: { gender: true, size: false, brandAndColor: true },
+  1219212: { gender: true, size: false, brandAndColor: true, bijuChain: true },
+  1219214: { gender: true, size: false, brandAndColor: true, beden: true },
   1219216: { gender: true, size: false, brandAndColor: true },
   1191220: { gender: false, size: false, brandAndColor: true },
-  1191216: { gender: false, size: false, brandAndColor: true },
+  1191216: { gender: false, size: false, brandAndColor: true, beden: true },
   1191217: { gender: false, size: false, brandAndColor: true },
   1191218: { gender: false, size: false, brandAndColor: true },
   1003526: { gender: false, size: false, brandAndColor: false },
@@ -104,6 +115,34 @@ const RING_SIZE_VALUE_ID: Record<number, number> = {
 };
 const RING_SIZE_ADJUSTABLE = 3344396;
 const RING_SIZE_STANDARD = 3682272;
+
+// Bijuteri Kolye (1219212) "Zincir Uzunluğu" (947) valueId listesi - Çelik
+// Kolye'nin listesinden FARKLI ID'ler (kategoriye özgü).
+const BIJU_CHAIN_LENGTH_VALUE_ID: Record<number, number> = {
+  35: 2486528, 36: 4767612, 37: 6436676, 38: 5865945, 39: 6288367, 40: 2481043,
+  41: 4698075, 42: 2481274, 43: 4698292, 44: 4698262, 45: 2480861, 46: 4698566,
+  47: 5759503, 48: 6568104, 49: 6568100, 50: 2480659, 51: 5868760, 52: 6980443,
+  53: 6683012, 54: 9056499, 55: 2480836, 56: 8798388, 57: 9056487, 58: 6436687,
+  59: 6436688, 60: 2480601, 61: 6436691, 62: 6436692, 63: 6436693, 64: 9056543,
+  65: 2481228, 66: 4774492, 67: 6710536, 68: 6710476, 69: 6710534, 70: 2481170,
+  71: 6710532, 72: 6710530, 73: 6710480, 74: 6710552, 75: 6436694, 76: 6710540,
+  77: 6710538, 78: 6710478, 79: 8749567, 80: 4925348, 82: 8741505, 83: 8800053,
+  84: 9056489, 85: 9056468, 86: 9056692, 90: 8800054, 91: 9056622, 92: 9056739,
+  93: 6710550, 96: 9056744, 100: 9056525,
+};
+const BIJU_CHAIN_LENGTH_STANDARD = 4773996;
+
+export function bijuChainLengthValueId(name: string): number {
+  const match = /(\d{2,3})\s*cm/.exec(lower(name));
+  const id = match ? BIJU_CHAIN_LENGTH_VALUE_ID[Number(match[1])] : undefined;
+  return id ?? BIJU_CHAIN_LENGTH_STANDARD;
+}
+
+// Beden (1494) serbest metin; N11 listesindeki gerçek değerler: "Ayarlanabilir",
+// "Standart", "Tek Ebat".
+export function bedenFor(name: string): string {
+  return /ayarlanabilir|ayarlamalı|ayarlı/.test(lower(name)) ? "Ayarlanabilir" : "Standart";
+}
 
 export function chainLengthValueId(name: string): number {
   const match = /(\d{2,3})\s*cm/.exec(lower(name));
@@ -206,6 +245,8 @@ export function attributesForCategory(
   }
   if (rule.size) attributes.push({ id: 1567, customValue: ringSizeFor(product) });
   if (rule.brandAndColor) attributes.push({ id: 429, customValue: colorFor(product) });
+  if (rule.bijuChain) attributes.push({ id: 947, valueId: bijuChainLengthValueId(product.name) });
+  if (rule.beden) attributes.push({ id: 1494, customValue: bedenFor(product.name) });
   if (rule.steel === "chain") attributes.push({ id: 947, valueId: chainLengthValueId(product.name) });
   if (rule.steel === "ring") attributes.push({ id: 620, valueId: steelRingSizeValueId(product.name) });
   if (rule.steel === "bracelet") attributes.push({ id: 1494, customValue: /ayarlanabilir|ayarlamalı|ayarlı/.test(lower(product.name)) ? "Ayarlanabilir" : "Standart" });
