@@ -1,7 +1,6 @@
 import {
   ensureN11Columns,
   createProduct,
-  updateProduct,
   updateStockAndPrice,
   type N11Product,
   type N11ProductAttribute,
@@ -407,41 +406,63 @@ export type N11ResubmitResult = {
   errors: string[];
 };
 
-// CatalogRejected ürünleri güncel kategori/özellik kurallarıyla product-update
-// üzerinden yeniden gönderir (ör. Çelik kategorisinden Bijuteri'ye taşıma).
-// Kategori değişikliğini N11'in güncelleme ile kabul edip etmediği önce tek
-// ürünle denenmeli (limit=1). Görev yeni taskId ile takip edilir; sonuç
+// CatalogRejected ürünleri güncel kategori/özellik kurallarıyla yeniden
+// gönderir (ör. Çelik kategorisinden Bijuteri'ye taşıma). Önce tek ürünle
+// denenmeli (limit=1). Görev yeni taskId ile takip edilir; sonuç
 // reconcileN11Tasks + reconcileN11CatalogStatus ile doğrulanır.
+//
+// updateProduct DEĞİL createProduct kullanılıyor: gerçek denemede (BKO5903 +
+// 25 ürün, 24.09.2026) updateProduct hepsinde "Girilen X SellerStockCode ile
+// mağazanızda bir ürün bulunmamaktadır" hatasıyla döndü - N11 bir ürünü
+// katalog incelemesinde reddedince onu satıcı kataloğundan tamamen
+// kaldırıyor, yani "güncellenecek" bir kayıt kalmıyor. N11 desteğinin de
+// önerdiği gibi (sil, yeniden tasarlayıp gönder) create ile sıfırdan
+// öneriliyor.
+const SELLER_STOCK_CODE_NOT_FOUND_SUFFIX =
+  "SellerStockCode ile mağazanızda bir ürün bulunmamaktadır.";
+
 export async function resubmitRejectedToN11(
   db: D1Database,
   options: { limit?: number; stockCode?: string } = {},
 ): Promise<N11ResubmitResult> {
   await ensureN11Columns(db);
   const limit = Math.min(100, Math.max(1, options.limit ?? 1));
-  const where = options.stockCode
-    ? "n11_stock_code = ?"
-    : "n11_last_error = ? AND n11_stock_code IS NOT NULL";
-  const rows = await db
-    .prepare(
-      `SELECT id, name, description, price, n11_override_price AS n11OverridePrice, stock,
-              image, hover_image AS hoverImage, category, xml_external_id AS xmlExternalId
-       FROM products WHERE ${where} ORDER BY id LIMIT ?`,
-    )
-    .bind(options.stockCode ?? CATALOG_REJECTED_MESSAGE, limit)
-    .all<PendingProduct>();
+  const rows = options.stockCode
+    ? await db
+        .prepare(
+          `SELECT id, name, description, price, n11_override_price AS n11OverridePrice, stock,
+                  image, hover_image AS hoverImage, category, xml_external_id AS xmlExternalId
+           FROM products WHERE n11_stock_code = ? ORDER BY id LIMIT ?`,
+        )
+        .bind(options.stockCode, limit)
+        .all<PendingProduct>()
+    : await db
+        .prepare(
+          `SELECT id, name, description, price, n11_override_price AS n11OverridePrice, stock,
+                  image, hover_image AS hoverImage, category, xml_external_id AS xmlExternalId
+           FROM products WHERE n11_last_error = ? OR n11_last_error LIKE ?
+           ORDER BY id LIMIT ?`,
+        )
+        .bind(CATALOG_REJECTED_MESSAGE, `%${SELLER_STOCK_CODE_NOT_FOUND_SUFFIX}`, limit)
+        .all<PendingProduct>();
 
   const result: N11ResubmitResult = { resubmitted: 0, taskId: "", stockCodes: [], errors: [] };
   if (rows.results.length === 0) return result;
   try {
     const credentials = await getN11Credentials();
     const products = rows.results.map((row) => toN11Product(row, credentials));
-    const task = await updateProduct(products, credentials.integrator);
+    // updateProduct değil createProduct: yukarıdaki yorumdaki gerekçeyle - N11
+    // desteğinin de önerdiği gibi (sil, yeniden tasarlayıp gönder) reddedilmiş
+    // ürün artık N11 tarafında yok, "create" ile sıfırdan öneriliyor.
+    const task = await createProduct(products, credentials.integrator);
     result.taskId = String(task.id ?? "");
     const stmt = db.prepare(
-      `UPDATE products SET n11_task_id = ?, n11_last_error = NULL, n11_verified_at = NULL,
-         n11_synced_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      `UPDATE products SET n11_stock_code = ?, n11_task_id = ?, n11_last_error = NULL,
+         n11_verified_at = NULL, n11_synced_at = CURRENT_TIMESTAMP WHERE id = ?`,
     );
-    await db.batch(rows.results.map((row) => stmt.bind(result.taskId, row.id)));
+    await db.batch(
+      rows.results.map((row) => stmt.bind(stockCodeFor(row), result.taskId, row.id)),
+    );
     result.resubmitted = rows.results.length;
     result.stockCodes = products.map((product) => product.stockCode);
   } catch (error) {
