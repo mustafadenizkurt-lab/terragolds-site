@@ -180,11 +180,16 @@ export async function applyTrendyolDynamicPricing(db: D1Database): Promise<Dynam
     // db.batch() ile tek round-trip - bkz. lib/trendyol/sync.ts
     // applyTrendyolPriceIncrease'teki aynı gerekçe (sıralı tekil sorgular
     // 1000 ürünlük bir partide isteği zaman aşımına uğratıyordu).
+    // trendyol_price_synced da burada güncelleniyor - Trendyol'a fiyat zaten
+    // yukarıda gönderildi, bu kolonu boş bırakmak pushPendingTrendyolPrices()'ın
+    // (sync.ts) aynı fiyatı gereksiz yere tekrar göndermesine yol açardı.
     const updateStmt = db.prepare(
-      `UPDATE products SET trendyol_override_price = ? WHERE id = ?`,
+      `UPDATE products SET trendyol_override_price = ?, trendyol_price_synced = ? WHERE id = ?`,
     );
     await db.batch(
-      chunk.map(({ product, requiredPrice }) => updateStmt.bind(requiredPrice, product.id)),
+      chunk.map(({ product, requiredPrice }) =>
+        updateStmt.bind(requiredPrice, requiredPrice, product.id),
+      ),
     );
 
     batches.push({ batchRequestId, itemCount: chunk.length });
