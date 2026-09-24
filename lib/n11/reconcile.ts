@@ -1,5 +1,5 @@
-import { ensureN11Columns, getTaskDetails } from "./client";
-import { parseTaskDetails } from "./task-parse";
+import { ensureN11Columns, getMyProductsRaw, getTaskDetails } from "./client";
+import { parseProductQueryPage, parseTaskDetails } from "./task-parse";
 
 export type N11ReconcileResult = {
   checkedTasks: number;
@@ -92,5 +92,82 @@ export async function reconcileN11Tasks(
     }
   }
 
+  return result;
+}
+
+export const CATALOG_REJECTED_MESSAGE =
+  "N11 katalog incelemesinde reddedildi (CatalogRejected) - gerçek neden N11 satıcı panelindeki 'Katalogdan Reddedilen' > Hata Etiketi'nde.";
+
+export type N11CatalogStatusResult = {
+  scanned: number;
+  newlyRejected: number;
+  recovered: number;
+  byStatus: Record<string, number>;
+  errors: string[];
+};
+
+// task-details SUCCESS dönen ürünler N11'de sonradan katalog incelemesinde
+// reddedilebiliyor (panelde "Katalogdan Reddedilen", ~1250 ürün) - bunu sadece
+// GET /ms/product-query'nin status alanı gösteriyor. Bu adım tüm ürünlerin
+// güncel durumunu okuyup D1'deki "doğrulandı" durumunu gerçekle eşitler.
+export async function reconcileN11CatalogStatus(
+  db: D1Database,
+  maxPages = 80,
+): Promise<N11CatalogStatusResult> {
+  await ensureN11Columns(db);
+  const result: N11CatalogStatusResult = {
+    scanned: 0,
+    newlyRejected: 0,
+    recovered: 0,
+    byStatus: {},
+    errors: [],
+  };
+
+  const statusByCode = new Map<string, string>();
+  try {
+    for (let page = 0; page < maxPages; page += 1) {
+      const parsed = parseProductQueryPage(await getMyProductsRaw({ page, size: 100 }));
+      for (const item of parsed.items) {
+        statusByCode.set(item.stockCode, item.status);
+        result.byStatus[item.status] = (result.byStatus[item.status] ?? 0) + 1;
+      }
+      result.scanned += parsed.items.length;
+      if (parsed.last) break;
+    }
+  } catch (error) {
+    // Kısmi tarama durumları yanlış "kurtarıldı" saymasın diye hiçbir şey yazma.
+    result.errors.push(error instanceof Error ? error.message : "bilinmeyen hata");
+    return result;
+  }
+
+  const rows = await db
+    .prepare(
+      `SELECT n11_stock_code AS code, n11_last_error AS err FROM products
+       WHERE n11_stock_code IS NOT NULL`,
+    )
+    .all<{ code: string; err: string | null }>();
+
+  const reject = db.prepare(
+    `UPDATE products SET n11_last_error = ?, n11_verified_at = NULL WHERE n11_stock_code = ?`,
+  );
+  const recover = db.prepare(
+    `UPDATE products SET n11_last_error = NULL, n11_verified_at = CURRENT_TIMESTAMP
+     WHERE n11_stock_code = ?`,
+  );
+  const statements: D1PreparedStatement[] = [];
+  for (const row of rows.results) {
+    const status = statusByCode.get(row.code);
+    if (status === undefined) continue;
+    if (status === "CatalogRejected" && !row.err) {
+      statements.push(reject.bind(CATALOG_REJECTED_MESSAGE, row.code));
+      result.newlyRejected += 1;
+    } else if (status !== "CatalogRejected" && row.err === CATALOG_REJECTED_MESSAGE) {
+      statements.push(recover.bind(row.code));
+      result.recovered += 1;
+    }
+  }
+  for (let i = 0; i < statements.length; i += 90) {
+    await db.batch(statements.slice(i, i + 90));
+  }
   return result;
 }

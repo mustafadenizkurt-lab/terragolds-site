@@ -261,3 +261,22 @@ test("n11ListPriceFor satış fiyatının üzerinde bir liste fiyatı üretir", 
   assert.ok(listPrice > 1000);
   assert.equal(listPrice, Math.round(1000 * 1.01));
 });
+
+import { parseProductQueryPage } from "../lib/n11/task-parse.ts";
+
+test("parseProductQueryPage CatalogRejected ve Active durumlarını okur", () => {
+  const page = parseProductQueryPage({
+    last: false,
+    content: [
+      { stockCode: "A1", status: "Active", saleStatus: "On_Sale" },
+      { stockCode: "B2", status: "CatalogRejected", saleStatus: "On_Sale" },
+    ],
+  });
+  assert.equal(page.last, false);
+  assert.deepEqual(page.items.map((i) => [i.stockCode, i.status]), [
+    ["A1", "Active"],
+    ["B2", "CatalogRejected"],
+  ]);
+  assert.equal(parseProductQueryPage({ content: [] }).last, true);
+  assert.equal(parseProductQueryPage(null).last, true);
+});
