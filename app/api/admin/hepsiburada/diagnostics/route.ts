@@ -2,32 +2,49 @@ import {
   getAuthorizedAdmin,
   unauthorizedAdminResponse,
 } from "../../../../../lib/admin-auth";
-import { getProducts } from "../../../../../lib/hepsiburada/client";
+import {
+  buildHepsiburadaAuthHeader,
+  getHepsiburadaCredentials,
+} from "../../../../../lib/hepsiburada/auth";
+import { HEPSIBURADA_LISTING_API_BASE } from "../../../../../lib/hepsiburada/client";
 
 export const dynamic = "force-dynamic";
 
-// Bağlantı/kimlik doğrulama teşhis aracı: Hepsiburada'nın gerçek onaylı
-// kimlik bilgileriyle daha önce hiç canlı doğrulanmadığı, sadece
-// dokümantasyona dayanarak yazıldığı (bkz. lib/hepsiburada/client.ts'teki
-// notlar) ve daha önce kalıcı 403 hataları alındığı biliniyor - kök sebep
-// yanlış header/endpoint mi yoksa Hepsiburada'nın IP whitelist zorunluluğu
-// mu (resmi dokümantasyonda "testlere başlamadan statik IP bildirin"
-// uyarısı var, Cloudflare Workers'ın sabit bir çıkış IP'si yok) belirsiz.
-// Bu, en hafif GET çağrısıyla (getProducts, limit=1) gerçek hata
-// metnini/kodunu görmek için.
+// Bağlantı/kimlik doğrulama teşhis aracı: en hafif GET çağrısıyla
+// (listing, limit=1) Hepsiburada'nın gerçek yanıtını gösterir. Salt okunur.
+//
+// ?userAgent=<ad> ile kayıtlı entegratör adı GEÇİCİ olarak ezilebilir
+// (kayıtlı kimlik bilgilerini değiştirmeden) - Hepsiburada satıcı panelinde
+// kayıtlı entegratör kullanıcı adı ("selfit_dev") ile burada saklanan ad
+// ("terra_dev") uyuşmadığında 401 "Merchant api authorization failed"
+// alınıyordu; bu, doğru User-Agent'ı kimlik bilgisini kaydetmeden sınamak için.
 export async function GET(request: Request) {
   if (!(await getAuthorizedAdmin(request))) return unauthorizedAdminResponse();
 
+  const override = new URL(request.url).searchParams.get("userAgent");
   try {
-    const result = await getProducts({ limit: 1 });
-    return Response.json({ ok: true, result });
-  } catch (error) {
-    return Response.json(
+    const { merchantId, secretKey, integratorName } = await getHepsiburadaCredentials();
+    const userAgent = override || integratorName;
+    const response = await fetch(
+      `${HEPSIBURADA_LISTING_API_BASE}/listings/merchantid/${merchantId}?limit=1`,
       {
-        ok: false,
-        error: error instanceof Error ? error.message : "bilinmeyen hata",
+        headers: {
+          authorization: buildHepsiburadaAuthHeader(merchantId, secretKey),
+          "user-agent": userAgent,
+        },
       },
-      { status: 200 },
     );
+    const text = await response.text();
+    return Response.json({
+      ok: response.ok,
+      status: response.status,
+      userAgentUsed: userAgent,
+      body: text.slice(0, 1500),
+    });
+  } catch (error) {
+    return Response.json({
+      ok: false,
+      error: error instanceof Error ? error.message : "bilinmeyen hata",
+    });
   }
 }
