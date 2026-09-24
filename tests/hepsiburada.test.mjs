@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { buildHepsiburadaAuthHeader, buildHepsiburadaUserAgent } from "../lib/hepsiburada/http-utils.ts";
 import { mapHepsiburadaOrderPayload } from "../lib/hepsiburada/order-mapping.ts";
-import { computeRequiredPrice, COMMISSION_RATE } from "../lib/hepsiburada/pricing-formula.ts";
+import { computeRequiredPrice, effectiveCommissionRate } from "../lib/hepsiburada/pricing-formula.ts";
 
 // Hepsiburada henüz API kimlik bilgilerimizi onaylamadı, o yüzden bu
 // testler gerçek bir API çağrısı yapmıyor - sadece kimlik bilgisi olmadan
@@ -117,13 +117,14 @@ test("mapHepsiburadaOrderPayload tek kelimelik veya eksik müşteri adında çö
   assert.deepEqual(mappedNoName.items, []);
 });
 
-test("computeRequiredPrice maliyet 100 TL için beklenen fiyatı üretir (%22 komisyon)", () => {
+test("computeRequiredPrice maliyet 100 TL için beklenen fiyatı üretir (%22 komisyon + komisyon üzerine %20 KDV)", () => {
   // productCostWithVat = 100 * 1.2 = 120
   // totalCost = 120 + 29 (ORDER_FEE) + 80 (SHIPPING_COST) = 229
   // targetProfit = 120 * 0.5 = 60
-  // requiredPrice = (229 + 60) / (1 - 0.22) = 289 / 0.78
+  // efektif komisyon = 0.22 * 1.2 = 0.264
+  // requiredPrice = (229 + 60) / (1 - 0.264) = 289 / 0.736
   const result = computeRequiredPrice(100);
-  assert.ok(Math.abs(result - 289 / (1 - COMMISSION_RATE)) < 1e-9);
+  assert.ok(Math.abs(result - 289 / (1 - effectiveCommissionRate())) < 1e-9);
 });
 
 test("computeRequiredPrice maliyet arttıkça gerekli fiyatı da artırır", () => {
@@ -134,5 +135,5 @@ test("computeRequiredPrice maliyet arttıkça gerekli fiyatı da artırır", () 
 
 test("computeRequiredPrice maliyet 0 için sadece sabit maliyetleri (kargo+sipariş) yansıtır", () => {
   const result = computeRequiredPrice(0);
-  assert.ok(Math.abs(result - 109 / (1 - COMMISSION_RATE)) < 1e-9);
+  assert.ok(Math.abs(result - 109 / (1 - effectiveCommissionRate())) < 1e-9);
 });
