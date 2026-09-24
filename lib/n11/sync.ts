@@ -7,7 +7,7 @@ import {
   type N11ProductAttribute,
 } from "./client";
 import { getN11Credentials, type N11Credentials } from "./auth";
-import { roundToN11Price } from "./http-utils";
+import { buildN11Title, roundToN11Price } from "./http-utils";
 import { attributesForCategory } from "./attributes";
 import { CATALOG_REJECTED_MESSAGE } from "./reconcile";
 import { n11ListPriceFor } from "./pricing-formula";
@@ -181,7 +181,7 @@ function toN11Product(
     // gözünde "jenerik/markasız" değil "Terragolds markalı" bir ürün olarak
     // işaretleyip kendi kataloğundaki markasız/başka satıcı tasarımıyla
     // otomatik eşleşmesini azaltmak amacıyla.
-    title: `Terragolds ${product.name} - ${stockCode}`,
+    title: buildN11Title(product.name, stockCode),
     // N11 muhtemelen boş açıklamayı reddediyor (Trendyol'da doğrulanmış bir
     // davranış) - D1'de birkaç ürünün açıklaması boş olabileceği için aynı
     // önlem: ürün adına düşülüyor.

@@ -280,3 +280,15 @@ test("parseProductQueryPage CatalogRejected ve Active durumlarını okur", () =>
   assert.equal(parseProductQueryPage({ content: [] }).last, true);
   assert.equal(parseProductQueryPage(null).last, true);
 });
+
+import { buildN11Title } from "../lib/n11/http-utils.ts";
+
+test("buildN11Title kısa adı olduğu gibi bırakır, uzun adı 100 karaktere kelime sınırında kısaltır", () => {
+  assert.equal(buildN11Title("Gold Renk Kadın Küpe", "BKP1"), "Terragolds Gold Renk Kadın Küpe - BKP1");
+  const long = "316L Çelik Gold Renk Açılır Zirkon Taşlı Yonca Model Çok Uzun Bir Ürün Adı Burada Devam Ediyor Kadın Kolye Seti";
+  const title = buildN11Title(long, "BKO7290");
+  assert.ok(title.length <= 100);
+  assert.ok(title.startsWith("Terragolds 316L"));
+  assert.ok(title.endsWith(" - BKO7290"));
+  assert.ok(!title.includes("  "));
+});

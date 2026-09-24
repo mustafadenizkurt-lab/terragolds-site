@@ -13,16 +13,11 @@ export const dynamic = "force-dynamic";
 // Maliyet + kargo + komisyon(+KDV+hizmet bedeli+stopaj) sonrası en az
 // maliyetin %50'si net kâr kalacak şekilde N11 satış fiyatını hesaplayıp
 // yükseltir (bkz. lib/n11/pricing.ts). GET saf önizleme (hiçbir şeyi
-// değiştirmez); ?apply=1 ile tarayıcı adres çubuğundan da tetiklenebiliyor
-// (Trendyol'daki dynamic-pricing route'uyla aynı desen - POST'u browser'dan
-// çalıştıramadığımız için).
+// değiştirmez); fiyatı uygulamak için SADECE POST (GET ile veri yazmak,
+// adres çubuğu/bağlantı üzerinden yanlışlıkla veya başka bir siteden
+// tetiklenmeye açıktı).
 export async function GET(request: Request) {
   if (!(await getAuthorizedAdmin(request))) return unauthorizedAdminResponse();
-  const { searchParams } = new URL(request.url);
-  if (searchParams.get("apply") === "1") {
-    const result = await applyN11DynamicPricing(getD1());
-    return Response.json(result);
-  }
   const preview = await previewN11DynamicPricing(getD1());
   return Response.json(preview);
 }

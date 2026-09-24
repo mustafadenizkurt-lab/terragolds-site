@@ -25,3 +25,23 @@ export function buildN11Headers(
 export function roundToN11Price(value: number): number {
   return Math.round(value * 100) / 100;
 }
+
+// Başlık sınırı N11 dokümanında teyit edilemedi; 120 ürün 100 karakteri
+// aşıyordu. Marka öneki ve stok kodu eki (mükerrer/katalog eşleşme reddini
+// azaltmak için, bkz. sync.ts) korunur, gerekirse ürün adı kelime
+// sınırında kısaltılır.
+export const N11_TITLE_MAX_LENGTH = 100;
+
+export function buildN11Title(name: string, stockCode: string): string {
+  const prefix = "Terragolds ";
+  const suffix = ` - ${stockCode}`;
+  const room = N11_TITLE_MAX_LENGTH - prefix.length - suffix.length;
+  let trimmed = name.trim();
+  if (trimmed.length > room) {
+    trimmed = trimmed.slice(0, Math.max(room, 1));
+    const lastSpace = trimmed.lastIndexOf(" ");
+    if (lastSpace > room * 0.6) trimmed = trimmed.slice(0, lastSpace);
+    trimmed = trimmed.trimEnd();
+  }
+  return `${prefix}${trimmed}${suffix}`;
+}
