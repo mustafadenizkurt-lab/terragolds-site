@@ -144,3 +144,32 @@ test("entegratör adı noktasız ı ve boşluklardan arındırılır (401 nedeni
   assert.equal(normalizeIntegratorName("  selfit_dev \n"), "selfit_dev");
   assert.equal(buildHepsiburadaUserAgent("selfıt_dev"), "selfit_dev");
 });
+
+import { buildImportItem, hepsiburadaCategoryFor, HB_CATEGORY } from "../lib/hepsiburada/attributes.ts";
+
+test("hepsiburadaCategoryFor sitedeki kategorileri Hepsiburada Bijuteri kategorilerine eşler", () => {
+  assert.equal(hepsiburadaCategoryFor({ category: "Kolye", name: "Gold Kadın Kolye" }), HB_CATEGORY.kolye);
+  assert.equal(hepsiburadaCategoryFor({ category: "Erkek Kolye", name: "Erkek Zincir Kolye" }), HB_CATEGORY.erkekKolye);
+  assert.equal(hepsiburadaCategoryFor({ category: "Bayan Yüzük ve Kombinler", name: "Zirkon Yüzük" }), HB_CATEGORY.yuzuk);
+  assert.equal(hepsiburadaCategoryFor({ category: "Küpe", name: "Halka Küpe" }), HB_CATEGORY.kupe);
+  assert.equal(hepsiburadaCategoryFor({ category: "Bayan Bileklik", name: "Bileklik" }), HB_CATEGORY.bileklik);
+  assert.equal(hepsiburadaCategoryFor({ category: "Takı", name: "Kalp Kolye" }), HB_CATEGORY.kolye);
+  assert.equal(hepsiburadaCategoryFor({ category: "Hal Hal", name: "Halhal" }), HB_CATEGORY.halhal);
+  assert.equal(hepsiburadaCategoryFor({ category: "Şahmeran", name: "Şahmeran" }), null);
+  assert.equal(hepsiburadaCategoryFor({ category: "Antika ~ Vintage", name: "Biblo" }), null);
+});
+
+test("buildImportItem zorunlu özellikleri üretir, yüzükte cinsiyet ekler", () => {
+  const item = buildImportItem({
+    merchantId: "M1", categoryId: HB_CATEGORY.yuzuk, merchantSku: "BYK1",
+    title: "Zirkon Yüzük", description: "Açıklama", images: ["https://x/a.jpg", "https://x/b.jpg"], male: false,
+  });
+  assert.equal(item.merchant, "M1");
+  for (const key of ["merchantSku", "Barcode", "UrunAdi", "Marka", "tax_vat_rate", "Image1"]) {
+    assert.ok(item.attributes[key], key);
+  }
+  assert.equal(item.attributes.Image2, "https://x/b.jpg");
+  assert.equal(item.attributes.cinsiyet, "Kadın");
+  const kolye = buildImportItem({ merchantId: "M1", categoryId: HB_CATEGORY.kolye, merchantSku: "K1", title: "K", description: "d", images: ["https://x/a.jpg"], male: false });
+  assert.equal(kolye.attributes.cinsiyet, undefined);
+});

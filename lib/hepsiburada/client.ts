@@ -251,3 +251,38 @@ export async function updateOrderStatus(
     },
   );
 }
+
+// --- Gerçek ürün içe aktarma (multipart) ---
+
+export type HepsiburadaImportResponse = {
+  success?: boolean;
+  code?: number;
+  message?: string | null;
+  data?: { trackingId?: string } | null;
+  [key: string]: unknown;
+};
+
+// POST /product/api/products/import - multipart/form-data, JSON dosyası "file"
+// alanında (Hepsiburada'nın ürün içe aktarma biçimi; resmi doküman 403 verdiği
+// için üçüncü taraf kaynaklarla doğrulandı). Yanıt kabul anlamına GELMEZ:
+// trackingId ile sonucu ayrıca sorgulamak gerekir.
+export async function importProductsFile(
+  items: unknown[],
+): Promise<{ status: number; body: string }> {
+  const { merchantId, secretKey, integratorName } = await getHepsiburadaCredentials();
+  const form = new FormData();
+  form.append(
+    "file",
+    new Blob([JSON.stringify(items)], { type: "application/json" }),
+    "integrator.json",
+  );
+  const response = await fetch(`${HEPSIBURADA_PRODUCT_API_BASE}/product/api/products/import`, {
+    method: "POST",
+    headers: {
+      authorization: buildHepsiburadaAuthHeader(merchantId, secretKey),
+      "user-agent": buildHepsiburadaUserAgent(integratorName),
+    },
+    body: form,
+  });
+  return { status: response.status, body: await response.text() };
+}

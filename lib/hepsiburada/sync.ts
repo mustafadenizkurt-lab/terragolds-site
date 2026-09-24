@@ -1,4 +1,6 @@
-import { ensureHepsiburadaColumns, createProduct, updateStockAndPrice, type HepsiburadaProduct } from "./client";
+import { ensureHepsiburadaColumns, createProduct, importProductsFile, updateStockAndPrice, type HepsiburadaProduct } from "./client";
+import { getHepsiburadaCredentials } from "./auth";
+import { buildImportItem, hepsiburadaCategoryFor, isMaleProduct, type HepsiburadaImportItem } from "./attributes";
 import { toAbsoluteImageUrl } from "../shopify/client";
 
 type PendingProduct = {
@@ -211,4 +213,57 @@ export async function pushPendingHepsiburadaPrices(
   }
 
   return { pushed, failed, remaining: await remainingCount(), errors };
+}
+
+// Deneme: verilen stok kodlarındaki ürünleri Hepsiburada'ya GERÇEK şemayla
+// (kategori + zorunlu özellikler, multipart içe aktarma) gönderir ve ham
+// yanıtı döner. D1'e HİÇBİR ŞEY yazmaz - şema doğrulanana kadar küçük
+// denemeler için.
+export async function importHepsiburadaTest(
+  db: D1Database,
+  stockCodes: string[],
+): Promise<{ sent: number; skipped: string[]; status: number; body: string; items: unknown[] }> {
+  const codes = stockCodes.slice(0, 5);
+  const rows = await db
+    .prepare(
+      `SELECT id, name, COALESCE(NULLIF(seo_description, ''), description) AS description,
+              image, hover_image AS hoverImage, category, xml_external_id AS xmlExternalId
+       FROM products WHERE xml_external_id IN (${codes.map(() => "?").join(",")})`,
+    )
+    .bind(...codes)
+    .all<{
+      id: number;
+      name: string;
+      description: string;
+      image: string;
+      hoverImage: string | null;
+      category: string;
+      xmlExternalId: string | null;
+    }>();
+  const { merchantId } = await getHepsiburadaCredentials();
+  const skipped: string[] = [];
+  const items: HepsiburadaImportItem[] = [];
+  for (const row of rows.results) {
+    const categoryId = hepsiburadaCategoryFor(row);
+    if (!categoryId) {
+      skipped.push(row.xmlExternalId ?? String(row.id));
+      continue;
+    }
+    items.push(
+      buildImportItem({
+        merchantId,
+        categoryId,
+        merchantSku: merchantSkuFor(row),
+        title: row.name,
+        description: row.description?.trim() || row.name,
+        images: [row.image, row.hoverImage]
+          .map((url) => (url ? toAbsoluteImageUrl(url) : null))
+          .filter((url): url is string => Boolean(url)),
+        male: isMaleProduct(row),
+      }),
+    );
+  }
+  if (items.length === 0) return { sent: 0, skipped, status: 0, body: "", items };
+  const result = await importProductsFile(items);
+  return { sent: items.length, skipped, status: result.status, body: result.body, items };
 }
