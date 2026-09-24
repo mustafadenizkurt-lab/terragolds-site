@@ -4,26 +4,41 @@ import { getD1 } from "../../../../../lib/store-db";
 
 export const dynamic = "force-dynamic";
 
-// CatalogRejected ürünleri güncel kurallarla product-update ile yeniden
-// göndermeyi dener. NOT: canlıda denendi (BKO5903) - N11 reddedilmiş bir
-// listelemede product-update'i "katalog tarafından reddedildi" diyerek geri
-// çeviriyor ve kategoriyi değiştirmiyor, yani şu an etkisiz. Yine de N11'de
-// veri değiştirdiği için SADECE POST (GET ile adres çubuğu/bağlantı üzerinden
-// tetiklenmesin diye); varsayılan limit 1.
-export async function POST(request: Request) {
+// CatalogRejected ürünleri güncel kurallarla product-create ile yeniden
+// gönderir (bkz. lib/n11/sync.ts > resubmitRejectedToN11 - ilk sürüm
+// product-update kullanıyordu, gerçek denemede hepsi "SellerStockCode ile
+// mağazanızda bir ürün bulunmamaktadır" hatası verdi çünkü N11 reddedilen
+// ürünü kataloğundan tamamen kaldırıyor; create'e geçilince düzeldi).
+// Varsayılan limit 1: her yeni kural/deney önce tek ürünle denenmeli.
+// GET ile de tetiklenebiliyor (?limit=&stockCode=) - POST'u tarayıcı adres
+// çubuğundan çalıştıramadığımız için, dynamic-pricing route'undaki
+// GET/POST deseniyle aynı gerekçe.
+async function run(request: Request, limit?: number, stockCode?: string) {
   if (!(await getAuthorizedAdmin(request))) return unauthorizedAdminResponse();
-  const body = (await request.json().catch(() => ({}))) as {
-    limit?: number;
-    stockCode?: string;
-  };
   try {
-    return Response.json(
-      await resubmitRejectedToN11(getD1(), { limit: body.limit, stockCode: body.stockCode }),
-    );
+    return Response.json(await resubmitRejectedToN11(getD1(), { limit, stockCode }));
   } catch (error) {
     return Response.json(
       { error: error instanceof Error ? error.message : "N11 yeniden gönderim başarısız." },
       { status: 500 },
     );
   }
+}
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const limitParam = searchParams.get("limit");
+  return run(
+    request,
+    limitParam ? Number(limitParam) : undefined,
+    searchParams.get("stockCode") ?? undefined,
+  );
+}
+
+export async function POST(request: Request) {
+  const body = (await request.json().catch(() => ({}))) as {
+    limit?: number;
+    stockCode?: string;
+  };
+  return run(request, body.limit, body.stockCode);
 }
