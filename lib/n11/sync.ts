@@ -1,13 +1,15 @@
 import {
   ensureN11Columns,
   createProduct,
+  updateProduct,
   updateStockAndPrice,
   type N11Product,
   type N11ProductAttribute,
 } from "./client";
 import { getN11Credentials, type N11Credentials } from "./auth";
 import { roundToN11Price } from "./http-utils";
-import { attributesForCategory, steelCategoryId } from "./attributes";
+import { attributesForCategory } from "./attributes";
+import { CATALOG_REJECTED_MESSAGE } from "./reconcile";
 import { n11ListPriceFor } from "./pricing-formula";
 import { toAbsoluteImageUrl } from "../shopify/client";
 import { groupForCategory } from "../category-groups";
@@ -116,9 +118,10 @@ export function categoryIdFor(product: { category: string; name: string }): numb
     );
   }
 
-  const steelId = steelCategoryId(group?.slug, product.name);
-  if (steelId) return steelId;
-
+  // 316L/çelik ürünleri Çelik Takılar kategorilerine yönlendirmek DENENDİ ve
+  // geri alındı: gerçek product-query verisinde çelik başlıklı ürünler Çelik
+  // kategorilerinde %67 (581/865), Bijuteri kategorilerinde ise sadece %8
+  // (17/210) CatalogRejected oldu.
   const categoryId = group && N11_CATEGORY_BY_GROUP_SLUG[group.slug];
   if (!categoryId) {
     throw new Error(
@@ -391,4 +394,54 @@ export async function pushPendingN11Prices(
   await db.batch(pending.results.map((row) => updateStmt.bind(effectivePriceFor(row), row.id)));
 
   return { pushed: pending.results.length, failed: 0, remaining: await remainingCount(), errors: [] };
+}
+
+export type N11ResubmitResult = {
+  resubmitted: number;
+  taskId: string;
+  stockCodes: string[];
+  errors: string[];
+};
+
+// CatalogRejected ürünleri güncel kategori/özellik kurallarıyla product-update
+// üzerinden yeniden gönderir (ör. Çelik kategorisinden Bijuteri'ye taşıma).
+// Kategori değişikliğini N11'in güncelleme ile kabul edip etmediği önce tek
+// ürünle denenmeli (limit=1). Görev yeni taskId ile takip edilir; sonuç
+// reconcileN11Tasks + reconcileN11CatalogStatus ile doğrulanır.
+export async function resubmitRejectedToN11(
+  db: D1Database,
+  options: { limit?: number; stockCode?: string } = {},
+): Promise<N11ResubmitResult> {
+  await ensureN11Columns(db);
+  const limit = Math.min(100, Math.max(1, options.limit ?? 1));
+  const where = options.stockCode
+    ? "n11_stock_code = ?"
+    : "n11_last_error = ? AND n11_stock_code IS NOT NULL";
+  const rows = await db
+    .prepare(
+      `SELECT id, name, description, price, n11_override_price AS n11OverridePrice, stock,
+              image, hover_image AS hoverImage, category, xml_external_id AS xmlExternalId
+       FROM products WHERE ${where} ORDER BY id LIMIT ?`,
+    )
+    .bind(options.stockCode ?? CATALOG_REJECTED_MESSAGE, limit)
+    .all<PendingProduct>();
+
+  const result: N11ResubmitResult = { resubmitted: 0, taskId: "", stockCodes: [], errors: [] };
+  if (rows.results.length === 0) return result;
+  try {
+    const credentials = await getN11Credentials();
+    const products = rows.results.map((row) => toN11Product(row, credentials));
+    const task = await updateProduct(products, credentials.integrator);
+    result.taskId = String(task.id ?? "");
+    const stmt = db.prepare(
+      `UPDATE products SET n11_task_id = ?, n11_last_error = NULL, n11_verified_at = NULL,
+         n11_synced_at = CURRENT_TIMESTAMP WHERE id = ?`,
+    );
+    await db.batch(rows.results.map((row) => stmt.bind(result.taskId, row.id)));
+    result.resubmitted = rows.results.length;
+    result.stockCodes = products.map((product) => product.stockCode);
+  } catch (error) {
+    result.errors.push(error instanceof Error ? error.message : "bilinmeyen hata");
+  }
+  return result;
 }
