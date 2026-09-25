@@ -114,12 +114,12 @@ test("mapTrendyolOrderPayload eksik müşteri/adres alanlarında çökmüyor", (
   assert.deepEqual(mapped.items, []);
 });
 
-test("computeRequiredPrice maliyet 100 TL için beklenen fiyatı üretir (varsayılan %22 komisyon + komisyon üzerine %20 KDV)", () => {
+test("computeRequiredPrice maliyet 100 TL için beklenen fiyatı üretir (varsayılan %22 komisyon + komisyon üzerine %20 KDV + %2 hizmet bedeli)", () => {
   // productCostWithVat = 100 * 1.2 = 120
   // totalCost = 120 + 29 (ORDER_FEE) + 80 (SHIPPING_COST) = 229
   // targetProfit = 120 * 0.5 = 60
-  // efektif komisyon = 0.22 * 1.2 = 0.264
-  // requiredPrice = (229 + 60) / (1 - 0.264) = 289 / 0.736
+  // efektif komisyon = 0.22 * 1.2 + 0.02 (hizmet bedeli) = 0.284
+  // requiredPrice = (229 + 60) / (1 - 0.284) = 289 / 0.716
   const result = computeRequiredPrice(100, 9999); // bilinmeyen kategori -> default oran
   assert.ok(Math.abs(result - 289 / (1 - effectiveCommissionRateFor(9999))) < 1e-9);
 });
@@ -158,7 +158,7 @@ test("clampToPriceLimits alt ve üst sınır birlikte verildiğinde ikisine de u
 
 test("calculateTrendyolLimitsFromCost maliyet 150 TL altında (uygun ürün) 50 TL kâr hedefiyle hesaplar", () => {
   // costWithVat = 100 * 1.2 = 120
-  // lowerLimit = (120 + 80 (kargo) + 30 (ebijuteri sipariş ücreti) + 50 (min kâr, <150 TL)) / (1 - efektif komisyon) = 280 / (1 - 0.264)
+  // lowerLimit = (120 + 80 (kargo) + 30 (ebijuteri sipariş ücreti) + 50 (min kâr, <150 TL)) / (1 - efektif komisyon) = 280 / (1 - 0.284)
   const { lowerLimit, upperLimit } = calculateTrendyolLimitsFromCost(100, 9999);
   const expectedLower = Math.round(280 / (1 - effectiveCommissionRateFor(9999)));
   assert.equal(lowerLimit, expectedLower);
@@ -167,7 +167,7 @@ test("calculateTrendyolLimitsFromCost maliyet 150 TL altında (uygun ürün) 50 
 
 test("calculateTrendyolLimitsFromCost maliyet 150 TL ve üstünde (yüksek ürün) 100 TL kâr hedefiyle hesaplar", () => {
   // costWithVat = 150 * 1.2 = 180
-  // lowerLimit = (180 + 80 + 30 + 100 (min kâr, >=150 TL)) / (1 - efektif komisyon) = 390 / (1 - 0.264)
+  // lowerLimit = (180 + 80 + 30 + 100 (min kâr, >=150 TL)) / (1 - efektif komisyon) = 390 / (1 - 0.284)
   const { lowerLimit, upperLimit } = calculateTrendyolLimitsFromCost(150, 9999);
   const expectedLower = Math.round(390 / (1 - effectiveCommissionRateFor(9999)));
   assert.equal(lowerLimit, expectedLower);
