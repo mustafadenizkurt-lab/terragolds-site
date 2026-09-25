@@ -280,6 +280,7 @@ export type HepsiburadaImportResponse = {
 export async function importProductsFile(
   items: unknown[],
   path = "/product/api/products/import",
+  userAgentOverride?: string,
 ): Promise<{ status: number; body: string }> {
   const { merchantId, secretKey, integratorName } = await getHepsiburadaCredentials();
   const form = new FormData();
@@ -292,7 +293,7 @@ export async function importProductsFile(
     method: "POST",
     headers: {
       authorization: buildHepsiburadaAuthHeader(merchantId, secretKey),
-      "user-agent": buildHepsiburadaUserAgent(integratorName),
+      "user-agent": userAgentOverride ?? buildHepsiburadaUserAgent(integratorName),
     },
     body: form,
   });

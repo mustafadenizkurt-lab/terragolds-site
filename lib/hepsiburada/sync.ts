@@ -235,6 +235,7 @@ export async function importHepsiburadaTest(
   db: D1Database,
   stockCodes: string[],
   importPath?: string,
+  userAgentOverride?: string,
 ): Promise<{ sent: number; skipped: string[]; status: number; body: string; items: unknown[] }> {
   const codes = stockCodes.slice(0, 5);
   const rows = await db
@@ -284,6 +285,6 @@ export async function importHepsiburadaTest(
     );
   }
   if (items.length === 0) return { sent: 0, skipped, status: 0, body: "", items };
-  const result = await importProductsFile(items, importPath);
+  const result = await importProductsFile(items, importPath, userAgentOverride);
   return { sent: items.length, skipped, status: result.status, body: result.body, items };
 }
