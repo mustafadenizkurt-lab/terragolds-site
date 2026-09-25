@@ -69,9 +69,15 @@ export function clampToPriceLimits(
 // - bir sonraki XML senkronu o zaman artık üzerine yazmaz (bkz.
 // syncSupplier.ts'teki CASE koruması, image_locked_at ile aynı desen).
 //
-// Sabitler (kargo, min net kâr, tavan/taban oranı) Terragolds'un kendi
-// tahminleri - gerçek ortalamalar netleşince güncellenebilir.
-const AUTO_LIMIT_SHIPPING_COST = 45; // TL, ortalama kargo bareminin tahmini
+// Kargo için ayrı bir sabit YOK - yukarıdaki paylaşılan SHIPPING_COST (80 TL)
+// kullanılıyor; kullanıcı bunu doğruladı (ilk halinde yanlışlıkla 45 TL
+// kullanılmıştı).
+//
+// Ebijuteri'den ürün alırken hem ham fiyatın üzerine KDV ödeniyor (aşağıda
+// costWithVat ile hesaba katılıyor) HEM DE ebijuteri sipariş başına ayrıca
+// bir ücret kesiyor - bu, Trendyol'un kendi ORDER_FEE'sinden (computeRequiredPrice)
+// FARKLI bir kalem, o yüzden ayrı bir sabit.
+const AUTO_LIMIT_SUPPLIER_ORDER_FEE = 30; // TL, ebijuteri'nin sipariş başına kestiği ücret
 const AUTO_LIMIT_MIN_NET_PROFIT = 30; // TL, bu formülün garantilemeye çalıştığı min net kâr
 const AUTO_LIMIT_UPPER_RATIO = 1.5; // upperLimit = lowerLimit * bu oran
 
@@ -86,7 +92,7 @@ export type TrendyolAutoLimits = { lowerLimit: number; upperLimit: number };
 export function calculateTrendyolLimitsFromCost(cost: number, categoryId: number): TrendyolAutoLimits {
   const costWithVat = cost * (1 + VAT_RATE);
   const lowerLimit = Math.round(
-    (costWithVat + AUTO_LIMIT_SHIPPING_COST + AUTO_LIMIT_MIN_NET_PROFIT) /
+    (costWithVat + SHIPPING_COST + AUTO_LIMIT_SUPPLIER_ORDER_FEE + AUTO_LIMIT_MIN_NET_PROFIT) /
       (1 - effectiveCommissionRateFor(categoryId)),
   );
   return { lowerLimit, upperLimit: Math.round(lowerLimit * AUTO_LIMIT_UPPER_RATIO) };
