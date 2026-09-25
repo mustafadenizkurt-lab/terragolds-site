@@ -78,8 +78,16 @@ export function clampToPriceLimits(
 // bir ücret kesiyor - bu, Trendyol'un kendi ORDER_FEE'sinden (computeRequiredPrice)
 // FARKLI bir kalem, o yüzden ayrı bir sabit.
 const AUTO_LIMIT_SUPPLIER_ORDER_FEE = 30; // TL, ebijuteri'nin sipariş başına kestiği ücret
-const AUTO_LIMIT_MIN_NET_PROFIT = 30; // TL, bu formülün garantilemeye çalıştığı min net kâr
 const AUTO_LIMIT_UPPER_RATIO = 1.5; // upperLimit = lowerLimit * bu oran
+
+// Min net kâr hedefi artık tek bir sabit değil, maliyete göre kademeli:
+// "uygun" ürünlerde daha düşük, "yüksek" (daha pahalı, dolayısıyla daha
+// yüksek TL kârı taşıyabilecek) ürünlerde daha yüksek. Eşik XML'den gelen
+// HAM (KDV hariç) maliyete göre - Terragolds kataloğunun ~%88'i bu sınırın
+// altında (10-1000 TL aralığında, ortalama ~96 TL).
+const AUTO_LIMIT_PROFIT_TIER_COST_THRESHOLD = 150; // TL, ham maliyet
+const AUTO_LIMIT_MIN_NET_PROFIT_LOW = 50; // TL, maliyet eşiğin altındaysa
+const AUTO_LIMIT_MIN_NET_PROFIT_HIGH = 100; // TL, maliyet eşiğe ulaşmış/üstündeyse
 
 export type TrendyolAutoLimits = { lowerLimit: number; upperLimit: number };
 
@@ -91,8 +99,12 @@ export type TrendyolAutoLimits = { lowerLimit: number; upperLimit: number };
 // garantilemeye çalıştığı min net kârı hedeften biraz düşük bırakırdı.
 export function calculateTrendyolLimitsFromCost(cost: number, categoryId: number): TrendyolAutoLimits {
   const costWithVat = cost * (1 + VAT_RATE);
+  const minNetProfit =
+    cost >= AUTO_LIMIT_PROFIT_TIER_COST_THRESHOLD
+      ? AUTO_LIMIT_MIN_NET_PROFIT_HIGH
+      : AUTO_LIMIT_MIN_NET_PROFIT_LOW;
   const lowerLimit = Math.round(
-    (costWithVat + SHIPPING_COST + AUTO_LIMIT_SUPPLIER_ORDER_FEE + AUTO_LIMIT_MIN_NET_PROFIT) /
+    (costWithVat + SHIPPING_COST + AUTO_LIMIT_SUPPLIER_ORDER_FEE + minNetProfit) /
       (1 - effectiveCommissionRateFor(categoryId)),
   );
   return { lowerLimit, upperLimit: Math.round(lowerLimit * AUTO_LIMIT_UPPER_RATIO) };
