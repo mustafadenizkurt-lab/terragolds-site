@@ -9,6 +9,7 @@ import { reconcileN11CatalogStatus, reconcileN11Tasks } from "../lib/n11/reconci
 import { reconcilePendingPaytrOrders } from "../lib/paytr-reconcile";
 import { scanTrendyolArchivedProducts } from "../lib/trendyol/archived-scan";
 import { auditAndFixTrendyolPrices } from "../lib/trendyol/price-audit";
+import { applyTrendyolDynamicPricing } from "../lib/trendyol/pricing";
 // Shopify kanalı pasife alındı - bkz. scheduled() içindeki yorum. Tekrar
 // açılınca bu import'lar da geri gelmeli.
 // import {
@@ -95,7 +96,17 @@ const worker = {
 
     return handler.fetch(request, env, ctx);
   },
-  async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext) {
+  async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext) {
+    // Trendyol dinamik fiyatlama botu: 03:04 Türkiye saati (bkz.
+    // wrangler.jsonc "4 0 * * *") - diğer 6 saatlik bakım görevleriyle aynı
+    // invocation'ı PAYLAŞMIYOR (ayrı bir cron girişi + burada dallanma),
+    // çünkü reconcileN11CatalogStatus gibi ağır/çok istekli adımlarla aynı
+    // çalıştırmaya girmesi Worker'ın süre/CPU bütçesini paylaşıp fiyat
+    // gönderimini yarıda kesebilirdi.
+    if (controller.cron === "4 0 * * *") {
+      ctx.waitUntil(applyTrendyolDynamicPricing(env.DB).catch(() => {}));
+      return;
+    }
     ctx.waitUntil(syncActiveSuppliers(env.DB));
     // "manual" işaretli ürünlerin (tedarikçiye elle bağlanmış, fiyatı/adı
     // elle yönetilen kayıtlar) stoğu yukarıdaki normal senkrona hiç dahil
