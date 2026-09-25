@@ -237,7 +237,7 @@ export async function importHepsiburadaTest(
   importPath?: string,
   userAgentOverride?: string,
   experiment?: { categoryId?: number; omitBarcode?: boolean },
-): Promise<{ sent: number; skipped: string[]; status: number; body: string; items: unknown[] }> {
+): Promise<{ sent: number; skipped: string[]; status: number; body: string; headers?: Record<string, string>; items: unknown[] }> {
   const codes = stockCodes.slice(0, 5);
   const rows = await db
     .prepare(
@@ -294,5 +294,5 @@ export async function importHepsiburadaTest(
     if (experiment?.omitBarcode) delete item.attributes.Barcode;
   }
   const result = await importProductsFile(items, importPath, userAgentOverride);
-  return { sent: items.length, skipped, status: result.status, body: result.body, items };
+  return { sent: items.length, skipped, status: result.status, body: result.body, headers: result.headers, items };
 }

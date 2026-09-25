@@ -281,7 +281,7 @@ export async function importProductsFile(
   items: unknown[],
   path = "/product/api/products/import",
   userAgentOverride?: string,
-): Promise<{ status: number; body: string }> {
+): Promise<{ status: number; body: string; headers: Record<string, string> }> {
   const { merchantId, secretKey, integratorName } = await getHepsiburadaCredentials();
   const form = new FormData();
   form.append(
@@ -297,7 +297,12 @@ export async function importProductsFile(
     },
     body: form,
   });
-  return { status: response.status, body: await response.text() };
+  // Destek talebi için izlenebilirlik: yanıt başlıkları (X-Request-Id vb.).
+  const headers: Record<string, string> = {};
+  response.headers.forEach((value, key) => {
+    headers[key] = value;
+  });
+  return { status: response.status, body: await response.text(), headers };
 }
 
 // GET /product/api/products/status/{trackingId} - içe aktarma sonucu (gerçek
