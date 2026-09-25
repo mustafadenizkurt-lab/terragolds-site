@@ -158,9 +158,9 @@ test("clampToPriceLimits alt ve üst sınır birlikte verildiğinde ikisine de u
 
 test("calculateTrendyolLimitsFromCost KDV hariç maliyetten beklenen alt/üst sınırı üretir", () => {
   // costWithVat = 100 * 1.2 = 120
-  // lowerLimit = (120 + 45 (kargo) + 30 (min kâr)) / (1 - efektif komisyon) = 195 / (1 - 0.264)
+  // lowerLimit = (120 + 80 (kargo) + 30 (ebijuteri sipariş ücreti) + 30 (min kâr)) / (1 - efektif komisyon) = 260 / (1 - 0.264)
   const { lowerLimit, upperLimit } = calculateTrendyolLimitsFromCost(100, 9999);
-  const expectedLower = Math.round(195 / (1 - effectiveCommissionRateFor(9999)));
+  const expectedLower = Math.round(260 / (1 - effectiveCommissionRateFor(9999)));
   assert.equal(lowerLimit, expectedLower);
   assert.equal(upperLimit, Math.round(expectedLower * 1.5));
 });
