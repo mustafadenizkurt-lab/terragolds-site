@@ -48,6 +48,11 @@ export async function GET(request: Request) {
         alphanumericOnly: /^[A-Za-z0-9]+$/.test(secretKey),
       },
       integratorName,
+      // Gizli olmayan yapılandırma bilgisi (Merchant ID zaten satıcının kendi kimliği).
+      environment: environment ?? "(canlı)",
+      host: new URL(response.url).host,
+      merchantIdPrefix: merchantId.slice(0, 8),
+      merchantIdLength: merchantId.length,
       body: text.slice(0, 1500),
     });
   } catch (error) {
