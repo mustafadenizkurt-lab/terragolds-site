@@ -3,6 +3,14 @@ import { SITE_URL, escapeXml, absoluteUrl, priceWithCurrency, googleProductCateg
 
 export const dynamic = "force-dynamic";
 
+// Instagram/Facebook Shop (Meta Commerce Manager) kataloğu için ürün
+// feed'i. merchant.xml (Google Merchant) ile aynı temel RSS 2.0 + "g:"
+// ad alanı formatını kullanıyor - Meta da bu formatı kabul ediyor, ayrı
+// bir feed yazmamızın tek gerçek sebebi g:availability DEĞERİ: Google
+// "in_stock"/"out_of_stock" (alt çizgili) beklerken Meta'nın resmi katalog
+// spesifikasyonu "in stock"/"out of stock" (boşluklu) istiyor - birini
+// diğerine göndermek ürünlerin sessizce reddedilmesine/yanlış
+// sınıflanmasına yol açabiliyordu.
 export async function GET() {
   const [products, settings] = await Promise.all([readProducts(), readSettings()]);
   const brand = settings.businessName || "Terragolds";
@@ -24,7 +32,7 @@ export async function GET() {
     <description>${escapeXml(product.description || product.stone)}</description>
     <link>${escapeXml(`${SITE_URL}/products/${product.slug || product.id}`)}</link>
     <g:image_link>${escapeXml(absoluteUrl(product.image))}</g:image_link>
-    <g:availability>${product.stock > 0 ? "in_stock" : "out_of_stock"}</g:availability>
+    <g:availability>${product.stock > 0 ? "in stock" : "out of stock"}</g:availability>
     <g:price>${escapeXml(priceWithCurrency(product.price))}</g:price>
 ${salePrice}    <g:brand>${escapeXml(brand)}</g:brand>
     <g:condition>new</g:condition>
@@ -37,9 +45,9 @@ ${salePrice}    <g:brand>${escapeXml(brand)}</g:brand>
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">
 <channel>
-  <title>${escapeXml(brand)} Ürün Feed'i</title>
+  <title>${escapeXml(brand)} Meta Katalog Feed'i</title>
   <link>${SITE_URL}</link>
-  <description>${escapeXml(`${brand} takı ve aksesuar ürün kataloğu`)}</description>
+  <description>${escapeXml(`${brand} takı ve aksesuar ürün kataloğu (Instagram/Facebook Shop)`)}</description>
   <lastBuildDate>${now}</lastBuildDate>
 ${items}
 </channel>
