@@ -7,7 +7,9 @@ import { rewriteProductDescription } from "../product-description-rewrite";
 import { getOptionalEnv } from "../runtime-env";
 import { pushInventoryToShopify } from "../shopify/inventory";
 import { pushPriceToShopify } from "../shopify/price";
-import { pushStockAndPriceToTrendyol } from "../trendyol/sync";
+import { pushStockAndPriceToTrendyol, categoryIdFor } from "../trendyol/sync";
+import { ensureTrendyolColumns } from "../trendyol/client";
+import { calculateTrendyolLimitsFromCost } from "../trendyol/pricing-formula";
 import { pushStockAndPriceToHepsiburada } from "../hepsiburada/sync";
 import { loadExcludedExternalIds } from "./excluded-products";
 import { ensureImageLockColumn } from "../product-image-lock";
@@ -120,6 +122,7 @@ async function hasActiveRunningLog(db: D1Database, supplierId: number): Promise<
 
 export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<SyncResult> {
   await ensureImageLockColumn(db);
+  await ensureTrendyolColumns(db);
   // Clean up any orphaned row from a previous invocation first, then check
   // whether a genuinely still-running sync remains - only refuses to start
   // when one does, so this never blocks a normal run.
@@ -191,16 +194,35 @@ export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<
         continue;
       }
       const matchedId = existing?.id;
+      // Trendyol dinamik fiyatlama botunun bu ürün için uyacağı taban/tavan -
+      // sadece cost biliniyorsa hesaplanır (bkz. calculateTrendyolLimitsFromCost
+      // yorumu, cost=0 "bilinmiyor" demek, ondan bir sınır türetmek yanıltıcı
+      // olurdu). null ise aşağıdaki CASE/INSERT bu alanları hiç değiştirmez.
+      const autoLimits = product.cost > 0
+        ? calculateTrendyolLimitsFromCost(product.cost, categoryIdFor(product))
+        : null;
       if (matchedId) {
         // image_locked_at doluysa (admin bu ürünün görselini kendi panelimizden
         // elle düzeltmişse - bkz. lib/product-image-lock.ts) tedarikçinin
         // orijinal görseli buraya hiç yazılmıyor, mevcut (düzeltilmiş) görsel
         // korunuyor. hover_image gibi diğer alanlar normal güncelleniyor.
+        // trendyol_lower/upper_limit_price aynı mantıkla korunuyor: sadece
+        // hâlâ NULL'sa (hiç admin/otomatik değer atanmamışsa) dolduruluyor -
+        // admin panelden (/api/admin/products/trendyol-limits) elle girilmiş
+        // bir sınırın üzerine XML senkronu bir daha asla yazmıyor.
         await db.prepare(
           `UPDATE products SET name = ?, stone = ?, category = ?, price = ?, cost = ?, stock = ?,
              image = CASE WHEN image_locked_at IS NULL THEN ? ELSE image END,
-             hover_image = COALESCE(?, hover_image), description = ?, xml_sync_status = 'synced', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-        ).bind(product.name, product.stone, product.category, product.price, product.cost, product.stock, product.image, product.hoverImage, product.description, matchedId).run();
+             hover_image = COALESCE(?, hover_image), description = ?, xml_sync_status = 'synced',
+             trendyol_lower_limit_price = CASE WHEN trendyol_lower_limit_price IS NULL THEN ? ELSE trendyol_lower_limit_price END,
+             trendyol_upper_limit_price = CASE WHEN trendyol_upper_limit_price IS NULL THEN ? ELSE trendyol_upper_limit_price END,
+             updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+        ).bind(
+          product.name, product.stone, product.category, product.price, product.cost, product.stock,
+          product.image, product.hoverImage, product.description,
+          autoLimits?.lowerLimit ?? null, autoLimits?.upperLimit ?? null,
+          matchedId,
+        ).run();
         updated += 1;
         // D1 is the source of truth for stock - push this product's new
         // count to Shopify (a no-op if it isn't synced there yet). Only
@@ -233,8 +255,12 @@ export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<
       } else {
         const description = await uniqueDescriptionForNewProduct(product);
         const created = await db.prepare(
-          `INSERT INTO products (name, stone, category, price, cost, stock, image, hover_image, description, status, xml_supplier_id, xml_external_id, xml_sync_status, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, 'synced', CURRENT_TIMESTAMP) RETURNING id`,
-        ).bind(product.name, product.stone, product.category, product.price, product.cost, product.stock, product.image, product.hoverImage, description, supplier.id, product.externalId).first<{ id: number }>();
+          `INSERT INTO products (name, stone, category, price, cost, stock, image, hover_image, description, status, xml_supplier_id, xml_external_id, xml_sync_status, trendyol_lower_limit_price, trendyol_upper_limit_price, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, 'synced', ?, ?, CURRENT_TIMESTAMP) RETURNING id`,
+        ).bind(
+          product.name, product.stone, product.category, product.price, product.cost, product.stock,
+          product.image, product.hoverImage, description, supplier.id, product.externalId,
+          autoLimits?.lowerLimit ?? null, autoLimits?.upperLimit ?? null,
+        ).first<{ id: number }>();
         if (created?.id) {
           const slug = await resolveProductSlug(db, product.name, created.id);
           await db.prepare("UPDATE products SET slug = ? WHERE id = ?").bind(slug, created.id).run();
