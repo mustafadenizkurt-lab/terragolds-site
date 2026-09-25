@@ -195,6 +195,29 @@ export async function ensureTrendyolColumns(db: D1Database) {
   if (!names.has("trendyol_image_locked_at")) {
     await db.prepare("ALTER TABLE products ADD COLUMN trendyol_image_locked_at TEXT").run();
   }
+  // Admin panelinden ürün başına elle girilebilen fiyat güvenlik sınırları -
+  // dinamik fiyatlama (applyTrendyolDynamicPricing) bu iki değeri varsa
+  // requiredPrice'ı bunların arasına sıkıştırıyor (bkz. pricing-formula.ts >
+  // clampToPriceLimits). null = sınır yok.
+  if (!names.has("trendyol_lower_limit_price")) {
+    await db.prepare("ALTER TABLE products ADD COLUMN trendyol_lower_limit_price INTEGER").run();
+  }
+  if (!names.has("trendyol_upper_limit_price")) {
+    await db.prepare("ALTER TABLE products ADD COLUMN trendyol_upper_limit_price INTEGER").run();
+  }
+  // Dinamik fiyatlamanın bir ürünü otomatik fiyatlayıp fiyatlamayacağını
+  // kontrol eden anahtar - trendyol_barcode'un varlığından (ürün Trendyol'da
+  // listeleniyor mu) kasıtlı olarak AYRI: bir ürün Trendyol'da listelenmeye
+  // devam edip fiyatı yine de otomatik botun dışında (elle) yönetilebilmeli.
+  if (!names.has("trendyol_active")) {
+    await db.prepare("ALTER TABLE products ADD COLUMN trendyol_active INTEGER NOT NULL DEFAULT 0").run();
+    // Kolon ilk eklendiği an - hâlihazırda Trendyol'da listelenen ürünler
+    // geriye dönük olarak aktif sayılmalı, yoksa bu kolonun eklenmesiyle
+    // binlerce zaten çalışan ürünün dinamik fiyatlaması aniden durur.
+    await db
+      .prepare("UPDATE products SET trendyol_active = 1 WHERE trendyol_barcode IS NOT NULL")
+      .run();
+  }
   await db
     .prepare(
       "CREATE UNIQUE INDEX IF NOT EXISTS products_trendyol_barcode_unique ON products(trendyol_barcode) WHERE trendyol_barcode IS NOT NULL",
