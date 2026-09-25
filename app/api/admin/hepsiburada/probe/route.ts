@@ -12,6 +12,7 @@ import {
   HEPSIBURADA_ORDER_API_BASE,
   HEPSIBURADA_PRODUCT_API_BASE,
 } from "../../../../../lib/hepsiburada/client";
+import { applyHepsiburadaEnvironment } from "../../../../../lib/hepsiburada/http-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -45,8 +46,8 @@ export async function GET(request: Request) {
   const query = forwarded.toString();
 
   try {
-    const { merchantId, secretKey, integratorName } = await getHepsiburadaCredentials();
-    const response = await fetch(`${base}${path}${query ? `?${query}` : ""}`, {
+    const { merchantId, secretKey, integratorName, environment } = await getHepsiburadaCredentials();
+    const response = await fetch(`${applyHepsiburadaEnvironment(base, environment)}${path}${query ? `?${query}` : ""}`, {
       headers: {
         authorization: buildHepsiburadaAuthHeader(merchantId, secretKey),
         "user-agent": buildHepsiburadaUserAgent(integratorName),

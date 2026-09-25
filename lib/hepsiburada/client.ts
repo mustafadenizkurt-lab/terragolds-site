@@ -1,4 +1,5 @@
 import { getHepsiburadaCredentials, buildHepsiburadaAuthHeader, buildHepsiburadaUserAgent } from "./auth";
+import { applyHepsiburadaEnvironment } from "./http-utils";
 
 // Hepsiburada Marketplace (Merchant Panel Open Platform) entegrasyonu üç
 // ayrı host üzerinden çalışıyor - Trendyol'un tek base URL'inin aksine:
@@ -27,9 +28,9 @@ async function hepsiburadaFetch<T>(
   path: string,
   init: { method?: string; body?: unknown } = {},
 ): Promise<T> {
-  const { merchantId, secretKey, integratorName } = await getHepsiburadaCredentials();
+  const { merchantId, secretKey, integratorName, environment } = await getHepsiburadaCredentials();
 
-  const response = await fetch(`${baseUrl}${path}`, {
+  const response = await fetch(`${applyHepsiburadaEnvironment(baseUrl, environment)}${path}`, {
     method: init.method ?? "GET",
     headers: {
       "content-type": "application/json",
@@ -282,14 +283,14 @@ export async function importProductsFile(
   path = "/product/api/products/import",
   userAgentOverride?: string,
 ): Promise<{ status: number; body: string; headers: Record<string, string> }> {
-  const { merchantId, secretKey, integratorName } = await getHepsiburadaCredentials();
+  const { merchantId, secretKey, integratorName, environment } = await getHepsiburadaCredentials();
   const form = new FormData();
   form.append(
     "file",
     new Blob([JSON.stringify(items)], { type: "application/json" }),
     "integrator.json",
   );
-  const response = await fetch(`${HEPSIBURADA_PRODUCT_API_BASE}${path}`, {
+  const response = await fetch(`${applyHepsiburadaEnvironment(HEPSIBURADA_PRODUCT_API_BASE, environment)}${path}`, {
     method: "POST",
     headers: {
       authorization: buildHepsiburadaAuthHeader(merchantId, secretKey),

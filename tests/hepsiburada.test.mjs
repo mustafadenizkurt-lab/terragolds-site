@@ -220,3 +220,19 @@ test("parseImportStatus resmi durumlar: PROCESSING bekler, MISSING_INFO hata, SU
   assert.equal(parseImportStatus({ data: [{ merchantSku: "B", importStatus: "SUCCESS", productStatus: "MISSING_INFO", validationResults: [{ attributeName: "Renk", message: "gerekli" }], importMessages: [] }] })[0].outcome, "failed");
   assert.equal(parseImportStatus({ data: [{ merchantSku: "C", importStatus: "SUCCESS", productStatus: "WAITING", importMessages: [] }] })[0].outcome, "success");
 });
+
+import { applyHepsiburadaEnvironment, assertOwnIntegrator } from "../lib/hepsiburada/http-utils.ts";
+
+test("test ortamı sunucu adresleri ve canlı varsayılanı", () => {
+  assert.equal(applyHepsiburadaEnvironment("https://mpop.hepsiburada.com", "test"), "https://mpop-sit.hepsiburada.com");
+  assert.equal(applyHepsiburadaEnvironment("https://listing-external.hepsiburada.com", " TEST "), "https://listing-external-sit.hepsiburada.com");
+  assert.equal(applyHepsiburadaEnvironment("https://mpop.hepsiburada.com", undefined), "https://mpop.hepsiburada.com");
+  assert.equal(applyHepsiburadaEnvironment("https://mpop.hepsiburada.com", "live"), "https://mpop.hepsiburada.com");
+});
+
+test("başkasına ait kayıtlı entegratör adı (Selfit) engellenir, kendi adımız geçer", () => {
+  assert.throws(() => assertOwnIntegrator("selfit_dev"), /Selfit/);
+  assert.throws(() => assertOwnIntegrator("selfıt_dev"), /Selfit/);
+  assert.throws(() => assertOwnIntegrator("SELFIT_DEV"), /Selfit/);
+  assert.doesNotThrow(() => assertOwnIntegrator("terra_dev"));
+});

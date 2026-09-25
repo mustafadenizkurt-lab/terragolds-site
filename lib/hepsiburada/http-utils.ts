@@ -30,3 +30,28 @@ export function buildHepsiburadaUserAgent(integratorName: string): string {
 export function normalizeIntegratorName(value: string): string {
   return value.trim().replaceAll("ı", "i").replaceAll("İ", "I");
 }
+
+// Hepsiburada test (SIT) ortamı: test ortam bilgileri açıldığında canlı
+// sunucu adresleri bunlarla değiştirilir (kimlik bilgilerindeki "environment"
+// alanı "test" ise).
+const TEST_HOSTS: Record<string, string> = {
+  "https://mpop.hepsiburada.com": "https://mpop-sit.hepsiburada.com",
+  "https://listing-external.hepsiburada.com": "https://listing-external-sit.hepsiburada.com",
+  "https://oms-external.hepsiburada.com": "https://oms-external-sit.hepsiburada.com",
+};
+
+export function applyHepsiburadaEnvironment(baseUrl: string, environment?: string): string {
+  return environment?.trim().toLowerCase() === "test" ? (TEST_HOSTS[baseUrl] ?? baseUrl) : baseUrl;
+}
+
+// Hepsiburada kendi kayıtlı entegratör firmalarının (ör. Selfit) adlarının
+// kendi geliştirmemiz için KULLANILMASINI kesinlikle yasakladı. Bu ad
+// yapılandırmada durursa hiçbir Hepsiburada isteği gönderilmez.
+export function assertOwnIntegrator(name: string): void {
+  if (/selfit|selfıt/i.test(name)) {
+    throw new Error(
+      "Entegratör adı Hepsiburada'nın kayıtlı entegratör firmasına (Selfit) ait - kendi geliştirmemizde kullanılamaz. " +
+        "Hepsiburada'nın kendi bünyemiz için vereceği entegratör adını Hepsiburada ayarlarına girin.",
+    );
+  }
+}

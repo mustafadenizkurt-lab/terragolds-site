@@ -5,6 +5,8 @@ export type HepsiburadaCredentials = {
   merchantId: string;
   secretKey: string;
   integratorName: string;
+  // "test" ise Hepsiburada test (SIT) sunucularına gidilir, aksi halde canlı.
+  environment?: string;
 };
 
 // Öncelik admin panelinden (Ayarlar > Hepsiburada) girilip D1'de şifreli
@@ -17,17 +19,23 @@ export type HepsiburadaCredentials = {
 export async function getHepsiburadaCredentials(): Promise<HepsiburadaCredentials> {
   const stored = await getMarketplaceCredential("hepsiburada");
   if (stored) {
+    assertOwnIntegrator(stored.integratorName);
     return {
       merchantId: stored.merchantId,
       secretKey: stored.secretKey,
       integratorName: stored.integratorName,
+      environment: stored.environment,
     };
   }
+  const integratorName = getRequiredEnv("HEPSIBURADA_INTEGRATOR_NAME");
+  assertOwnIntegrator(integratorName);
   return {
     merchantId: getRequiredEnv("HEPSIBURADA_MERCHANT_ID"),
     secretKey: getRequiredEnv("HEPSIBURADA_SECRET_KEY"),
-    integratorName: getRequiredEnv("HEPSIBURADA_INTEGRATOR_NAME"),
+    integratorName,
   };
 }
+
+import { assertOwnIntegrator } from "./http-utils";
 
 export { buildHepsiburadaAuthHeader, buildHepsiburadaUserAgent } from "./http-utils";
