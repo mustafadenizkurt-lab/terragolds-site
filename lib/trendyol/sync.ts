@@ -286,8 +286,12 @@ export async function syncProductsToTrendyol(
     for (const product of pending.results) {
       await db
         .prepare(
+          // trendyol_active = 1: ürün Trendyol'da ilk kez listeleniyor, dinamik
+          // fiyatlama botunun varsayılan olarak devreye girmesi gerekiyor (bkz.
+          // lib/trendyol/client.ts > ensureTrendyolColumns'taki geriye dönük
+          // backfill'in aynısı - ama bu, İLK KEZ yeni oluşturulan ürünler için).
           `UPDATE products SET trendyol_barcode = ?, trendyol_listing_id = ?,
-           trendyol_synced_at = CURRENT_TIMESTAMP WHERE id = ?`,
+           trendyol_synced_at = CURRENT_TIMESTAMP, trendyol_active = 1 WHERE id = ?`,
         )
         .bind(barcodeFor(product), batchRequestId, product.id)
         .run();

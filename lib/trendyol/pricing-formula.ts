@@ -58,3 +58,36 @@ export function clampToPriceLimits(
   if (upperLimit != null) clamped = Math.min(clamped, upperLimit);
   return clamped;
 }
+
+// XML tedarikçi senkronu (syncSupplier.ts), yeni/güncellenen bir ürünün
+// trendyol_lower_limit_price/trendyol_upper_limit_price alanlarını İLK KEZ
+// (henüz boşsa) otomatik doldurmak için bu fonksiyonu kullanıyor -
+// computeRequiredPrice'tan (asıl gece botunun kullandığı, kategori bazlı
+// gerçek komisyon oranlarıyla çalışan motor) KASITLI olarak ayrı ve daha
+// basit bir formül: bunlar sadece "ilk tahmin" güvenlik sınırları, admin
+// istediği zaman /api/admin/products/trendyol-limits ile elle değiştirebilir
+// - bir sonraki XML senkronu o zaman artık üzerine yazmaz (bkz.
+// syncSupplier.ts'teki CASE koruması, image_locked_at ile aynı desen).
+//
+// Sabitler (kargo, min net kâr, tavan/taban oranı) Terragolds'un kendi
+// tahminleri - gerçek ortalamalar netleşince güncellenebilir.
+const AUTO_LIMIT_SHIPPING_COST = 45; // TL, ortalama kargo bareminin tahmini
+const AUTO_LIMIT_MIN_NET_PROFIT = 30; // TL, bu formülün garantilemeye çalıştığı min net kâr
+const AUTO_LIMIT_UPPER_RATIO = 1.5; // upperLimit = lowerLimit * bu oran
+
+export type TrendyolAutoLimits = { lowerLimit: number; upperLimit: number };
+
+// cost, D1'de KDV HARİÇ tedarikçi maliyeti olarak tutuluyor (bkz.
+// computeRequiredPrice yorumu ve lib/xml-sync/calculatePrice.ts) - KDV
+// burada da aynı şekilde önce maliyete eklenip üstünden hesaplanıyor.
+// Komisyon oranı da effectiveCommissionRateFor ile aynı (komisyon TUTARININ
+// üzerine ayrıca KDV biniyor) - düz %22 kullanmak, tam da bu fonksiyonun
+// garantilemeye çalıştığı min net kârı hedeften biraz düşük bırakırdı.
+export function calculateTrendyolLimitsFromCost(cost: number, categoryId: number): TrendyolAutoLimits {
+  const costWithVat = cost * (1 + VAT_RATE);
+  const lowerLimit = Math.round(
+    (costWithVat + AUTO_LIMIT_SHIPPING_COST + AUTO_LIMIT_MIN_NET_PROFIT) /
+      (1 - effectiveCommissionRateFor(categoryId)),
+  );
+  return { lowerLimit, upperLimit: Math.round(lowerLimit * AUTO_LIMIT_UPPER_RATIO) };
+}

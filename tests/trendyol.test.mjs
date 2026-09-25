@@ -2,7 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { buildTrendyolAuthHeader, buildTrendyolUserAgent } from "../lib/trendyol/http-utils.ts";
 import { mapTrendyolOrderPayload } from "../lib/trendyol/order-mapping.ts";
-import { computeRequiredPrice, effectiveCommissionRateFor, clampToPriceLimits } from "../lib/trendyol/pricing-formula.ts";
+import {
+  computeRequiredPrice,
+  effectiveCommissionRateFor,
+  clampToPriceLimits,
+  calculateTrendyolLimitsFromCost,
+} from "../lib/trendyol/pricing-formula.ts";
 
 // Trendyol henüz API kimlik bilgilerimizi onaylamadı, o yüzden bu testler
 // gerçek bir API çağrısı yapmıyor - sadece kimlik bilgisi olmadan da test
@@ -149,4 +154,25 @@ test("clampToPriceLimits alt ve üst sınır birlikte verildiğinde ikisine de u
   assert.equal(clampToPriceLimits(100, 400, 800), 400);
   assert.equal(clampToPriceLimits(1000, 400, 800), 800);
   assert.equal(clampToPriceLimits(600, 400, 800), 600);
+});
+
+test("calculateTrendyolLimitsFromCost KDV hariç maliyetten beklenen alt/üst sınırı üretir", () => {
+  // costWithVat = 100 * 1.2 = 120
+  // lowerLimit = (120 + 45 (kargo) + 30 (min kâr)) / (1 - efektif komisyon) = 195 / (1 - 0.264)
+  const { lowerLimit, upperLimit } = calculateTrendyolLimitsFromCost(100, 9999);
+  const expectedLower = Math.round(195 / (1 - effectiveCommissionRateFor(9999)));
+  assert.equal(lowerLimit, expectedLower);
+  assert.equal(upperLimit, Math.round(expectedLower * 1.5));
+});
+
+test("calculateTrendyolLimitsFromCost maliyet arttıkça sınırları da artırır", () => {
+  const low = calculateTrendyolLimitsFromCost(50, 9999);
+  const high = calculateTrendyolLimitsFromCost(200, 9999);
+  assert.ok(high.lowerLimit > low.lowerLimit);
+  assert.ok(high.upperLimit > low.upperLimit);
+});
+
+test("calculateTrendyolLimitsFromCost üst sınır her zaman alt sınırdan büyük", () => {
+  const { lowerLimit, upperLimit } = calculateTrendyolLimitsFromCost(75, 9999);
+  assert.ok(upperLimit > lowerLimit);
 });
