@@ -1,5 +1,6 @@
 import { getHepsiburadaCredentials, buildHepsiburadaAuthHeader, buildHepsiburadaUserAgent } from "./auth";
 import {
+  importProductsFile,
   HEPSIBURADA_LISTING_API_BASE,
   HEPSIBURADA_ORDER_API_BASE,
   HEPSIBURADA_PRODUCT_API_BASE,
@@ -120,15 +121,30 @@ export async function runSitStep(
       });
     case "product.delete-process-status":
       return sitCall(step, "product", "GET", `${productPaths}/delete-process/${encodeURIComponent(id)}`);
-    case "product.fastlisting":
+    case "product.fastlisting": {
+      const row = {
+        merchant: merchantId,
+        merchantSku,
+        productName: String(params.productName ?? ""),
+        barcode: String(params.barcode ?? ""),
+        ...(params.price !== undefined ? { price: String(params.price) } : {}),
+        ...(params.stock !== undefined ? { stock: String(params.stock) } : {}),
+      };
       return sitCall(step, "product", "POST", `${productPaths}/fastlisting`, {
-        body: {
-          merchant: merchantId,
-          merchantSku,
-          productName: String(params.productName ?? ""),
-          barcode: String(params.barcode ?? ""),
-        },
+        body: params.asArray ? [row] : row,
       });
+    }
+    case "product.import-file": {
+      // Standart ürün içe aktarma (multipart): items = [{categoryId, merchant, attributes}]
+      const result = await importProductsFile((params.items as unknown[]) ?? []);
+      let body: unknown = result.body;
+      try {
+        body = JSON.parse(result.body);
+      } catch {
+        // ham metin
+      }
+      return { step, method: "POST", url: "/product/api/products/import", status: result.status, body };
+    }
 
     // --- Listeleme ---
     case "listing.query":
