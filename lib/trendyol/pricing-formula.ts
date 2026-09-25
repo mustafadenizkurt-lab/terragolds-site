@@ -93,7 +93,7 @@ const AUTO_LIMIT_UPPER_RATIO = 1.5; // upperLimit = lowerLimit * bu oran
 // HAM (KDV hariç) maliyete göre - Terragolds kataloğunun ~%88'i bu sınırın
 // altında (10-1000 TL aralığında, ortalama ~96 TL).
 const AUTO_LIMIT_PROFIT_TIER_COST_THRESHOLD = 150; // TL, ham maliyet
-const AUTO_LIMIT_MIN_NET_PROFIT_LOW = 50; // TL, maliyet eşiğin altındaysa
+const AUTO_LIMIT_MIN_NET_PROFIT_LOW = 25; // TL, maliyet eşiğin altındaysa
 const AUTO_LIMIT_MIN_NET_PROFIT_HIGH = 100; // TL, maliyet eşiğe ulaşmış/üstündeyse
 
 export type TrendyolAutoLimits = { lowerLimit: number; upperLimit: number };

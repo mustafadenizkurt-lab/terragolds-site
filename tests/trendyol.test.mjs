@@ -156,11 +156,11 @@ test("clampToPriceLimits alt ve üst sınır birlikte verildiğinde ikisine de u
   assert.equal(clampToPriceLimits(600, 400, 800), 600);
 });
 
-test("calculateTrendyolLimitsFromCost maliyet 150 TL altında (uygun ürün) 50 TL kâr hedefiyle hesaplar", () => {
+test("calculateTrendyolLimitsFromCost maliyet 150 TL altında (uygun ürün) 25 TL kâr hedefiyle hesaplar", () => {
   // costWithVat = 100 * 1.2 = 120
-  // lowerLimit = (120 + 80 (kargo) + 30 (ebijuteri sipariş ücreti) + 50 (min kâr, <150 TL)) / (1 - efektif komisyon) = 280 / (1 - 0.284)
+  // lowerLimit = (120 + 80 (kargo) + 30 (ebijuteri sipariş ücreti) + 25 (min kâr, <150 TL)) / (1 - efektif komisyon) = 255 / (1 - 0.284)
   const { lowerLimit, upperLimit } = calculateTrendyolLimitsFromCost(100, 9999);
-  const expectedLower = Math.round(280 / (1 - effectiveCommissionRateFor(9999)));
+  const expectedLower = Math.round(255 / (1 - effectiveCommissionRateFor(9999)));
   assert.equal(lowerLimit, expectedLower);
   assert.equal(upperLimit, Math.round(expectedLower * 1.5));
 });
