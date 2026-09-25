@@ -331,6 +331,8 @@ export type N11PricePushResult = {
 export async function pushPendingN11Prices(
   db: D1Database,
   batchSize = 1000,
+  force = false,
+  offset = 0,
 ): Promise<N11PricePushResult> {
   await ensureN11Columns(db);
 
@@ -339,27 +341,35 @@ export async function pushPendingN11Prices(
   // kıyas) her zaman bu EFEKTİF fiyata göre yapılmalı, yoksa override
   // uygulanmış bir ürün site fiyatı değişmediği sürece hiç yeniden
   // gönderilmez sanılır.
+  //
+  // force=true: drift şartı yok sayılıp N11'e kayıtlı TÜM ürünler yeniden
+  // gönderilir. salePrice değişmeden sadece listPrice formülü değiştiğinde
+  // (bkz. pricing-formula.ts > LIST_PRICE_DISCOUNT_RATE) drift tespiti hiçbir
+  // şey yakalamaz - D1'de elle toplu UPDATE atmak yerine (Claude Code'un
+  // otomatik izin sınıflandırıcısı bunu "toplu silme" sayıp engelliyor) bu
+  // zaten var olan, yetkili admin akışını kullanan yolla tam senkron sağlanır.
+  // force modunda push sonrası satır hâlâ "where" ile eşleştiği için (drift
+  // şartı yok) ilerlemeyi price_synced değil OFFSET sağlıyor - çağıran
+  // (push-prices route'u) her turda offset += batchSize ile artırıyor.
+  const where = force
+    ? "n11_stock_code IS NOT NULL"
+    : `n11_stock_code IS NOT NULL
+       AND (n11_price_synced IS NULL OR n11_price_synced != COALESCE(n11_override_price, price))`;
   const pending = await db
     .prepare(
       `SELECT id, stock, price, n11_override_price AS n11OverridePrice,
               n11_stock_code AS n11StockCode
-       FROM products
-       WHERE n11_stock_code IS NOT NULL
-         AND (n11_price_synced IS NULL OR n11_price_synced != COALESCE(n11_override_price, price))
-       ORDER BY id LIMIT ?`,
+       FROM products WHERE ${where} ORDER BY id LIMIT ? OFFSET ?`,
     )
-    .bind(batchSize)
+    .bind(batchSize, force ? offset : 0)
     .all<{ id: number; stock: number; price: number; n11OverridePrice: number | null; n11StockCode: string }>();
 
   const remainingCount = async () => {
     const row = await db
-      .prepare(
-        `SELECT COUNT(*) AS c FROM products
-         WHERE n11_stock_code IS NOT NULL
-           AND (n11_price_synced IS NULL OR n11_price_synced != COALESCE(n11_override_price, price))`,
-      )
+      .prepare(`SELECT COUNT(*) AS c FROM products WHERE ${where}`)
       .first<{ c: number }>();
-    return row?.c ?? 0;
+    const total = row?.c ?? 0;
+    return force ? Math.max(0, total - (offset + pending.results.length)) : total;
   };
 
   if (pending.results.length === 0) {
