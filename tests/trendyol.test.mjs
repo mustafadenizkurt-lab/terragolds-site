@@ -117,12 +117,12 @@ test("mapTrendyolOrderPayload eksik müşteri/adres alanlarında çökmüyor", (
 
 test("computeRequiredPrice maliyet 100 TL için beklenen fiyatı üretir (varsayılan %22 komisyon + komisyon üzerine %20 KDV + %2 hizmet bedeli)", () => {
   // productCostWithVat = 100 * 1.2 = 120
-  // totalCost = 120 + 29 (ORDER_FEE) + 0 (SHIPPING_COST, gerçek barem netleşene kadar geçici) = 149
+  // totalCost = 120 + 29 (ORDER_FEE) + 80 (SHIPPING_COST) = 229
   // targetProfit = 120 * 0.5 = 60
   // efektif komisyon = 0.22 * 1.2 + 0.02 (hizmet bedeli) = 0.284
-  // requiredPrice = (149 + 60) / (1 - 0.284) = 209 / 0.716
+  // requiredPrice = (229 + 60) / (1 - 0.284) = 289 / 0.716
   const result = computeRequiredPrice(100, 9999); // bilinmeyen kategori -> default oran
-  assert.ok(Math.abs(result - 209 / (1 - effectiveCommissionRateFor(9999))) < 1e-9);
+  assert.ok(Math.abs(result - 289 / (1 - effectiveCommissionRateFor(9999))) < 1e-9);
 });
 
 test("computeRequiredPrice maliyet arttıkça gerekli fiyatı da artırır", () => {
@@ -131,10 +131,10 @@ test("computeRequiredPrice maliyet arttıkça gerekli fiyatı da artırır", () 
   assert.ok(high > low);
 });
 
-test("computeRequiredPrice maliyet 0 için sadece sabit maliyetleri (sipariş ücreti) yansıtır", () => {
-  // productCostWithVat=0, targetProfit=0 -> requiredPrice = (0+29+0+0) / (1-efektifKomisyon)
+test("computeRequiredPrice maliyet 0 için sadece sabit maliyetleri (kargo+sipariş) yansıtır", () => {
+  // productCostWithVat=0, targetProfit=0 -> requiredPrice = (0+29+80+0) / (1-efektifKomisyon)
   const result = computeRequiredPrice(0, 9999);
-  assert.ok(Math.abs(result - 29 / (1 - effectiveCommissionRateFor(9999))) < 1e-9);
+  assert.ok(Math.abs(result - 109 / (1 - effectiveCommissionRateFor(9999))) < 1e-9);
 });
 
 test("clampToPriceLimits sınır yoksa fiyatı olduğu gibi bırakır", () => {
@@ -159,18 +159,18 @@ test("clampToPriceLimits alt ve üst sınır birlikte verildiğinde ikisine de u
 
 test("calculateTrendyolLimitsFromCost maliyet 150 TL altında (uygun ürün) 25 TL kâr hedefiyle hesaplar", () => {
   // costWithVat = 100 * 1.2 = 120
-  // lowerLimit = (120 + 0 (kargo, geçici) + 30 (ebijuteri sipariş ücreti) + 25 (min kâr, <150 TL)) / (1 - efektif komisyon) = 175 / (1 - 0.284)
+  // lowerLimit = (120 + 80 (kargo) + 30 (ebijuteri sipariş ücreti) + 25 (min kâr, <150 TL)) / (1 - efektif komisyon) = 255 / (1 - 0.284)
   const { lowerLimit, upperLimit } = calculateTrendyolLimitsFromCost(100, 9999);
-  const expectedLower = Math.round(175 / (1 - effectiveCommissionRateFor(9999)));
+  const expectedLower = Math.round(255 / (1 - effectiveCommissionRateFor(9999)));
   assert.equal(lowerLimit, expectedLower);
   assert.equal(upperLimit, Math.round(expectedLower * 1.5));
 });
 
 test("calculateTrendyolLimitsFromCost maliyet 150 TL ve üstünde (yüksek ürün) 50 TL kâr hedefiyle hesaplar", () => {
   // costWithVat = 150 * 1.2 = 180
-  // lowerLimit = (180 + 0 (kargo, geçici) + 30 + 50 (min kâr, >=150 TL)) / (1 - efektif komisyon) = 260 / (1 - 0.284)
+  // lowerLimit = (180 + 80 (kargo) + 30 + 50 (min kâr, >=150 TL)) / (1 - efektif komisyon) = 340 / (1 - 0.284)
   const { lowerLimit, upperLimit } = calculateTrendyolLimitsFromCost(150, 9999);
-  const expectedLower = Math.round(260 / (1 - effectiveCommissionRateFor(9999)));
+  const expectedLower = Math.round(340 / (1 - effectiveCommissionRateFor(9999)));
   assert.equal(lowerLimit, expectedLower);
   assert.equal(upperLimit, Math.round(expectedLower * 1.5));
 });
