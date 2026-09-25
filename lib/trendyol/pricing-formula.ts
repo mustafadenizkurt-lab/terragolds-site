@@ -12,6 +12,10 @@ export const DEFAULT_COMMISSION_RATE = 0.22;
 // değil, komisyonun KDV'si) - önceki sürümde bu atlanmıştı, gerçek net kâr
 // hesaplanandan biraz daha düşük çıkıyordu.
 export const COMMISSION_VAT_RATE = 0.2;
+// %22 komisyondan AYRI, satış fiyatı üzerinden ayrıca kesilen Trendyol
+// hizmet bedeli (N11'deki N11_SERVICE_FEE_RATE ile aynı kavram) - kullanıcı
+// bunu doğruladı, önceki formülde hiç yoktu.
+export const SERVICE_FEE_RATE = 0.02;
 export const MIN_PROFIT_MARGIN_RATE = 0.5;
 export const LIST_PRICE_MARKUP_RATE = 0.01; // listPrice, salePrice'ın %1 üstü
 
@@ -27,8 +31,11 @@ export function commissionRateFor(categoryId: number): number {
   return CATEGORY_COMMISSION_RATES[categoryId] ?? DEFAULT_COMMISSION_RATE;
 }
 
+// Satış fiyatının bu oranı Trendyol'a/devlete gidiyor, geri kalanı bizde
+// kalıyor: komisyon + komisyon üzerine KDV + ayrı bir kalem olan hizmet
+// bedeli (%2).
 export function effectiveCommissionRateFor(categoryId: number): number {
-  return commissionRateFor(categoryId) * (1 + COMMISSION_VAT_RATE);
+  return commissionRateFor(categoryId) * (1 + COMMISSION_VAT_RATE) + SERVICE_FEE_RATE;
 }
 
 // requiredPrice: bu fiyatın altına düşülürse hedef net kâr marjı
