@@ -139,10 +139,10 @@ test("computeRequiredPrice maliyet 0 için sadece sabit maliyetleri (kargo+sipar
 });
 
 
-test("entegratör adı noktasız ı ve boşluklardan arındırılır (401 nedeni)", () => {
-  assert.equal(normalizeIntegratorName("selfıt_dev"), "selfit_dev");
-  assert.equal(normalizeIntegratorName("  selfit_dev \n"), "selfit_dev");
-  assert.equal(buildHepsiburadaUserAgent("selfıt_dev"), "selfit_dev");
+test("entegratör adı kayıtlı haliyle gönderilir (noktasız ı korunur), sadece boşluk kırpılır", () => {
+  assert.equal(normalizeIntegratorName("selfıt_dev"), "selfıt_dev");
+  assert.equal(normalizeIntegratorName("  selfıt_dev \n"), "selfıt_dev");
+  assert.equal(buildHepsiburadaUserAgent("selfıt_dev"), "selfıt_dev");
 });
 
 import { buildImportItem, hepsiburadaCategoryFor, HB_CATEGORY } from "../lib/hepsiburada/attributes.ts";
