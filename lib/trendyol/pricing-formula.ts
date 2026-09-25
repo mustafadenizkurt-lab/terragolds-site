@@ -4,7 +4,14 @@
 // import edip test edebiliyor.
 
 export const ORDER_FEE = 29; // TL, sipariş başına sabit (tek ürünlük sipariş varsayımıyla - muhafazakâr)
-export const SHIPPING_COST = 80; // TL, sabit
+// Trendyol'un gerçekte kademeli bir kargo "Barem Destek" anlaşması var
+// (5 desi altı gönderiler için, fiyat aralığına göre değişen ücret - ör.
+// 200 TL altı siparişlerde ~41 TL). Sabit 80 TL varsayımı bundan çok daha
+// yüksekti ve rakiplerin çok üzerinde fiyat çıkmasının başlıca sebebiydi.
+// Kullanıcı satıcı panelindeki tam barem tablosunu (200-350 TL ve 350+ TL
+// dilimleri) verene kadar geçici olarak 0 - gerçek kademeli değerler
+// netleşince buraya eklenmeli.
+export const SHIPPING_COST = 0; // TL, geçici - bkz. yukarıdaki not
 export const VAT_RATE = 0.2; // tedarikçi faturasına göre sabit
 export const DEFAULT_COMMISSION_RATE = 0.22;
 // Web araştırmasıyla doğrulandı (N11/Hepsiburada'daki gibi): Trendyol'un
