@@ -17,7 +17,19 @@ export const COMMISSION_VAT_RATE = 0.2;
 // bunu doğruladı, önceki formülde hiç yoktu.
 export const SERVICE_FEE_RATE = 0.02;
 export const MIN_PROFIT_MARGIN_RATE = 0.5;
-export const LIST_PRICE_MARKUP_RATE = 0.01; // listPrice, salePrice'ın %1 üstü
+// listPrice (üzeri çizili "eski fiyat"), salePrice'ın sadece %1 üstündeydi -
+// pratikte müşteriye HİÇ indirim göstermiyordu. N11'de aynı sorun bulunup
+// düzeltildi (bkz. lib/n11/pricing-formula.ts > LIST_PRICE_DISCOUNT_RATE) -
+// aynı mantık burada da uygulanıyor: gerçek satış fiyatı (kâr hesabı)
+// DEĞİŞMİYOR, sadece üzeri çizili referans fiyat yükselip ürün Trendyol'da
+// "%10 indirimli" rozetiyle görünüyor.
+export const LIST_PRICE_DISCOUNT_RATE = 0.10;
+
+// listPrice = salePrice / (1 - indirim oranı): salePrice, listPrice'ın
+// %(LIST_PRICE_DISCOUNT_RATE*100) indirimlisi olarak görünür.
+export function trendyolListPriceFor(salePrice: number): number {
+  return Math.round(salePrice / (1 - LIST_PRICE_DISCOUNT_RATE));
+}
 
 // Trendyol categoryId -> gerçek komisyon oranı. Trendyol satıcı panelindeki
 // "Komisyon Oranları" sayfasından gerçek oranlar girilene kadar TÜM

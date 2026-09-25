@@ -4,7 +4,7 @@ import {
   effectiveCommissionRateFor,
   computeRequiredPrice,
   clampToPriceLimits,
-  LIST_PRICE_MARKUP_RATE,
+  trendyolListPriceFor,
 } from "./pricing-formula";
 
 // --- Dinamik fiyatlama: maliyet + kargo + komisyon sonrası en az maliyetin
@@ -179,7 +179,7 @@ export async function applyTrendyolDynamicPricing(db: D1Database): Promise<Dynam
           barcode: product.trendyolBarcode,
           quantity: product.stock,
           salePrice: requiredPrice,
-          listPrice: Math.round(requiredPrice * (1 + LIST_PRICE_MARKUP_RATE)),
+          listPrice: trendyolListPriceFor(requiredPrice),
         })),
       );
       batchRequestId = result.batchRequestId;
