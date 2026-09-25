@@ -236,7 +236,7 @@ export async function importHepsiburadaTest(
   stockCodes: string[],
   importPath?: string,
   userAgentOverride?: string,
-  experiment?: { categoryId?: number; omitBarcode?: boolean },
+  experiment?: { categoryId?: number; omitBarcode?: boolean; packageImage?: boolean },
 ): Promise<{ sent: number; skipped: string[]; status: number; body: string; headers?: Record<string, string>; items: unknown[] }> {
   const codes = stockCodes.slice(0, 5);
   const rows = await db
@@ -292,6 +292,8 @@ export async function importHepsiburadaTest(
   for (const item of items) {
     if (experiment?.categoryId) item.categoryId = experiment.categoryId;
     if (experiment?.omitBarcode) delete item.attributes.Barcode;
+    // Test (SIT) kategorilerinde "Paket Görseli (ön)" (00000MU, media) zorunlu.
+    if (experiment?.packageImage) item.attributes["00000MU"] = item.attributes.Image1;
   }
   const result = await importProductsFile(items, importPath, userAgentOverride);
   return { sent: items.length, skipped, status: result.status, body: result.body, headers: result.headers, items };

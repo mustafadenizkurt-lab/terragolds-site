@@ -123,6 +123,10 @@ export function buildImportItem(input: {
     UrunAciklamasi: input.description,
     Marka: "Terragolds",
     tax_vat_rate: "20",
+    // Test (SIT) ortamında zorunlu, canlıda isteğe bağlı: Desi ve Garanti Süresi
+    // (ay). Hepsiburada tüm özelliklerin gönderilmesini öneriyor (arama için).
+    kg: "1",
+    GarantiSuresi: "0",
     // Fiyat/stok ürünle birlikte gönderilirse, ürün onaylanınca bu değerlerle
     // otomatik satışa açılır (resmi rehber) - ayrı listing çağrısı gerekmez.
     price: hepsiburadaPrice(input.price),
