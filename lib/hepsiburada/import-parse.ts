@@ -37,7 +37,12 @@ export function parseImportStatus(raw: unknown): ParsedImportItem[] {
     // PROCESSING | SUCCESS | FAILED; productStatus = WAITING (incelenecek) |
     // MISSING_INFO | MATCHED (satışa hazır) | PRE_MATCHED (eşleşen) | REJECTED |
     // MATCHED_WITH_STAGED | CREATED.
-    const blockedProductStatus = ["MISSING_INFO", "REJECTED"].includes(String(productStatus));
+    // Gerçek yanıtta durum Türkçe geliyor (ör. "Incelenecek"); İngilizce kodlar
+    // da desteklenir. Eksik bilgi / red / açık görev = hata.
+    const statusText = String(productStatus ?? "").toLowerCase();
+    const blockedProductStatus =
+      ["missing_info", "rejected"].includes(statusText) ||
+      /eksik|reddedil|görev aç/.test(statusText);
     let outcome: ParsedImportItem["outcome"];
     if (errorMessages.some((message) => /access denied/i.test(message))) outcome = "accessDenied";
     else if (

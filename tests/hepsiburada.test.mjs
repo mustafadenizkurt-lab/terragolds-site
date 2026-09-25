@@ -236,3 +236,10 @@ test("başkasına ait kayıtlı entegratör adı (Selfit) engellenir, kendi adı
   assert.throws(() => assertOwnIntegrator("SELFIT_DEV"), /Selfit/);
   assert.doesNotThrow(() => assertOwnIntegrator("terra_dev"));
 });
+
+test("parseImportStatus Türkçe durumlar: Incelenecek başarı, eksik/red hata", () => {
+  assert.equal(parseImportStatus({ data: [{ merchantSku: "A", importStatus: "SUCCESS", productStatus: "Incelenecek", importMessages: [], validationResults: [] }] })[0].outcome, "success");
+  assert.equal(parseImportStatus({ data: [{ merchantSku: "B", importStatus: "SUCCESS", productStatus: "Ürün bilgileri eksik", importMessages: [] }] })[0].outcome, "failed");
+  assert.equal(parseImportStatus({ data: [{ merchantSku: "C", importStatus: "SUCCESS", productStatus: "Reddedildi", importMessages: [] }] })[0].outcome, "failed");
+  assert.equal(parseImportStatus({ data: [{ merchantSku: "D", importStatus: "SUCCESS", productStatus: "Satışa Hazır", importMessages: [] }] })[0].outcome, "success");
+});
