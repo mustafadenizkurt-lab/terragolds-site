@@ -1,6 +1,11 @@
-import { updateStockAndPrice } from "./client";
+import { updateStockAndPrice, ensureTrendyolColumns } from "./client";
 import { categoryIdFor } from "./sync";
-import { effectiveCommissionRateFor, computeRequiredPrice, LIST_PRICE_MARKUP_RATE } from "./pricing-formula";
+import {
+  effectiveCommissionRateFor,
+  computeRequiredPrice,
+  clampToPriceLimits,
+  LIST_PRICE_MARKUP_RATE,
+} from "./pricing-formula";
 
 // --- Dinamik fiyatlama: maliyet + kargo + komisyon sonrası en az maliyetin
 // %50'si net kâr kalacak şekilde Trendyol satış fiyatını hesaplar ---
@@ -11,16 +16,6 @@ import { effectiveCommissionRateFor, computeRequiredPrice, LIST_PRICE_MARKUP_RAT
 // kasıtlı olarak ayrıştırılıyor çünkü Trendyol'un komisyon+sipariş
 // ücretleri site üzerinden yapılan bir satıştaki maliyetlerden farklı.
 
-async function ensureTrendyolPricingColumns(db: D1Database) {
-  const columns = await db
-    .prepare("PRAGMA table_info(products)")
-    .all<{ name: string }>();
-  const names = new Set(columns.results.map((column) => column.name));
-  if (!names.has("trendyol_override_price")) {
-    await db.prepare("ALTER TABLE products ADD COLUMN trendyol_override_price INTEGER").run();
-  }
-}
-
 type DynamicPricingCandidate = {
   id: number;
   name: string;
@@ -30,17 +25,22 @@ type DynamicPricingCandidate = {
   stock: number;
   trendyolBarcode: string;
   trendyolOverridePrice: number | null;
+  trendyolLowerLimitPrice: number | null;
+  trendyolUpperLimitPrice: number | null;
 };
 
 async function loadCandidates(db: D1Database): Promise<DynamicPricingCandidate[]> {
-  await ensureTrendyolPricingColumns(db);
+  await ensureTrendyolColumns(db);
   const result = await db
     .prepare(
       `SELECT id, name, category, cost, price, stock,
               trendyol_barcode AS trendyolBarcode,
-              trendyol_override_price AS trendyolOverridePrice
+              trendyol_override_price AS trendyolOverridePrice,
+              trendyol_lower_limit_price AS trendyolLowerLimitPrice,
+              trendyol_upper_limit_price AS trendyolUpperLimitPrice
        FROM products
        WHERE status = 'published' AND trendyol_barcode IS NOT NULL AND cost > 0
+         AND trendyol_active = 1
        ORDER BY id`,
     )
     .all<DynamicPricingCandidate>();
@@ -51,7 +51,8 @@ async function countMissingCost(db: D1Database): Promise<number> {
   const row = await db
     .prepare(
       `SELECT COUNT(*) AS c FROM products
-       WHERE status = 'published' AND trendyol_barcode IS NOT NULL AND cost = 0`,
+       WHERE status = 'published' AND trendyol_barcode IS NOT NULL AND cost = 0
+         AND trendyol_active = 1`,
     )
     .first<{ c: number }>();
   return row?.c ?? 0;
@@ -66,16 +67,32 @@ type PricedCandidate = {
 
 function priceCandidate(product: DynamicPricingCandidate): PricedCandidate {
   const categoryId = categoryIdFor(product);
-  const requiredPrice = Math.round(computeRequiredPrice(product.cost, categoryId));
+  const rawRequiredPrice = Math.round(computeRequiredPrice(product.cost, categoryId));
+  // Maliyet+kâr marjına göre hesaplanan fiyatın üzerine, admin'in ürün
+  // başına elle girdiği ek taban/tavan uygulanıyor (bkz. pricing-formula.ts
+  // > clampToPriceLimits) - ör. yanlış/eksik maliyet verisi yüzünden
+  // hesaplanan fiyat anormal düşük çıksa bile ürün lowerLimitPrice altına
+  // hiç inmiyor.
+  const requiredPrice = clampToPriceLimits(
+    rawRequiredPrice,
+    product.trendyolLowerLimitPrice,
+    product.trendyolUpperLimitPrice,
+  );
   // İlk çalıştırmada trendyol_override_price henüz yok - products.price
   // referans alınır. Sonraki çalıştırmalarda kendi önceki override'ımızla
   // kıyaslanır ki fiyat sürekli aynı seviyeye "geri" gönderilmesin.
   const currentPrice = product.trendyolOverridePrice ?? product.price;
+  // Kural hâlâ "sadece yükselt" (bkz. applyTrendyolDynamicPricing yorumu) -
+  // TEK istisna: mevcut fiyat admin'in koyduğu üst sınırı ihlal ediyorsa
+  // (ör. sınır sonradan düşürüldü) o zaman ürün sınıra geri ÇEKİLİR. Üst
+  // sınır yoksa veya ihlal edilmiyorsa davranış birebir eskisiyle aynı.
+  const violatesUpperLimit =
+    product.trendyolUpperLimitPrice != null && currentPrice > product.trendyolUpperLimitPrice;
   return {
     product,
     currentPrice,
     requiredPrice,
-    needsUpdate: requiredPrice > currentPrice,
+    needsUpdate: requiredPrice > currentPrice || violatesUpperLimit,
   };
 }
 

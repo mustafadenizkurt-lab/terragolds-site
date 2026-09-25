@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { buildTrendyolAuthHeader, buildTrendyolUserAgent } from "../lib/trendyol/http-utils.ts";
 import { mapTrendyolOrderPayload } from "../lib/trendyol/order-mapping.ts";
-import { computeRequiredPrice, effectiveCommissionRateFor } from "../lib/trendyol/pricing-formula.ts";
+import { computeRequiredPrice, effectiveCommissionRateFor, clampToPriceLimits } from "../lib/trendyol/pricing-formula.ts";
 
 // Trendyol henüz API kimlik bilgilerimizi onaylamadı, o yüzden bu testler
 // gerçek bir API çağrısı yapmıyor - sadece kimlik bilgisi olmadan da test
@@ -129,4 +129,24 @@ test("computeRequiredPrice maliyet 0 için sadece sabit maliyetleri (kargo+sipar
   // productCostWithVat=0, targetProfit=0 -> requiredPrice = (0+29+80+0) / (1-efektifKomisyon)
   const result = computeRequiredPrice(0, 9999);
   assert.ok(Math.abs(result - 109 / (1 - effectiveCommissionRateFor(9999))) < 1e-9);
+});
+
+test("clampToPriceLimits sınır yoksa fiyatı olduğu gibi bırakır", () => {
+  assert.equal(clampToPriceLimits(500, null, null), 500);
+});
+
+test("clampToPriceLimits alt sınırın altına inmiyor", () => {
+  assert.equal(clampToPriceLimits(300, 400, null), 400);
+  assert.equal(clampToPriceLimits(500, 400, null), 500);
+});
+
+test("clampToPriceLimits üst sınırın üstüne çıkmıyor", () => {
+  assert.equal(clampToPriceLimits(900, null, 800), 800);
+  assert.equal(clampToPriceLimits(700, null, 800), 700);
+});
+
+test("clampToPriceLimits alt ve üst sınır birlikte verildiğinde ikisine de uyar", () => {
+  assert.equal(clampToPriceLimits(100, 400, 800), 400);
+  assert.equal(clampToPriceLimits(1000, 400, 800), 800);
+  assert.equal(clampToPriceLimits(600, 400, 800), 600);
 });

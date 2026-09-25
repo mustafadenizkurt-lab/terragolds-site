@@ -10,7 +10,12 @@
     // 12:00/18:00 UTC) but only ~24% of the time at odd minutes - almost
     // certainly many stores hitting the same feed's default cron schedule
     // at once. See xml_sync_logs history for the before/after comparison.
-    "crons": ["17 */6 * * *"]
+    //
+    // "4 0 * * *" = 03:04 Türkiye saati (UTC+3, DST yok) - Trendyol dinamik
+    // fiyatlama botu için ayrı bir gece görevi (bkz. worker/index.ts
+    // scheduled()'daki controller.cron dallanması). Diğer görevlerden
+    // (00/06/12/18 UTC) kasıtlı farklı saatte, aynı invocation'ı paylaşmasın.
+    "crons": ["17 */6 * * *", "4 0 * * *"]
   },
   "assets": {
     "directory": "./dist/client",

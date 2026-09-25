@@ -42,3 +42,19 @@ export function computeRequiredPrice(cost: number, categoryId: number): number {
   const targetProfit = productCostWithVat * MIN_PROFIT_MARGIN_RATE;
   return (totalCost + targetProfit) / (1 - effectiveCommissionRateFor(categoryId));
 }
+
+// Admin panelinden ürün başına elle girilebilen ek güvenlik sınırları
+// (trendyol_lower_limit_price/trendyol_upper_limit_price) - computeRequiredPrice
+// zaten maliyet+kâr marjına göre bir taban hesaplıyor, ama bu iki sınır
+// admin'in "bu ürün hiçbir koşulda X TL altına/Y TL üstüne çıkmasın" diye
+// bilerek koyduğu ek bir tavan/taban. null olan sınır uygulanmaz.
+export function clampToPriceLimits(
+  price: number,
+  lowerLimit: number | null,
+  upperLimit: number | null,
+): number {
+  let clamped = price;
+  if (lowerLimit != null) clamped = Math.max(clamped, lowerLimit);
+  if (upperLimit != null) clamped = Math.min(clamped, upperLimit);
+  return clamped;
+}
