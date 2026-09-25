@@ -23,10 +23,10 @@ export function buildHepsiburadaUserAgent(integratorName: string): string {
   return normalizeIntegratorName(integratorName);
 }
 
-// Entegratör adı (User-Agent): Hepsiburada satıcı panelinde kayıtlı haliyle
-// ("selfıt_dev", noktasız ı) AYNEN gönderilir - Hepsiburada destek bunu
-// açıkça istedi. Sadece baştaki/sondaki boşluk ve satır sonu kırpılır;
-// Türkçe harfler ASCII'ye ÇEVRİLMEZ.
+// Entegratör adı (User-Agent) ASCII bir kullanıcı adı ("selfit_dev" gibi);
+// admin panelinde Türkçe klavye/otomatik küçük harf yüzünden noktasız "ı"
+// ile ("selfıt_dev") kaydedilince Hepsiburada 401 "Merchant api authorization
+// failed" veriyordu. Kullanırken kırpılıp Türkçe harfler ASCII'ye çevrilir.
 export function normalizeIntegratorName(value: string): string {
-  return value.trim();
+  return value.trim().replaceAll("ı", "i").replaceAll("İ", "I");
 }
