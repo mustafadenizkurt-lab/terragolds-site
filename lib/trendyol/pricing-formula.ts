@@ -21,7 +21,20 @@ export const COMMISSION_VAT_RATE = 0.2;
 // hizmet bedeli (N11'deki N11_SERVICE_FEE_RATE ile aynı kavram) - kullanıcı
 // bunu doğruladı, önceki formülde hiç yoktu.
 export const SERVICE_FEE_RATE = 0.02;
-export const MIN_PROFIT_MARGIN_RATE = 0.5;
+// Min net kâr hedefi tek bir sabit/yüzde değil, XML'den gelen HAM (KDV
+// hariç) maliyete göre kademeli: "uygun" ürünlerde daha düşük sabit bir
+// TL, "yüksek" (daha pahalı) ürünlerde daha yüksek sabit bir TL. Eşik 200
+// TL - Trendyol'un kendi kargo barem sınırıyla aynı (bkz. SHIPPING_COST
+// yorumu). Hem computeRequiredPrice (asıl fiyatlama) hem de
+// calculateTrendyolLimitsFromCost (güvenlik sınırı) aynı kademeyi kullanıyor.
+export const PROFIT_TIER_COST_THRESHOLD = 200; // TL, ham maliyet
+export const PROFIT_TARGET_LOW = 25; // TL, maliyet eşiğin altındaysa
+export const PROFIT_TARGET_HIGH = 50; // TL, maliyet eşiğe ulaşmış/üstündeyse
+
+export function targetProfitForCost(cost: number): number {
+  return cost >= PROFIT_TIER_COST_THRESHOLD ? PROFIT_TARGET_HIGH : PROFIT_TARGET_LOW;
+}
+
 // listPrice (üzeri çizili "eski fiyat"), salePrice'ın sadece %1 üstündeydi -
 // pratikte müşteriye HİÇ indirim göstermiyordu. N11'de aynı sorun bulunup
 // düzeltildi (bkz. lib/n11/pricing-formula.ts > LIST_PRICE_DISCOUNT_RATE) -
@@ -58,12 +71,13 @@ export function effectiveCommissionRateFor(categoryId: number): number {
 // requiredPrice: bu fiyatın altına düşülürse hedef net kâr marjı
 // tutturulamaz. cost, D1'de KDV HARİÇ tedarikçi maliyeti olarak tutuluyor
 // (bkz. lib/xml-sync/calculatePrice.ts VAT_RATE yorumu) - KDV önce maliyete
-// eklenip üstüne kâr hedefi ve efektif komisyon oranı (komisyon üzerine KDV
+// eklenip üstüne kâr hedefi (bkz. targetProfitForCost - kademeli sabit TL,
+// maliyetin yüzdesi DEĞİL) ve efektif komisyon oranı (komisyon üzerine KDV
 // dahil) geri hesaplanıyor.
 export function computeRequiredPrice(cost: number, categoryId: number): number {
   const productCostWithVat = cost * (1 + VAT_RATE);
   const totalCost = productCostWithVat + ORDER_FEE + SHIPPING_COST;
-  const targetProfit = productCostWithVat * MIN_PROFIT_MARGIN_RATE;
+  const targetProfit = targetProfitForCost(cost);
   return (totalCost + targetProfit) / (1 - effectiveCommissionRateFor(categoryId));
 }
 
@@ -104,29 +118,18 @@ export function clampToPriceLimits(
 const AUTO_LIMIT_SUPPLIER_ORDER_FEE = 30; // TL, ebijuteri'nin sipariş başına kestiği ücret
 const AUTO_LIMIT_UPPER_RATIO = 1.5; // upperLimit = lowerLimit * bu oran
 
-// Min net kâr hedefi artık tek bir sabit değil, maliyete göre kademeli:
-// "uygun" ürünlerde daha düşük, "yüksek" (daha pahalı, dolayısıyla daha
-// yüksek TL kârı taşıyabilecek) ürünlerde daha yüksek. Eşik XML'den gelen
-// HAM (KDV hariç) maliyete göre - Terragolds kataloğunun ~%88'i bu sınırın
-// altında (10-1000 TL aralığında, ortalama ~96 TL).
-const AUTO_LIMIT_PROFIT_TIER_COST_THRESHOLD = 150; // TL, ham maliyet
-const AUTO_LIMIT_MIN_NET_PROFIT_LOW = 25; // TL, maliyet eşiğin altındaysa
-const AUTO_LIMIT_MIN_NET_PROFIT_HIGH = 50; // TL, maliyet eşiğe ulaşmış/üstündeyse
-
 export type TrendyolAutoLimits = { lowerLimit: number; upperLimit: number };
 
 // cost, D1'de KDV HARİÇ tedarikçi maliyeti olarak tutuluyor (bkz.
 // computeRequiredPrice yorumu ve lib/xml-sync/calculatePrice.ts) - KDV
-// burada da aynı şekilde önce maliyete eklenip üstünden hesaplanıyor.
-// Komisyon oranı da effectiveCommissionRateFor ile aynı (komisyon TUTARININ
-// üzerine ayrıca KDV biniyor) - düz %22 kullanmak, tam da bu fonksiyonun
-// garantilemeye çalıştığı min net kârı hedeften biraz düşük bırakırdı.
+// burada da aynı şekilde önce maliyete eklenip üstünden hesaplanıyor. Kâr
+// hedefi (targetProfitForCost) computeRequiredPrice ile AYNI kademeli
+// sabit TL kuralını kullanıyor - iki formül artık tutarlı. Komisyon oranı
+// da effectiveCommissionRateFor ile aynı (komisyon TUTARININ üzerine
+// ayrıca KDV biniyor).
 export function calculateTrendyolLimitsFromCost(cost: number, categoryId: number): TrendyolAutoLimits {
   const costWithVat = cost * (1 + VAT_RATE);
-  const minNetProfit =
-    cost >= AUTO_LIMIT_PROFIT_TIER_COST_THRESHOLD
-      ? AUTO_LIMIT_MIN_NET_PROFIT_HIGH
-      : AUTO_LIMIT_MIN_NET_PROFIT_LOW;
+  const minNetProfit = targetProfitForCost(cost);
   const lowerLimit = Math.round(
     (costWithVat + SHIPPING_COST + AUTO_LIMIT_SUPPLIER_ORDER_FEE + minNetProfit) /
       (1 - effectiveCommissionRateFor(categoryId)),
