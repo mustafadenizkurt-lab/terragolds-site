@@ -1,4 +1,5 @@
 import { ensureTrendyolColumns, createProduct, updateProduct, updateProductImages, updateStockAndPrice, getProductByBarcode, getBatchRequestResult, type TrendyolProduct, type TrendyolProductAttribute } from "./client";
+import { trendyolListPriceFor } from "./pricing-formula";
 import { toAbsoluteImageUrl } from "../shopify/client";
 import { groupForCategory } from "../category-groups";
 
@@ -221,7 +222,7 @@ function toTrendyolProduct(product: PendingProduct): TrendyolProduct {
     categoryId: categoryIdFor(product),
     quantity: product.stock,
     stockCode: barcodeFor(product),
-    listPrice: product.price,
+    listPrice: trendyolListPriceFor(product.price),
     salePrice: product.price,
     // Trendyol boş açıklamayı reddediyor ve tek gönderdiğimiz TÜM parti
     // (25 ürün) reddedilen tek bir satır yüzünden başarısız oluyor - D1'de
@@ -603,7 +604,7 @@ export async function pushStockAndPriceToTrendyol(
       barcode: product.trendyolBarcode,
       quantity: product.stock,
       salePrice,
-      listPrice: salePrice,
+      listPrice: trendyolListPriceFor(salePrice),
     },
   ]);
 
@@ -672,7 +673,7 @@ export async function pushPendingTrendyolPrices(
         barcode: row.trendyolBarcode,
         quantity: row.stock,
         salePrice: row.salePrice,
-        listPrice: row.salePrice,
+        listPrice: trendyolListPriceFor(row.salePrice),
       })),
     );
   } catch (error) {
@@ -811,7 +812,7 @@ export async function applyTrendyolPriceIncrease(db: D1Database): Promise<PriceI
           barcode: product.trendyolBarcode,
           quantity: product.stock,
           salePrice: newPrice,
-          listPrice: newPrice,
+          listPrice: trendyolListPriceFor(newPrice),
         })),
       );
       batchRequestId = result.batchRequestId;

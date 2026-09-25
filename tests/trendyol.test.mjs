@@ -7,6 +7,7 @@ import {
   effectiveCommissionRateFor,
   clampToPriceLimits,
   calculateTrendyolLimitsFromCost,
+  trendyolListPriceFor,
 } from "../lib/trendyol/pricing-formula.ts";
 
 // Trendyol henüz API kimlik bilgilerimizi onaylamadı, o yüzden bu testler
@@ -190,4 +191,12 @@ test("calculateTrendyolLimitsFromCost maliyet arttıkça sınırları da artır�
 test("calculateTrendyolLimitsFromCost üst sınır her zaman alt sınırdan büyük", () => {
   const { lowerLimit, upperLimit } = calculateTrendyolLimitsFromCost(75, 9999);
   assert.ok(upperLimit > lowerLimit);
+});
+
+test("trendyolListPriceFor satış fiyatının %10 indirimli göründüğü bir liste fiyatı üretir", () => {
+  const listPrice = trendyolListPriceFor(900);
+  assert.ok(listPrice > 900);
+  assert.equal(listPrice, Math.round(900 / 0.9));
+  // 900, 1000'in %10 indirimlisi olarak görünmeli
+  assert.equal(Math.round(listPrice * 0.9), 900);
 });
