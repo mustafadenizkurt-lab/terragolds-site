@@ -17,10 +17,6 @@ export const DEFAULT_COMMISSION_RATE = 0.22;
 // değil, komisyonun KDV'si) - önceki sürümde bu atlanmıştı, gerçek net kâr
 // hesaplanandan biraz daha düşük çıkıyordu.
 export const COMMISSION_VAT_RATE = 0.2;
-// %22 komisyondan AYRI, satış fiyatı üzerinden ayrıca kesilen Trendyol
-// hizmet bedeli (N11'deki N11_SERVICE_FEE_RATE ile aynı kavram) - kullanıcı
-// bunu doğruladı, önceki formülde hiç yoktu.
-export const SERVICE_FEE_RATE = 0.02;
 // Min net kâr hedefi tek bir sabit/yüzde değil, XML'den gelen HAM (KDV
 // hariç) maliyete göre kademeli: "uygun" ürünlerde daha düşük sabit bir
 // TL, "yüksek" (daha pahalı) ürünlerde daha yüksek sabit bir TL. Eşik 200
@@ -62,10 +58,11 @@ export function commissionRateFor(categoryId: number): number {
 }
 
 // Satış fiyatının bu oranı Trendyol'a/devlete gidiyor, geri kalanı bizde
-// kalıyor: komisyon + komisyon üzerine KDV + ayrı bir kalem olan hizmet
-// bedeli (%2).
+// kalıyor: komisyon + komisyon üzerine KDV. Toplam %26,4 (%22 * 1,2) -
+// kullanıcı bunu doğruladı. Ayrı bir %2 hizmet bedeli YOK (önceki sürümde
+// eklenmişti, kullanıcı düzeltti - toplam oran %26,4, %28,4 değil).
 export function effectiveCommissionRateFor(categoryId: number): number {
-  return commissionRateFor(categoryId) * (1 + COMMISSION_VAT_RATE) + SERVICE_FEE_RATE;
+  return commissionRateFor(categoryId) * (1 + COMMISSION_VAT_RATE);
 }
 
 // requiredPrice: bu fiyatın altına düşülürse hedef net kâr marjı
