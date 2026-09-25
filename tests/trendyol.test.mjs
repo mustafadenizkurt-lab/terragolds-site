@@ -165,11 +165,11 @@ test("calculateTrendyolLimitsFromCost maliyet 150 TL altında (uygun ürün) 25 
   assert.equal(upperLimit, Math.round(expectedLower * 1.5));
 });
 
-test("calculateTrendyolLimitsFromCost maliyet 150 TL ve üstünde (yüksek ürün) 100 TL kâr hedefiyle hesaplar", () => {
+test("calculateTrendyolLimitsFromCost maliyet 150 TL ve üstünde (yüksek ürün) 50 TL kâr hedefiyle hesaplar", () => {
   // costWithVat = 150 * 1.2 = 180
-  // lowerLimit = (180 + 80 + 30 + 100 (min kâr, >=150 TL)) / (1 - efektif komisyon) = 390 / (1 - 0.284)
+  // lowerLimit = (180 + 80 + 30 + 50 (min kâr, >=150 TL)) / (1 - efektif komisyon) = 340 / (1 - 0.284)
   const { lowerLimit, upperLimit } = calculateTrendyolLimitsFromCost(150, 9999);
-  const expectedLower = Math.round(390 / (1 - effectiveCommissionRateFor(9999)));
+  const expectedLower = Math.round(340 / (1 - effectiveCommissionRateFor(9999)));
   assert.equal(lowerLimit, expectedLower);
   assert.equal(upperLimit, Math.round(expectedLower * 1.5));
 });
