@@ -164,7 +164,11 @@ export const users = sqliteTable(
     id: integer("id").primaryKey({ autoIncrement: true }),
     firstName: text("first_name").notNull(),
     lastName: text("last_name").notNull(),
-    email: text("email").notNull(),
+    // Kayıt formunda e-posta artık zorunlu değil - e-posta girmeyen müşteri
+    // telefon numarasıyla kayıt olup giriş yapabiliyor (bkz. lib/customer-auth.ts
+    // ve app/api/auth/login/route.ts). NULL, unique index'te tekil e-postalarla
+    // çakışmıyor (SQLite NULL'ları birbirinden ayrı sayar).
+    email: text("email"),
     phone: text("phone").notNull().default(""),
     passwordHash: text("password_hash").notNull(),
     role: text("role").notNull().default("customer"),

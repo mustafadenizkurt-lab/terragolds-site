@@ -1,5 +1,10 @@
 import { getD1 } from "./store-db";
 
+// Kolon adı "email" ama artık giriş ekranındaki HERHANGİ bir kimlik
+// (e-posta ya da normalize edilmiş telefon rakamları) burada anahtar olarak
+// kullanılabiliyor - bkz. app/api/auth/login/route.ts identifierKey.
+// Kolonu yeniden adlandırmak gereksiz bir migration gerektirdiği için
+// sadece anlamı genişletildi.
 type LoginAttemptRow = {
   email: string;
   failed_count: number;

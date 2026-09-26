@@ -507,8 +507,14 @@ export default function ProfileClient({
             <div className="profile-hub-summary">
               <article>
                 <span>E-posta durumu</span>
-                <strong>{profile.emailVerifiedAt ? "Doğrulandı" : "Bekliyor"}</strong>
-                <small>{profile.email}</small>
+                <strong>
+                  {!profile.email
+                    ? "Yok"
+                    : profile.emailVerifiedAt
+                      ? "Doğrulandı"
+                      : "Bekliyor"}
+                </strong>
+                <small>{profile.email || "Telefonla kayıtlısınız"}</small>
               </article>
               <article>
                 <span>Kayıt tarihi</span>
@@ -587,9 +593,13 @@ export default function ProfileClient({
                   </div>
 
                   <label>
-                    <span>E-posta Adresi *</span>
-                    <input value={profile.email} readOnly />
-                    <small>Güvenlik nedeniyle e-posta bu ekrandan değiştirilemez.</small>
+                    <span>E-posta Adresi</span>
+                    <input value={profile.email || "Eklenmedi"} readOnly />
+                    <small>
+                      {profile.email
+                        ? "Güvenlik nedeniyle e-posta bu ekrandan değiştirilemez."
+                        : "Telefon numaranızla kayıtlısınız, e-posta eklemediniz."}
+                    </small>
                   </label>
 
                   <div className="profile-phone-field">
@@ -607,34 +617,36 @@ export default function ProfileClient({
                     </div>
                   </div>
 
-                  <div
-                    className={`profile-verification profile-verification-inline ${
-                      profile.emailVerifiedAt ? "verified" : "pending"
-                    }`}
-                  >
-                    <div>
-                      <b aria-hidden="true">{profile.emailVerifiedAt ? "✓" : "@"}</b>
-                      <span>
-                        <strong>
-                          {profile.emailVerifiedAt
-                            ? "E-posta doğrulandı"
-                            : "E-posta doğrulaması bekleniyor"}
-                        </strong>
-                        <small>{profile.email}</small>
-                      </span>
+                  {profile.email && (
+                    <div
+                      className={`profile-verification profile-verification-inline ${
+                        profile.emailVerifiedAt ? "verified" : "pending"
+                      }`}
+                    >
+                      <div>
+                        <b aria-hidden="true">{profile.emailVerifiedAt ? "✓" : "@"}</b>
+                        <span>
+                          <strong>
+                            {profile.emailVerifiedAt
+                              ? "E-posta doğrulandı"
+                              : "E-posta doğrulaması bekleniyor"}
+                          </strong>
+                          <small>{profile.email}</small>
+                        </span>
+                      </div>
+                      {!profile.emailVerifiedAt && (
+                        <button
+                          type="button"
+                          disabled={verificationSending}
+                          onClick={() => void sendVerification()}
+                        >
+                          {verificationSending
+                            ? "Gönderiliyor..."
+                            : "Doğrulama bağlantısı gönder"}
+                        </button>
+                      )}
                     </div>
-                    {!profile.emailVerifiedAt && (
-                      <button
-                        type="button"
-                        disabled={verificationSending}
-                        onClick={() => void sendVerification()}
-                      >
-                        {verificationSending
-                          ? "Gönderiliyor..."
-                          : "Doğrulama bağlantısı gönder"}
-                      </button>
-                    )}
-                  </div>
+                  )}
 
                   {error && <div className="account-error">{error}</div>}
                   {notice && <div className="profile-success">{notice}</div>}

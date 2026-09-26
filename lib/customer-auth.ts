@@ -147,18 +147,22 @@ export async function getCustomerFromRequest(request: Request) {
   try {
     const session = await verifyCustomerSessionToken(token);
     if (!session) return null;
+    // E-postasız (telefonla kayıtlı) hesaplarda users.email NULL olabiliyor -
+    // oturum bunu id + session_version ile doğruluyor, e-postayı ayrıca eşleştirmiyor
+    // (session_version zaten şifre değişince/oturumlar kapatılınca artıyor, bu
+    // kontrol tek başına yeterli).
     const user = await getD1()
       .prepare(
         `SELECT id, first_name, last_name, email, phone, session_version,
                 email_verified_at, created_at
-         FROM users WHERE id = ? AND email = ?`,
+         FROM users WHERE id = ?`,
       )
-      .bind(session.userId, session.email)
+      .bind(session.userId)
       .first<{
         id: number;
         first_name: string;
         last_name: string;
-        email: string;
+        email: string | null;
         phone: string;
         session_version: number;
         email_verified_at: string | null;
@@ -170,7 +174,7 @@ export async function getCustomerFromRequest(request: Request) {
       id: user.id,
       firstName: normalizeCustomerName(user.first_name),
       lastName: normalizeCustomerName(user.last_name),
-      email: user.email,
+      email: user.email ?? "",
       phone: user.phone,
       emailVerifiedAt: user.email_verified_at,
       createdAt: user.created_at,
