@@ -13,6 +13,12 @@ export async function POST(request: Request) {
   }
   const customer = await getCustomerFromRequest(request);
   if (!customer) return customerUnauthorizedResponse();
+  if (!customer.email) {
+    return Response.json(
+      { error: "Hesabınızda kayıtlı bir e-posta adresi yok." },
+      { status: 400 },
+    );
+  }
   if (customer.emailVerifiedAt) {
     return Response.json({ ok: true, alreadyVerified: true });
   }

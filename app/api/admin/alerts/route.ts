@@ -50,7 +50,9 @@ export async function GET(request: Request) {
             AND datetime(shipped_at) <= datetime('now', '-5 days')`,
       ),
       count(
-        "SELECT COUNT(*) AS total FROM users WHERE email_verified_at IS NULL",
+        // Telefonla (e-postasız) kayıtlı hesaplar hiç doğrulanmayacağı için
+        // sayılmıyor - aksi halde bu uyarı olduğundan büyük görünürdü.
+        "SELECT COUNT(*) AS total FROM users WHERE email IS NOT NULL AND email_verified_at IS NULL",
       ),
       db
         .prepare(

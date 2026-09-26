@@ -15,8 +15,11 @@ const copy = {
     register: "Üye Ol",
     firstName: "Ad",
     lastName: "Soyad",
-    email: "E-posta",
+    email: "E-posta (opsiyonel)",
+    loginIdentifier: "E-posta veya Telefon",
     phone: "Telefon",
+    phoneRequiredHint: "E-posta girmezseniz telefon numarası zorunludur.",
+    identifierRequiredError: "E-posta veya telefon numarasından birini girin.",
     password: "Şifre",
     forgotPassword: "Şifremi unuttum",
     hidePassword: "Şifreyi gizle",
@@ -51,8 +54,11 @@ const copy = {
     register: "Sign Up",
     firstName: "First name",
     lastName: "Last name",
-    email: "Email",
+    email: "Email (optional)",
+    loginIdentifier: "Email or Phone",
     phone: "Phone",
+    phoneRequiredHint: "Phone number is required if you skip email.",
+    identifierRequiredError: "Enter either an email address or a phone number.",
     password: "Password",
     forgotPassword: "Forgot password",
     hidePassword: "Hide password",
@@ -99,12 +105,22 @@ export default function AuthForm({
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setLoading(true);
     setError("");
 
     const formData = new FormData(event.currentTarget);
     const payload = Object.fromEntries(formData.entries());
     if (!captchaQuestion) delete payload.captchaAnswer;
+
+    if (
+      mode === "register" &&
+      !String(payload.email ?? "").trim() &&
+      !String(payload.phone ?? "").trim()
+    ) {
+      setError(t.identifierRequiredError);
+      return;
+    }
+
+    setLoading(true);
 
     try {
       const response = await fetch(`/api/auth/${mode}`, {
@@ -135,13 +151,17 @@ export default function AuthForm({
           ? requestedPath
           : null;
       if (mode === "register") {
-        window.location.href =
-          body.verification?.devVerifyUrl ??
-          `/verify-email?sent=1${
-            safeRequestedPath
-              ? `&return_to=${encodeURIComponent(safeRequestedPath)}`
-              : ""
-          }`;
+        // E-postasız (telefonla) kayıtta doğrulama e-postası hiç gönderilmiyor
+        // - o durumda /verify-email'e yönlendirmenin bir anlamı yok, müşteri
+        // zaten oturum açık şekilde doğrudan hesabına gidebilir.
+        window.location.href = body.verification
+          ? body.verification.devVerifyUrl ??
+            `/verify-email?sent=1${
+              safeRequestedPath
+                ? `&return_to=${encodeURIComponent(safeRequestedPath)}`
+                : ""
+            }`
+          : (safeRequestedPath ?? "/orders");
         return;
       }
       window.location.href =
@@ -231,18 +251,19 @@ export default function AuthForm({
               </div>
             )}
             <label>
-              <span>{t.email}</span>
+              <span>{isRegister ? t.email : t.loginIdentifier}</span>
               <input
                 name="email"
-                type="email"
-                autoComplete="email"
-                required
+                type={isRegister ? "email" : "text"}
+                autoComplete={isRegister ? "email" : "username"}
+                required={!isRegister}
               />
             </label>
             {isRegister && (
               <label>
                 <span>{t.phone}</span>
                 <input name="phone" type="tel" autoComplete="tel" />
+                <small>{t.phoneRequiredHint}</small>
               </label>
             )}
             <label>
