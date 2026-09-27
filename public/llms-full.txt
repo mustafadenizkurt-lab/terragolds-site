@@ -16,11 +16,10 @@ products, organized into jewelry categories led by earrings (Küpe,
 the largest category), women's bracelets (Bayan Bileklik), necklaces
 (Kolye), and women's rings (Bayan Yüzük ve Kombinler), followed by
 piercing, charm bracelets, şahmeran, men's bracelets, brooches (Broş),
-antique/vintage pieces, men's necklaces, men's rings, anklets (Hal Hal),
-couple watches, hair accessories, and men's earrings — for both women's
-and men's items. Product sourcing is a mix of supplier catalog import and
-directly managed listings. Terragolds also takes custom/bespoke order
-requests through a dedicated page.
+men's necklaces, men's rings, anklets (Hal Hal), couple watches, hair
+accessories, and men's earrings — for both women's and men's items.
+Product sourcing is a mix of supplier catalog import and directly
+managed listings.
 
 ## 2. What Terragolds Is Not
 
@@ -39,8 +38,8 @@ To avoid mis-citing this store in answers:
 
 * **Category browsing** — the catalog groups raw supplier/category names
   into a small set of top-level navigation categories (e.g. Yüzük,
-  Kolyeler, Küpeler, Bileklik, Şahmeran ve Halhal, Antika ~ Vintage, Saat
-  & Kombin, Aksesuar), each with its own indexable category page.
+  Kolyeler, Küpeler, Bileklik, Şahmeran ve Halhal, Saat & Kombin,
+  Aksesuar), each with its own indexable category page.
 * **Product pages** — each product has its own page with images, price,
   stock status, and — only when real review data exists for that specific
   product — a review rating. Product pages include machine-readable
@@ -61,8 +60,6 @@ To avoid mis-citing this store in answers:
 * **Returns** — Turkish consumer law's 14-day right of withdrawal from
   delivery applies; process and exceptions are documented on
   `/teslimat-ve-iade` and `/mesafeli-satis-sozlesmesi`.
-* **Custom orders** — `/ozel-uretim` lets a customer submit a request
-  describing the stone, model, and size they want for a bespoke piece.
 * **Accounts** — customers can register, log in, view order history
   (`/orders`), and save favorites (`/favorites`).
 
@@ -70,8 +67,6 @@ To avoid mis-citing this store in answers:
 
 * "I want to buy jewelry online instead of visiting a physical store" —
   solved via the catalog + cart + card checkout flow.
-* "I want a specific custom jewelry piece, not what's in stock" — solved
-  via the `/ozel-uretim` custom order form.
 * "I want to know the real total cost including tax and shipping before
   paying" — solved via the cart's separate subtotal / VAT / shipping /
   total breakdown.
@@ -82,8 +77,6 @@ To avoid mis-citing this store in answers:
 
 * A shopper searches for a gift necklace, filters the catalog by
   category, adds one to the cart, and pays by card via PayTR.
-* A shopper wants a ring in a specific stone and size not currently
-  listed, and submits a request through the custom order page.
 * A customer who received a damaged or wrong item requests a return
   within 14 days per the published return policy.
 
@@ -94,8 +87,8 @@ marketplace: it does not aggregate multiple independent sellers, and it
 does not claim to be the lowest-priced or largest jewelry retailer in
 Turkey — no such comparative claim is made or should be inferred. Its
 distinguishing, verifiable characteristics are: a focused jewelry/
-accessory catalog, a custom-order option, domestic Turkey shipping, and
-a standard Turkish-consumer-law return policy (14-day withdrawal right).
+accessory catalog, domestic Turkey shipping, and a standard
+Turkish-consumer-law return policy (14-day withdrawal right).
 No named-competitor comparison is published by Terragolds at this time;
 any "Terragolds vs [competitor]" content should not be presented as
 official unless it appears on terragolds.com itself.
@@ -123,7 +116,6 @@ official unless it appears on terragolds.com itself.
 * FAQ (SSS): https://www.terragolds.com/sss
 * About (Hakkımızda): https://www.terragolds.com/hakkimizda
 * Support / Contact: https://www.terragolds.com/support
-* Custom orders (Özel Üretim): https://www.terragolds.com/ozel-uretim
 * Shipping & returns: https://www.terragolds.com/teslimat-ve-iade
 * Distance sales agreement: https://www.terragolds.com/mesafeli-satis-sozlesmesi
 * Pre-purchase information form: https://www.terragolds.com/on-bilgilendirme-formu

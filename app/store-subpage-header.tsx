@@ -509,7 +509,6 @@ export default function StoreSubpageHeader({
           />
         ))}
         <Link className="sale" href="/#shop">{uiUpper(ui.sale, language)}</Link>
-        <Link href="/ozel-uretim">{uiUpper(ui.customProduction, language)}</Link>
         <Link href="/blog">{uiUpper(ui.blog, language)}</Link>
       </nav>
 
@@ -593,9 +592,6 @@ export default function StoreSubpageHeader({
               onClick={() => setMenuOpen(false)}
             >
               {ui.sale}
-            </a>
-            <a href="/ozel-uretim" onClick={() => setMenuOpen(false)}>
-              {ui.customProduction}
             </a>
             <Link href="/blog" onClick={() => setMenuOpen(false)}>
               {ui.blog}

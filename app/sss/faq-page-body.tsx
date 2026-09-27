@@ -46,7 +46,7 @@ function buildFaqItems(language: Language, settings: Settings, address: string):
       {
         question: "What product categories are available?",
         answer:
-          "Earrings, women's bracelets, necklaces and women's rings are the most popular categories, alongside piercings, charm bracelets, sahmeran jewelry, men's bracelets, brooches, antique~vintage pieces, couple watches and hair accessories - over 4,000 products in total. The current category list is available from the category menu on the homepage.",
+          "Earrings, women's bracelets, necklaces and women's rings are the most popular categories, alongside piercings, charm bracelets, sahmeran jewelry, men's bracelets, brooches, couple watches and hair accessories - over 4,000 products in total. The current category list is available from the category menu on the homepage.",
       },
       {
         question: "Are the products natural gemstones or jewelry?",
@@ -75,11 +75,6 @@ function buildFaqItems(language: Language, settings: Settings, address: string):
         question: "Can I return or exchange a product?",
         answer:
           "Yes. You can exercise your right of withdrawal within 14 days of receiving your order, without giving any reason. Details are on the Shipping & Returns page.",
-      },
-      {
-        question: "Can I order custom-made jewelry?",
-        answer:
-          "Yes. You can request a personalized order via the Custom Orders page by sharing your stone, model and size preferences.",
       },
       {
         question: "How do I track my order?",
@@ -142,7 +137,7 @@ function buildFaqItems(language: Language, settings: Settings, address: string):
     {
       question: "Hangi ürün kategorileri var?",
       answer:
-        "En çok ürün küpe, bayan bileklik, kolye ve bayan yüzük kategorilerinde olmak üzere; piercing, charm bileklik, şahmeran, erkek bileklik, broş, antika~vintage, sevgili saatleri ve saç aksesuarı gibi birçok kategoride toplam 4.000'den fazla ürün bulunur. Güncel kategori listesi anasayfadaki kategori menüsünden görülebilir.",
+        "En çok ürün küpe, bayan bileklik, kolye ve bayan yüzük kategorilerinde olmak üzere; piercing, charm bileklik, şahmeran, erkek bileklik, broş, sevgili saatleri ve saç aksesuarı gibi birçok kategoride toplam 4.000'den fazla ürün bulunur. Güncel kategori listesi anasayfadaki kategori menüsünden görülebilir.",
     },
     {
       question: "Ürünler doğal taş mı yoksa takı mı?",
@@ -171,11 +166,6 @@ function buildFaqItems(language: Language, settings: Settings, address: string):
       question: "İade veya değişim yapabilir miyim?",
       answer:
         "Evet. Siparişinizi teslim aldığınız tarihten itibaren 14 gün içinde, gerekçe göstermeksizin cayma hakkınızı kullanabilirsiniz. Ayrıntılar Teslimat ve İade sayfasında yer alır.",
-    },
-    {
-      question: "Özel tasarım takı yaptırabilir miyim?",
-      answer:
-        "Evet. Özel Üretim sayfasından taş, model ve ölçü tercihlerinizi ileterek kişiye özel sipariş talebinde bulunabilirsiniz.",
     },
     {
       question: "Siparişimi nasıl takip ederim?",
@@ -222,7 +212,7 @@ const copy = {
     help: "Yardım",
     inShort: "Kısaca",
     summary:
-      "Terragolds, kolye, küpe, bileklik ve yüzük gibi takı ürünleri satan bir online mağazadır. Kargo, iade, ödeme ve özel üretim hakkındaki tüm sorularınızın cevabı aşağıdadır.",
+      "Terragolds, kolye, küpe, bileklik ve yüzük gibi takı ürünleri satan bir online mağazadır. Kargo, iade ve ödeme hakkındaki tüm sorularınızın cevabı aşağıdadır.",
     noAnswerBefore: "Aradığınız cevabı bulamadınız mı? ",
     noAnswerLink: "Destek sayfasından",
     noAnswerAfter: " bize ulaşabilirsiniz.",
@@ -233,7 +223,7 @@ const copy = {
     help: "Help",
     inShort: "In short",
     summary:
-      "Terragolds is an online store selling jewelry such as necklaces, earrings, bracelets and rings. Below are the answers to all your questions about shipping, returns, payment and custom orders.",
+      "Terragolds is an online store selling jewelry such as necklaces, earrings, bracelets and rings. Below are the answers to all your questions about shipping, returns and payment.",
     noAnswerBefore: "Couldn't find the answer you're looking for? ",
     noAnswerLink: "Reach us from the Support page",
     noAnswerAfter: ".",

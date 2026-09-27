@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Sıkça Sorulan Sorular | Terragolds",
   description:
-    "Terragolds'ta kargo, iade, ödeme, özel üretim ve ürünler hakkında sık sorulan soruların cevapları.",
+    "Terragolds'ta kargo, iade, ödeme ve ürünler hakkında sık sorulan soruların cevapları.",
   alternates: { canonical: `${SITE_URL}/sss` },
 };
 
