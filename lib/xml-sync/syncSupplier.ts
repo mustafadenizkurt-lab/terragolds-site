@@ -13,6 +13,7 @@ import { calculateTrendyolLimitsFromCost } from "../trendyol/pricing-formula";
 import { pushStockAndPriceToHepsiburada } from "../hepsiburada/sync";
 import { loadExcludedExternalIds } from "./excluded-products";
 import { ensureImageLockColumn } from "../product-image-lock";
+import { ensurePriceLockColumn, costWithVat } from "../product-price-lock";
 
 export type SupplierMapping = {
   externalId?: string;
@@ -122,6 +123,7 @@ async function hasActiveRunningLog(db: D1Database, supplierId: number): Promise<
 
 export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<SyncResult> {
   await ensureImageLockColumn(db);
+  await ensurePriceLockColumn(db);
   await ensureTrendyolColumns(db);
   // Clean up any orphaned row from a previous invocation first, then check
   // whether a genuinely still-running sync remains - only refuses to start
@@ -175,8 +177,8 @@ export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<
         continue;
       }
       const existing = await db.prepare(
-        "SELECT id, xml_sync_status AS xmlSyncStatus, stock AS stock, price AS price FROM products WHERE xml_supplier_id = ? AND xml_external_id = ? LIMIT 1",
-      ).bind(supplier.id, product.externalId).first<{ id: number; xmlSyncStatus: string; stock: number; price: number }>();
+        "SELECT id, xml_sync_status AS xmlSyncStatus, stock AS stock, price AS price, price_locked_at AS priceLockedAt FROM products WHERE xml_supplier_id = ? AND xml_external_id = ? LIMIT 1",
+      ).bind(supplier.id, product.externalId).first<{ id: number; xmlSyncStatus: string; stock: number; price: number; priceLockedAt: string | null }>();
       // Match only on an exact (supplier, external id) link, never by name:
       // products without that link may be sourced independently of this
       // feed (e.g. added by hand from a different supplier) and coincidentally
@@ -201,6 +203,17 @@ export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<
       const autoLimits = product.cost > 0
         ? calculateTrendyolLimitsFromCost(product.cost, categoryIdFor(product))
         : null;
+      // price_locked_at doluysa (ör. bir "Her Şey 50 TL" kampanyası için elle
+      // sabitlenmişse - bkz. lib/product-price-lock.ts) kilitli fiyat
+      // KORUNUR - AMA SADECE tedarikçinin yeni (KDV dahil) maliyeti hâlâ o
+      // fiyatın altındaysa, yani kilitli fiyatta satmak hâlâ zarar
+      // ETTİRMİYORSA. Maliyet kilitli fiyatı geçerse (artık zarar demek)
+      // kilit kendiliğinden açılıp ürün normal formül fiyatına dönüyor -
+      // admin ayrıca izlemek zorunda kalmadan.
+      const priceLockStillSafe =
+        Boolean(existing?.priceLockedAt) && costWithVat(product.cost) <= existing!.price;
+      const finalPrice = priceLockStillSafe ? existing!.price : product.price;
+      const finalPriceLockedAt = priceLockStillSafe ? existing!.priceLockedAt : null;
       if (matchedId) {
         // image_locked_at doluysa (admin bu ürünün görselini kendi panelimizden
         // elle düzeltmişse - bkz. lib/product-image-lock.ts) tedarikçinin
@@ -211,14 +224,14 @@ export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<
         // admin panelden (/api/admin/products/trendyol-limits) elle girilmiş
         // bir sınırın üzerine XML senkronu bir daha asla yazmıyor.
         await db.prepare(
-          `UPDATE products SET name = ?, stone = ?, category = ?, price = ?, cost = ?, stock = ?,
+          `UPDATE products SET name = ?, stone = ?, category = ?, price = ?, price_locked_at = ?, cost = ?, stock = ?,
              image = CASE WHEN image_locked_at IS NULL THEN ? ELSE image END,
              hover_image = COALESCE(?, hover_image), description = ?, xml_sync_status = 'synced',
              trendyol_lower_limit_price = CASE WHEN trendyol_lower_limit_price IS NULL THEN ? ELSE trendyol_lower_limit_price END,
              trendyol_upper_limit_price = CASE WHEN trendyol_upper_limit_price IS NULL THEN ? ELSE trendyol_upper_limit_price END,
              updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
         ).bind(
-          product.name, product.stone, product.category, product.price, product.cost, product.stock,
+          product.name, product.stone, product.category, finalPrice, finalPriceLockedAt, product.cost, product.stock,
           product.image, product.hoverImage, product.description,
           autoLimits?.lowerLimit ?? null, autoLimits?.upperLimit ?? null,
           matchedId,
@@ -244,7 +257,7 @@ export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<
         // only fire this per-product Shopify call when the price actually
         // changed for THIS product, never unconditionally for every matched
         // row in the run.
-        if (existing.price !== product.price) {
+        if (existing.price !== finalPrice) {
           try {
             await pushPriceToShopify(db, matchedId);
           } catch {
@@ -375,6 +388,7 @@ export async function repriceSupplierProducts(
   db: D1Database,
   supplier: Supplier,
 ): Promise<RepriceResult> {
+  await ensurePriceLockColumn(db);
   const mapping = JSON.parse(supplier.fieldMapping || "{}") as SupplierMapping;
   const records = parseFeed(await fetchFeed(supplier.feedUrl));
   const excludedExternalIds = await loadExcludedExternalIds(db, supplier.id);
@@ -391,11 +405,20 @@ export async function repriceSupplierProducts(
       skipped += 1;
       continue;
     }
+    // price_locked_at kilidiyle aynı "zarar etmeyelim" mantığı (bkz.
+    // syncSupplier() ve lib/product-price-lock.ts) - bu manuel "fiyatları
+    // güncelle" düğmesi de kilitli bir kampanya fiyatını, o fiyat hâlâ
+    // maliyeti karşıladığı sürece ezmemeli.
+    const newCostWithVat = costWithVat(product.cost);
     const result = await db
       .prepare(
-        `UPDATE products SET price = ?, cost = ?, updated_at = CURRENT_TIMESTAMP WHERE xml_supplier_id = ? AND xml_external_id = ?`,
+        `UPDATE products SET
+           price = CASE WHEN price_locked_at IS NOT NULL AND ? <= price THEN price ELSE ? END,
+           price_locked_at = CASE WHEN price_locked_at IS NOT NULL AND ? <= price THEN price_locked_at ELSE NULL END,
+           cost = ?, updated_at = CURRENT_TIMESTAMP
+         WHERE xml_supplier_id = ? AND xml_external_id = ?`,
       )
-      .bind(product.price, product.cost, supplier.id, product.externalId)
+      .bind(newCostWithVat, product.price, newCostWithVat, product.cost, supplier.id, product.externalId)
       .run();
     if (result.meta.changes > 0) {
       updated += 1;
