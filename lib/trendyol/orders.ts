@@ -46,10 +46,20 @@ export async function ensureTrendyolOrdersTable(db: D1Database) {
 // shopify_orders'ın importShopifyOrder'ı gibi: bilinen her alanı gerçek
 // kolonlara yazar, *ve* ham yanıtın tamamını raw_payload'a koyar - bu
 // eşlemenin bugün karşılamadığı bir alan ileride gerekirse hiçbir şey
-// kaybolmamış olur. Poll tabanlı senkron (Trendyol'da webhook yerine
-// dönemsel getOrders() çağrısı kullanılıyor) bu yüzden INSERT OR IGNORE:
-// aynı sipariş tekrar çekilirse (id = orderNumber PRIMARY KEY) sessizce
-// atlanır, D1'deki durumun üzerine yazılmaz.
+// kaybolmamış olur.
+//
+// Önceki sürüm burada INSERT OR IGNORE kullanıyordu (aynı sipariş tekrar
+// çekilirse D1'deki durumun üzerine hiç yazılmazdı) - niyet muhtemelen
+// "admin panelinden elle yapılan bir değişikliği ezmemekti", ama gerçek
+// sonucu şu oldu: Trendyol'da bir sipariş "Kargoda"dan "Teslim Edildi"ye
+// geçse bile bizim tarafta SONSUZA KADAR ilk görüldüğü durumda donuk
+// kalıyordu (her 6 saatte bir çalışan cron - bkz. worker/index.ts - yeni
+// sipariş yakalıyordu ama mevcut birinin durumunu hiç güncellemiyordu).
+// Şimdi bir UPSERT: durum/takip no/paket id Trendyol'un en güncel
+// yanıtıyla HER senkronda tazeleniyor - Trendyol burada tek gerçek kaynak
+// (kargo firmasını biz zaten fulfillTrendyolOrder ile Trendyol'a
+// bildiriyoruz, admin panelinden elle girilen shipping_carrier'a
+// dokunulmuyor).
 export async function importTrendyolOrder(
   db: D1Database,
   payload: TrendyolOrderPackage,
@@ -64,13 +74,29 @@ export async function importTrendyolOrder(
 
   await db
     .prepare(
-      `INSERT OR IGNORE INTO trendyol_orders (
+      `INSERT INTO trendyol_orders (
         id, status, customer_first_name, customer_last_name, customer_email,
         customer_phone, shipping_address, shipping_district, shipping_city,
         shipping_postcode, shipping_country, subtotal_amount, discount_amount,
         shipping_amount, total_amount, currency, tracking_number,
         trendyol_shipment_package_id, items_json, raw_payload, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(id) DO UPDATE SET
+        status = excluded.status,
+        tracking_number = excluded.tracking_number,
+        trendyol_shipment_package_id = excluded.trendyol_shipment_package_id,
+        shipped_at = CASE
+          WHEN excluded.status IN ('shipped', 'delivered')
+            THEN COALESCE(shipped_at, CURRENT_TIMESTAMP)
+          ELSE shipped_at
+        END,
+        delivered_at = CASE
+          WHEN excluded.status = 'delivered'
+            THEN COALESCE(delivered_at, CURRENT_TIMESTAMP)
+          ELSE delivered_at
+        END,
+        raw_payload = excluded.raw_payload,
+        updated_at = CURRENT_TIMESTAMP`,
     )
     .bind(
       mapped.orderNumber,
@@ -101,19 +127,23 @@ export type TrendyolOrderSyncResult = {
   errors: string[];
 };
 
-// Trendyol webhook değil, dönemsel poll (getOrders) ile çalışıyor - admin
-// panelinden elle tetiklenir (ileride bir cron'a da bağlanabilir, XML
-// tedarikçi senkronundaki gibi). Son 7 günün siparişlerini çeker; zaten
-// var olanlar importTrendyolOrder'daki INSERT OR IGNORE sayesinde
-// sessizce atlanır.
+// Trendyol webhook değil, dönemsel poll (getOrders) ile çalışıyor - hem
+// admin panelinden elle (GET/POST /api/admin/trendyol/orders) hem de
+// worker/index.ts'deki 6 saatlik cron'dan tetikleniyor. Pencere kasıtlı
+// olarak 7 değil 30 gün: importTrendyolOrder artık bir UPSERT olduğu için
+// (bkz. oradaki yorum) zaten kargoda olan bir siparişin Trendyol'da
+// "Teslim Edildi"ye dönmesini yakalamak için o siparişin bu pencerede
+// tekrar tekrar görünmesi gerekiyor - 7 günlük eski pencerede, kargoya
+// verilişinden bir hafta sonra teslim olan bir sipariş bir daha hiç
+// çekilmiyor, durumu sonsuza kadar "Kargoda" görünüyordu.
 export async function syncTrendyolOrders(db: D1Database): Promise<TrendyolOrderSyncResult> {
   await ensureTrendyolOrdersTable(db);
 
-  const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const windowStart = Date.now() - 30 * 24 * 60 * 60 * 1000;
   let imported = 0;
   const errors: string[] = [];
   try {
-    const { content } = await getOrders({ startDate: sevenDaysAgo, endDate: Date.now(), size: 200 });
+    const { content } = await getOrders({ startDate: windowStart, endDate: Date.now(), size: 200 });
     for (const order of content) {
       try {
         await importTrendyolOrder(db, order);
