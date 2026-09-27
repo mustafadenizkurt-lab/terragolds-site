@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useRouter } from "next/navigation";
 import { Eye } from "lucide-react";
 import {
   defaultProducts,
@@ -323,6 +324,7 @@ type HomeClientProps = {
 };
 
 export default function HomeClient({ initialSettings }: HomeClientProps) {
+  const router = useRouter();
   const [category, setCategory] = useState("Tümü");
   const [catalogQuery, setCatalogQuery] = useState("");
   const [catalogMinPrice, setCatalogMinPrice] = useState("");
@@ -858,10 +860,20 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
     // doesn't add a "back" step of its own. Explicit page turns push their
     // own history entry in goToCatalogPage instead, so the back button can
     // step through 3 -> 2 -> 1 the way a paginated list is expected to.
+    //
+    // Uses router.replace/push (next/navigation), NOT raw
+    // window.history.replaceState/pushState - a product card's link off this
+    // page is a real full navigation, and going back into an entry that was
+    // only ever created via the raw History API (never through Next's own
+    // router) left Next's App Router's internal navigation bookkeeping out of
+    // sync with the browser's real history stack. That desync made a single
+    // "back" press skip multiple entries at once - reported as landing all
+    // the way back on the Google results page instead of the product listing.
+    // Routing every URL change through the router keeps the two in sync.
     if (String(catalogData.page) === new URLSearchParams(window.location.search).get("sayfa")) return;
     if (catalogData.page === 1 && !new URLSearchParams(window.location.search).has("sayfa")) return;
-    window.history.replaceState(window.history.state, "", catalogPageUrl(catalogData.page));
-  }, [catalogData.page]);
+    router.replace(catalogPageUrl(catalogData.page), { scroll: false });
+  }, [catalogData.page, router]);
 
   const catalogPageWindow = buildPageWindow(
     catalogData.page,
@@ -873,7 +885,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
     // Push (not replace) so each explicit page turn is its own history step -
     // the back button can then step 3 -> 2 -> 1 like a normal paginated list,
     // instead of jumping straight past every page in one go.
-    window.history.pushState(window.history.state, "", catalogPageUrl(nextPage));
+    router.push(catalogPageUrl(nextPage), { scroll: false });
     setCatalogPage(nextPage);
     window.setTimeout(() => {
       catalogResultsRef.current?.scrollIntoView({
@@ -884,10 +896,10 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
   };
 
   useEffect(() => {
-    // pushState above doesn't reload the page, so the back/forward buttons
-    // moving between those pushed "sayfa" URLs fire popstate without a
-    // navigation - read the restored URL back into state so the catalog
-    // actually shows that page again.
+    // router.push/replace above don't remount this component, so the
+    // back/forward buttons moving between those pushed "sayfa" URLs fire
+    // popstate without a navigation - read the restored URL back into state
+    // so the catalog actually shows that page again.
     const onPopState = () => {
       const page = Number(new URLSearchParams(window.location.search).get("sayfa"));
       setCatalogPage(Number.isInteger(page) && page > 0 ? page : 1);
