@@ -640,11 +640,12 @@ export async function getOrders(params: {
   return trendyolFetch(`/order/sellers/${supplierId}/orders${search ? `?${search}` : ""}`);
 }
 
-// Terragolds admin, kargo durumunu değiştirebileceğimiz TEK yer - Shopify
-// entegrasyonundaki fulfillShopifyOrder ile aynı "geri okuma yok" kuralı:
-// bu sadece Trendyol'a kargoya verildi bilgisini tek yönlü bildirir, oradan
-// asla bir durum D1'e geri çekilmez (yeni sipariş içeriği hariç, bkz.
-// lib/trendyol/orders.ts).
+// Terragolds admin, kargo durumunu Trendyol'a bildirdiğimiz TEK yer - bu
+// çağrının kendisi tek yönlü (yanıtından bir şey D1'e yazılmaz). Ama
+// Trendyol'un o paket için SONRADAN raporladığı gerçek durum (ör. kargo
+// firması "Teslim Edildi" bilgisini Trendyol'a iletince) periyodik
+// syncTrendyolOrders() ile geri okunuyor ve D1'e yansıtılıyor - bkz.
+// lib/trendyol/orders.ts importTrendyolOrder (artık UPSERT).
 export async function updateOrderStatus(
   shipmentPackageId: number,
   input: { status: "Shipped" | "Delivered"; trackingNumber?: string; cargoProviderName?: string },

@@ -117,9 +117,10 @@ const worker = {
     // panelinde bunu tetikleyen bir buton da yoktu, cron'a da bağlı
     // değildi. Sonuç: Trendyol'da gerçek bir sipariş oluşsa bile biri elle
     // /api/admin/trendyol/orders'a istek atmadıkça admin panelde hiç
-    // görünmüyordu. syncTrendyolOrders zaten INSERT OR IGNORE kullandığı
-    // için (aynı sipariş tekrar çekilirse D1'deki durumun üzerine yazmıyor)
-    // her 6 saatte bir tekrar çalıştırmak güvenli.
+    // görünmüyordu. importTrendyolOrder artık bir UPSERT (bkz.
+    // lib/trendyol/orders.ts) - her 6 saatte bir tekrar çalıştırmak hem
+    // yeni siparişleri yakalıyor hem de mevcutların durumunu (ör.
+    // "Kargoda" -> "Teslim Edildi") Trendyol'un güncel yanıtıyla tazeliyor.
     ctx.waitUntil(syncTrendyolOrders(env.DB).catch(() => {}));
     // N11 kimlik bilgileri henüz girilmemişse syncN11Orders getN11Credentials
     // üzerinden hata fırlatır - .catch(() => {}) bunu diğer entegrasyonlarla
