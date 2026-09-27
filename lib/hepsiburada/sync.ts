@@ -1,7 +1,7 @@
 import { ensureHepsiburadaColumns, importProductsFile, updateStockAndPrice } from "./client";
 import { getHepsiburadaCredentials } from "./auth";
 import { buildImportItem, hepsiburadaCategoryFor, isMaleProduct, type HepsiburadaImportItem } from "./attributes";
-import { toAbsoluteImageUrl } from "../shopify/client";
+import { toAbsoluteImageUrl } from "../image-url";
 
 // Hepsiburada her ürün için bir merchantSku (bizim kendi ürün kodumuz)
 // zorunlu tutuyor - tedarikçi ürün kodumuz (xml_external_id) varsa onu

@@ -4,7 +4,7 @@ export const REFERRAL_COOKIE = "tg_ref";
 // apply` - only `wrangler deploy` for the Worker bundle - so a
 // drizzle-kit migration file would silently never reach production. New
 // columns are added lazily at runtime instead (same pattern already used
-// for e.g. orders.vat_amount and products.shopify_price_synced).
+// for e.g. orders.vat_amount and products.trendyol_price_synced).
 export async function ensurePartnerColumns(db: D1Database) {
   const userColumns = await db
     .prepare("PRAGMA table_info(users)")

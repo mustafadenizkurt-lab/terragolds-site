@@ -565,10 +565,9 @@ export type TrendyolPriceAndInventoryItem = {
 };
 
 // D1 tek gerçek kaynak (source of truth) - stok/fiyat her zaman D1'den
-// Trendyol'a tek yönlü gönderilir, Shopify entegrasyonundaki
-// pushInventoryToShopify/pushPriceToShopify ile aynı prensip (bkz.
-// lib/shopify/inventory.ts, lib/shopify/price.ts). Trendyol tarafında
-// yapılan bir değişiklik hiçbir zaman D1'e geri okunmaz.
+// Trendyol'a tek yönlü gönderilir. Trendyol tarafında fiyat/stok için
+// yapılan bir değişiklik hiçbir zaman D1'e geri okunmaz (sipariş durumu
+// için durum farklı - bkz. lib/trendyol/orders.ts importTrendyolOrder).
 export async function updateStockAndPrice(
   items: TrendyolPriceAndInventoryItem[],
 ): Promise<TrendyolBatchRequestResult> {

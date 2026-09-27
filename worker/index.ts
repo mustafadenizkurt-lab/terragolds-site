@@ -10,13 +10,6 @@ import { reconcilePendingPaytrOrders } from "../lib/paytr-reconcile";
 import { scanTrendyolArchivedProducts } from "../lib/trendyol/archived-scan";
 import { auditAndFixTrendyolPrices } from "../lib/trendyol/price-audit";
 import { applyTrendyolDynamicPricing } from "../lib/trendyol/pricing";
-// Shopify kanalı pasife alındı - bkz. scheduled() içindeki yorum. Tekrar
-// açılınca bu import'lar da geri gelmeli.
-// import {
-//   publishExistingProductsToShopify,
-//   syncProductsToShopify,
-// } from "../lib/shopify/sync";
-// import { pushPendingShopifyPrices } from "../lib/shopify/price";
 
 interface Env {
   ASSETS: Fetcher;
@@ -156,15 +149,6 @@ const worker = {
     // gerçekten aktif/pozitif fiyatlı, kesin yanlış olan ürünlerde) fiyatı
     // otomatik yeniden gönderiyor - bkz. lib/trendyol/price-audit.ts.
     ctx.waitUntil(auditAndFixTrendyolPrices(env.DB).catch(() => {}));
-    // Shopify kanalı pasife alındı (hiç sipariş gelmiyordu, kullanıcı
-    // talebiyle durduruldu) - otomatik ürün/fiyat/stok gönderimi geçici
-    // olarak kapalı. Kod silinmedi, tekrar açmak için aşağıdaki 3 satırı
-    // geri yorum satırından çıkarmak yeterli.
-    // ctx.waitUntil(syncProductsToShopify(env.DB).catch(() => {}));
-    // ctx.waitUntil(
-    //   publishExistingProductsToShopify(env.DB, 200).catch(() => {}),
-    // );
-    // ctx.waitUntil(pushPendingShopifyPrices(env.DB, 200).catch(() => {}));
   },
 };
 

@@ -31,8 +31,7 @@ export type MappedTrendyolOrder = {
 };
 
 // Trendyol tutarları TL cinsinden ondalıklı sayı gönderiyor (örn. 149.9) -
-// diğer her yerde olduğu gibi (bkz. lib/shopify/orders.ts'in toKurus'u)
-// kuruşa (tam sayı) çeviriyoruz.
+// diğer her yerde olduğu gibi kuruşa (tam sayı) çeviriyoruz.
 function toKurus(amount: number | undefined): number {
   return Number.isFinite(amount) ? Math.round((amount as number) * 100) : 0;
 }

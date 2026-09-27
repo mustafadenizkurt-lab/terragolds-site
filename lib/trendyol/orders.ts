@@ -2,8 +2,8 @@ import { mapTrendyolOrderPayload, type MappedTrendyolOrder } from "./order-mappi
 import { getOrders, type TrendyolOrderPackage } from "./client";
 
 export async function ensureTrendyolOrdersTable(db: D1Database) {
-  // shopify_orders ile birebir aynı gerekçe (bkz. lib/shopify/orders.ts):
-  // ana `orders` tablosunun payment_provider CHECK kısıtlaması sadece
+  // n11_orders/hepsiburada_orders ile birebir aynı gerekçe: ana `orders`
+  // tablosunun payment_provider CHECK kısıtlaması sadece
   // ('shopier','paytr','iyzico') kabul ediyor, onu genişletmek canlıdaki
   // gerçek müşteri siparişlerini tutan tabloyu yeniden kurmayı gerektirir.
   // Trendyol siparişlerini burada ayrı tutup okuma anında (bkz.
@@ -43,8 +43,8 @@ export async function ensureTrendyolOrdersTable(db: D1Database) {
     .run();
 }
 
-// shopify_orders'ın importShopifyOrder'ı gibi: bilinen her alanı gerçek
-// kolonlara yazar, *ve* ham yanıtın tamamını raw_payload'a koyar - bu
+// hepsiburada_orders'ın importHepsiburadaOrder'ı gibi: bilinen her alanı
+// gerçek kolonlara yazar, *ve* ham yanıtın tamamını raw_payload'a koyar - bu
 // eşlemenin bugün karşılamadığı bir alan ileride gerekirse hiçbir şey
 // kaybolmamış olur.
 //

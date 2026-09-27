@@ -5,8 +5,6 @@ import { matchesFilters, type ImportFilters } from "../xml-import-filters";
 import { resolveProductSlug } from "../product-slugs";
 import { rewriteProductDescription } from "../product-description-rewrite";
 import { getOptionalEnv } from "../runtime-env";
-import { pushInventoryToShopify } from "../shopify/inventory";
-import { pushPriceToShopify } from "../shopify/price";
 import { pushStockAndPriceToTrendyol, categoryIdFor } from "../trendyol/sync";
 import { ensureTrendyolColumns } from "../trendyol/client";
 import { calculateTrendyolLimitsFromCost } from "../trendyol/pricing-formula";
@@ -177,8 +175,8 @@ export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<
         continue;
       }
       const existing = await db.prepare(
-        "SELECT id, xml_sync_status AS xmlSyncStatus, stock AS stock, price AS price, price_locked_at AS priceLockedAt FROM products WHERE xml_supplier_id = ? AND xml_external_id = ? LIMIT 1",
-      ).bind(supplier.id, product.externalId).first<{ id: number; xmlSyncStatus: string; stock: number; price: number; priceLockedAt: string | null }>();
+        "SELECT id, xml_sync_status AS xmlSyncStatus, price AS price, price_locked_at AS priceLockedAt FROM products WHERE xml_supplier_id = ? AND xml_external_id = ? LIMIT 1",
+      ).bind(supplier.id, product.externalId).first<{ id: number; xmlSyncStatus: string; price: number; priceLockedAt: string | null }>();
       // Match only on an exact (supplier, external id) link, never by name:
       // products without that link may be sourced independently of this
       // feed (e.g. added by hand from a different supplier) and coincidentally
@@ -237,34 +235,6 @@ export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<
           matchedId,
         ).run();
         updated += 1;
-        // D1 is the source of truth for stock - push this product's new
-        // count to Shopify (a no-op if it isn't synced there yet). Only
-        // when stock actually changed: this call costs at least one
-        // Shopify API round-trip, and a feed update that only touches
-        // price (e.g. a markup/mapping change across a whole supplier)
-        // would otherwise fire it for every single matched product -
-        // thousands of sequential Shopify calls in one sync run, enough
-        // to blow past the request's execution time/subrequest limit and
-        // leave the run stuck instead of completing or failing cleanly.
-        if (existing.stock !== product.stock) {
-          try {
-            await pushInventoryToShopify(db, matchedId);
-          } catch {
-            // Self-heals on the next stock change or scheduled sync.
-          }
-        }
-        // Same reasoning as the stock push above, guarded the same way:
-        // only fire this per-product Shopify call when the price actually
-        // changed for THIS product, never unconditionally for every matched
-        // row in the run.
-        if (existing.price !== finalPrice) {
-          try {
-            await pushPriceToShopify(db, matchedId);
-          } catch {
-            // Self-heals on the next price change, scheduled sync, or a
-            // manual "fiyatları güncelle" backfill run.
-          }
-        }
       } else {
         const description = await uniqueDescriptionForNewProduct(product);
         const created = await db.prepare(
@@ -534,9 +504,6 @@ export async function restockSupplierProducts(
 // D1'deki yeni stok, ürünün listelendiği her pazaryerine tek tek gönderilir
 // (hiçbiri diğerinin varlığını varsaymadan - push* fonksiyonlarının her biri
 // zaten "bu kanala hiç gönderilmemişse no-op" davranışında).
-//
-// Shopify kanalı pasife alındı (hiç sipariş gelmiyordu) - bkz.
-// worker/index.ts scheduled(). O push kasıtlı olarak burada da atlanıyor.
 async function pushStockEverywhere(db: D1Database, productId: number): Promise<void> {
   try {
     await pushStockAndPriceToTrendyol(db, productId);

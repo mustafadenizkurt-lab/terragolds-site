@@ -1,7 +1,6 @@
 import type { PaymentProviderId } from "./payment-types";
 import { computePointsEarned, ensureLoyaltyColumns, refundRedeemedPoints } from "./loyalty";
 import { getD1 } from "./store-db";
-import { pushInventoryToShopify } from "./shopify/inventory";
 
 type OrderPaymentRow = {
   id: string;
@@ -165,16 +164,4 @@ export async function markOrderPaid(input: {
       )
       .bind(input.paymentId, input.orderId, input.provider),
   ]);
-
-  // D1 is the source of truth for stock (see lib/shopify/inventory.ts) -
-  // push each affected product's new count to Shopify so it can't oversell
-  // an item that was just sold here. Never let a Shopify hiccup fail the
-  // payment confirmation the customer is waiting on.
-  for (const item of items.results) {
-    try {
-      await pushInventoryToShopify(db, item.product_id);
-    } catch {
-      // Self-heals on the next stock change or scheduled sync.
-    }
-  }
 }

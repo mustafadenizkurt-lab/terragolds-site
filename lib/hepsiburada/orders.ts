@@ -2,7 +2,7 @@ import { mapHepsiburadaOrderPayload, type MappedHepsiburadaOrder } from "./order
 import { getOrders, type HepsiburadaOrder } from "./client";
 
 export async function ensureHepsiburadaOrdersTable(db: D1Database) {
-  // shopify_orders/trendyol_orders ile birebir aynı gerekçe: ana `orders`
+  // trendyol_orders/n11_orders ile birebir aynı gerekçe: ana `orders`
   // tablosunun payment_provider CHECK kısıtlaması sadece
   // ('shopier','paytr','iyzico') kabul ediyor, onu genişletmek canlıdaki
   // gerçek müşteri siparişlerini tutan tabloyu yeniden kurmayı gerektirir.
@@ -40,7 +40,7 @@ export async function ensureHepsiburadaOrdersTable(db: D1Database) {
     .run();
 }
 
-// importShopifyOrder/importTrendyolOrder ile aynı desen: bilinen her alanı
+// importTrendyolOrder/importN11Order ile aynı desen: bilinen her alanı
 // gerçek kolonlara yazar, *ve* ham yanıtın tamamını raw_payload'a koyar.
 // Poll tabanlı senkron (webhook yerine dönemsel getOrders() çağrısı) bu
 // yüzden INSERT OR IGNORE: aynı sipariş tekrar çekilirse (id = orderNumber

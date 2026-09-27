@@ -6,8 +6,8 @@
 // oluşturmuyor/güncellemiyor - satırın kendisi tamamen silinse bile bu koruma
 // kalıcı, çünkü ayrı bir tabloda tutuluyor.
 //
-// Ayrı bir dosyada tutulmasının sebebi: lib/xml-sync/syncSupplier.ts, Shopify/
-// Trendyol/Hepsiburada push fonksiyonlarını da import ediyor - admin ürün silme
+// Ayrı bir dosyada tutulmasının sebebi: lib/xml-sync/syncSupplier.ts, Trendyol/
+// Hepsiburada push fonksiyonlarını da import ediyor - admin ürün silme
 // route'larının sadece bu iki küçük yardımcı fonksiyon için o ağır import
 // grafiğine bağımlı olmasına gerek yok.
 

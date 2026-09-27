@@ -20,7 +20,6 @@ import MediaLibraryPanel from "./media-library-panel";
 import SavedCardsPanel from "./saved-cards-panel";
 import SupplierImportPanel from "./supplier-import-panel";
 import XmlSuppliersPanel from "./xml-suppliers-panel";
-import ShopifySyncPanel from "./shopify-sync-panel";
 import TrendyolSyncPanel from "./trendyol-sync-panel";
 import HepsiburadaSyncPanel from "./hepsiburada-sync-panel";
 import N11SyncPanel from "./n11-sync-panel";
@@ -50,7 +49,6 @@ type AdminView =
   | "xmlSuppliers"
   | "xmlPricing"
   | "xmlLogs"
-  | "shopify"
   | "trendyol"
   | "hepsiburada"
   | "n11"
@@ -575,9 +573,6 @@ export default function AdminClient({
           <button type="button" className={view === "xmlLogs" ? "active" : ""} onClick={() => setView("xmlLogs")}>
             <span>▤</span> XML senkron geçmişi
           </button>
-          <button type="button" className={view === "shopify" ? "active" : ""} onClick={() => setView("shopify")}>
-            <span>⇄</span> Shopify senkronu
-          </button>
           <button type="button" className={view === "trendyol" ? "active" : ""} onClick={() => setView("trendyol")}>
             <span>⇄</span> Trendyol senkronu
           </button>
@@ -700,7 +695,6 @@ export default function AdminClient({
               {view === "xmlSuppliers" && "XML tedarikçileri"}
               {view === "xmlPricing" && "XML fiyatlandırma kuralları"}
               {view === "xmlLogs" && "XML senkron geçmişi"}
-              {view === "shopify" && "Shopify senkronu"}
               {view === "trendyol" && "Trendyol senkronu"}
               {view === "hepsiburada" && "Hepsiburada senkronu"}
               {view === "n11" && "N11 senkronu"}
@@ -1118,7 +1112,6 @@ export default function AdminClient({
             {view === "xmlSuppliers" && <XmlSuppliersPanel tab="suppliers" onNotice={flash} initialEditId={editSupplierId} onInitialEditConsumed={() => setEditSupplierId(null)} />}
             {view === "xmlPricing" && <XmlSuppliersPanel tab="pricing" onNotice={flash} onEditSupplier={id => { setEditSupplierId(id); setView("xmlSuppliers"); }} />}
             {view === "xmlLogs" && <XmlSuppliersPanel tab="logs" onNotice={flash} />}
-            {view === "shopify" && <ShopifySyncPanel onNotice={flash} />}
             {view === "trendyol" && <TrendyolSyncPanel onNotice={flash} />}
             {view === "hepsiburada" && <HepsiburadaSyncPanel onNotice={flash} />}
             {view === "n11" && <N11SyncPanel onNotice={flash} />}
