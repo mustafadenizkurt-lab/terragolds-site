@@ -129,17 +129,22 @@ export type TrendyolOrderSyncResult = {
 
 // Trendyol webhook değil, dönemsel poll (getOrders) ile çalışıyor - hem
 // admin panelinden elle (GET/POST /api/admin/trendyol/orders) hem de
-// worker/index.ts'deki 6 saatlik cron'dan tetikleniyor. Pencere kasıtlı
-// olarak 7 değil 30 gün: importTrendyolOrder artık bir UPSERT olduğu için
-// (bkz. oradaki yorum) zaten kargoda olan bir siparişin Trendyol'da
-// "Teslim Edildi"ye dönmesini yakalamak için o siparişin bu pencerede
-// tekrar tekrar görünmesi gerekiyor - 7 günlük eski pencerede, kargoya
-// verilişinden bir hafta sonra teslim olan bir sipariş bir daha hiç
-// çekilmiyor, durumu sonsuza kadar "Kargoda" görünüyordu.
+// worker/index.ts'deki 6 saatlik cron'dan tetikleniyor.
+//
+// Pencere 30 güne çıkarılmıştı (kargoya verilişinden bir hafta sonra
+// teslim olan bir siparişin durumunu da yakalamak için - bkz.
+// importTrendyolOrder'ın UPSERT'e çevrildiği yorum), AMA canlıda test
+// edildiğinde Trendyol bu genişlikte bir aralık için content:[] (sıfır
+// sipariş) döndürdü - muhtemelen Trendyol'un getOrders uç noktasında
+// belgelenmemiş bir üst tarih aralığı sınırı var. 7 gün kanıtlanmış
+// şekilde çalışıyordu, o yüzden geri alındı - eski (7 günden daha uzun
+// süredir kargoda kalan) siparişlerin durumu bu pencerede bir daha
+// yakalanamaz ama bu, siparişlerin HİÇ çekilmemesinden (30 günde
+// yaşanan) çok daha iyi bir taviz.
 export async function syncTrendyolOrders(db: D1Database): Promise<TrendyolOrderSyncResult> {
   await ensureTrendyolOrdersTable(db);
 
-  const windowStart = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const windowStart = Date.now() - 7 * 24 * 60 * 60 * 1000;
   let imported = 0;
   const errors: string[] = [];
   try {
