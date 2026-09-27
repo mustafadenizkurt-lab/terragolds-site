@@ -333,6 +333,8 @@ export type ReadProductsPageOptions = {
   maxPrice?: number;
   inStock?: boolean;
   discountOnly?: boolean;
+  /** "Her Şey 50 TL" gibi bir kampanya için işaretlenmiş ürünler (bkz. products.campaign_label). */
+  campaignOnly?: boolean;
   /** MATERIAL_FACETS/COLOR_FACETS key from lib/product-facets.ts - matched against products.name. */
   material?: string;
   color?: string;
@@ -407,6 +409,9 @@ export async function readProductsPage(
   }
   if (options.discountOnly) {
     conditions.push("products.discount_percent > 0");
+  }
+  if (options.campaignOnly) {
+    conditions.push("products.campaign_label IS NOT NULL AND products.campaign_label != ''");
   }
   if (options.minPrice !== undefined) {
     conditions.push(`${DISCOUNTED_PRICE_SQL} >= ?`);

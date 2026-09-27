@@ -25,6 +25,7 @@ export async function GET(request: Request) {
     maxPrice: parseNumber(params.get("maxPrice")),
     inStock: params.get("inStock") === "true",
     discountOnly: params.get("discountOnly") === "true",
+    campaignOnly: params.get("campaignOnly") === "true",
     material: params.get("material") ?? undefined,
     color: params.get("color") ?? undefined,
     sort: params.get("sort") ?? undefined,

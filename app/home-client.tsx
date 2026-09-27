@@ -329,6 +329,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
   const [catalogMaxPrice, setCatalogMaxPrice] = useState("");
   const [catalogInStockOnly, setCatalogInStockOnly] = useState(false);
   const [catalogDiscountOnly, setCatalogDiscountOnly] = useState(false);
+  const [catalogCampaignOnly, setCatalogCampaignOnly] = useState(false);
   const [catalogMaterial, setCatalogMaterial] = useState("");
   const [catalogColor, setCatalogColor] = useState("");
   const [catalogSort, setCatalogSort] = useState("");
@@ -764,6 +765,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
       if (catalogMaxPrice) params.set("maxPrice", catalogMaxPrice);
       if (catalogInStockOnly) params.set("inStock", "true");
       if (catalogDiscountOnly) params.set("discountOnly", "true");
+      if (catalogCampaignOnly) params.set("campaignOnly", "true");
       if (catalogMaterial) params.set("material", catalogMaterial);
       if (catalogColor) params.set("color", catalogColor);
       if (catalogSort) params.set("sort", catalogSort);
@@ -814,6 +816,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
     catalogMaxPrice,
     catalogInStockOnly,
     catalogDiscountOnly,
+    catalogCampaignOnly,
     catalogMaterial,
     catalogColor,
     catalogSort,
@@ -826,6 +829,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
     setCatalogPage(1);
   }, [
     catalogDiscountOnly,
+    catalogCampaignOnly,
     catalogInStockOnly,
     catalogMaxPrice,
     catalogMinPrice,
@@ -1431,8 +1435,15 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
             >
               {ui.sale}
             </a>
-            <a href="/ozel-uretim" onClick={() => setMenuOpen(false)}>
-              {ui.customProduction}
+            <a
+              className="mobile-menu-discount"
+              href="#shop"
+              onClick={() => {
+                setCatalogCampaignOnly(true);
+                setMenuOpen(false);
+              }}
+            >
+              Her Şey 50 TL
             </a>
             <a href="/blog" onClick={() => setMenuOpen(false)}>
               {ui.blog}
@@ -1473,7 +1484,15 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
         >
           {uiUpper(ui.sale, language)}
         </button>
-        <a href="/ozel-uretim">{uiUpper(ui.customProduction, language)}</a>
+        <button
+          type="button"
+          onClick={() => {
+            setCatalogCampaignOnly(true);
+            document.getElementById("shop")?.scrollIntoView({ behavior: "smooth" });
+          }}
+        >
+          Her Şey 50 TL
+        </button>
         <a href="/blog">{uiUpper(ui.blog, language)}</a>
       </nav>
 
