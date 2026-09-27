@@ -24,12 +24,6 @@ export const categoryGroups: CategoryGroup[] = [
     labelEn: "Sahmeran & Anklets",
     keywords: ["şahmeran", "halhal", "hal hal"],
   },
-  {
-    slug: "antika-vintage",
-    label: "Antika ~ Vintage",
-    labelEn: "Antique ~ Vintage",
-    keywords: ["antika", "vintage"],
-  },
   { slug: "saat-kombin", label: "Saat & Kombin", labelEn: "Watches & Sets", keywords: ["saat", "kombin"] },
   { slug: "aksesuar", label: "Aksesuar", labelEn: "Accessories", keywords: ["aksesuar"] },
 ];

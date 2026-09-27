@@ -160,7 +160,6 @@ export const uiText = {
     productBullets: ["Özenli işçilik ve kaliteli malzeme", "Özenli, koruyucu paketleme", "Parçaya özel bakım notu"],
     // Site chrome (header/footer) - shared across every page, not just the homepage.
     home: "Ana Sayfa",
-    customProduction: "Özel Üretim",
     blog: "Blog",
     compare: "Karşılaştır",
     orderTracking: "Sipariş Takibi",
@@ -306,7 +305,6 @@ export const uiText = {
     productBullets: ["Careful craftsmanship and quality materials", "Careful protective packaging", "Piece-specific care note"],
     // Site chrome (header/footer) - shared across every page, not just the homepage.
     home: "Home",
-    customProduction: "Custom Orders",
     blog: "Blog",
     compare: "Compare",
     orderTracking: "Track Order",
