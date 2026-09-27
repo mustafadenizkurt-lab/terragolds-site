@@ -1,9 +1,9 @@
 import { updateOrderStatus } from "./client";
 
-// fulfillShopifyOrder (lib/shopify/fulfillment.ts) ile aynı tek yönlü kural:
-// Terragolds admin kargo durumunun değiştirildiği TEK yer - bu sadece
-// Trendyol'a "kargoya verildi" bilgisini bildirir, hiçbir zaman bir durumu
-// Trendyol'dan geri okumaz.
+// Terragolds admin kargo durumunun Trendyol'a bildirildiği TEK yer - bu
+// çağrının kendisi tek yönlü. Trendyol'un o paket için SONRADAN
+// raporladığı gerçek durum ayrıca syncTrendyolOrders() ile periyodik
+// olarak geri okunuyor (bkz. lib/trendyol/orders.ts importTrendyolOrder).
 export async function fulfillTrendyolOrder(
   shipmentPackageId: string,
   carrier: string,

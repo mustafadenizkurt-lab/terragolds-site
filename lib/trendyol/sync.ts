@@ -1,6 +1,6 @@
 import { ensureTrendyolColumns, createProduct, updateProduct, updateProductImages, updateStockAndPrice, getProductByBarcode, getBatchRequestResult, type TrendyolProduct, type TrendyolProductAttribute } from "./client";
 import { trendyolListPriceFor } from "./pricing-formula";
-import { toAbsoluteImageUrl } from "../shopify/client";
+import { toAbsoluteImageUrl } from "../image-url";
 import { groupForCategory } from "../category-groups";
 
 type PendingProduct = {
@@ -241,11 +241,10 @@ export type TrendyolSyncResult = {
   errors: string[];
 };
 
-// syncProductsToShopify (lib/shopify/sync.ts) ile aynı desen: yayındaki,
-// henüz gönderilmemiş ürünleri bir seferde batchSize kadar gönderir.
-// Trendyol'un create endpoint'i tek çağrıda birden fazla ürün kabul ettiği
-// için (Shopify'ın aksine, tek tek istemek yerine) tüm parti tek bir
-// createProduct() çağrısıyla gönderiliyor - kısmi başarı/başarısızlık
+// Yayındaki, henüz gönderilmemiş ürünleri bir seferde batchSize kadar
+// gönderir. Trendyol'un create endpoint'i tek çağrıda birden fazla ürün
+// kabul ettiği için tüm parti tek bir createProduct() çağrısıyla
+// gönderiliyor - kısmi başarı/başarısızlık
 // getBatchRequestResult() ile ayrıca sorgulanabilir (bkz. client.ts),
 // bu ilk sürüm şimdilik tüm partiyi tek sonuç olarak işliyor.
 export async function syncProductsToTrendyol(
@@ -566,10 +565,10 @@ type StockPriceRow = {
   trendyolOverridePrice: number | null;
 };
 
-// D1 kaynak (source of truth) - Shopify'daki pushInventoryToShopify/
-// pushPriceToShopify ile aynı prensip, tek farkla: Trendyol stok ve fiyatı
-// tek bir endpoint'te (updateStockAndPrice) birlikte istiyor, bu yüzden
-// burada da tek fonksiyonda birleşik.
+// D1 kaynak (source of truth) - stok/fiyat her zaman D1'den tek yönlü
+// gönderilir. Trendyol stok ve fiyatı tek bir endpoint'te
+// (updateStockAndPrice) birlikte istiyor, bu yüzden burada da tek
+// fonksiyonda birleşik.
 //
 // trendyol_override_price VARSA o kullanılır, products.price (site fiyatı)
 // DEĞİL - lib/trendyol/pricing.ts'in hesapladığı maliyet+kâr hedefli fiyatı
@@ -621,8 +620,7 @@ export type TrendyolPricePushResult = {
   errors: string[];
 };
 
-// pushPendingShopifyPrices (lib/shopify/price.ts) ile aynı desen: bir
-// tedarikçinin toplu yeniden fiyatlandırması gibi durumlarda satır satır
+// Bir tedarikçinin toplu yeniden fiyatlandırması gibi durumlarda satır satır
 // değil, D1'de fiyatı değişmiş ama Trendyol'a henüz yansımamış ürünleri
 // partiler hâlinde işler. `remaining` 0 olana kadar tekrar çağrılabilir.
 //

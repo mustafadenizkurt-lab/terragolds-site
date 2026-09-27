@@ -3,7 +3,6 @@ import {
   unauthorizedAdminResponse,
 } from "../../../../../lib/admin-auth";
 import { getD1 } from "../../../../../lib/store-db";
-import { pushInventoryToShopify } from "../../../../../lib/shopify/inventory";
 import { excludeSupplierProducts } from "../../../../../lib/xml-sync/excluded-products";
 import { pushStockAndPriceToTrendyol } from "../../../../../lib/trendyol/sync";
 import { pushStockAndPriceToHepsiburada } from "../../../../../lib/hepsiburada/sync";
@@ -196,18 +195,6 @@ export async function PATCH(request: Request) {
       )
       .bind(...values, ...productIds)
       .run();
-
-    if (action === "increase-stock") {
-      // D1 is the source of truth for stock - push each affected product's
-      // new count to Shopify (a no-op for ones not synced there yet).
-      for (const productId of productIds) {
-        try {
-          await pushInventoryToShopify(getD1(), productId);
-        } catch {
-          // Self-heals on the next stock change or scheduled sync.
-        }
-      }
-    }
 
     return Response.json({ ok: true, updated: result.meta.changes });
   } catch (error) {

@@ -10,7 +10,7 @@ import { buildN11Title, roundToN11Price, stripMetalColorWords } from "./http-uti
 import { attributesForCategory } from "./attributes";
 import { CATALOG_REJECTED_MESSAGE } from "./reconcile";
 import { n11ListPriceFor } from "./pricing-formula";
-import { toAbsoluteImageUrl } from "../shopify/client";
+import { toAbsoluteImageUrl } from "../image-url";
 import { groupForCategory } from "../category-groups";
 
 type PendingProduct = {

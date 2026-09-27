@@ -286,11 +286,6 @@ export default function ShippingPanel({
                   <span className="admin-shipping-order-customer">
                     <strong>
                       {order.customerName}
-                      {order.salesChannel === "shopify" && (
-                        <small className="admin-order-channel-badge">
-                          Shopify
-                        </small>
-                      )}
                       {order.salesChannel === "trendyol" && (
                         <small className="admin-order-channel-badge">
                           Trendyol

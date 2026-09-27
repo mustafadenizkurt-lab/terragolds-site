@@ -11,8 +11,6 @@ import { getShippingTrackingSettings } from "../../../../lib/shipping-tracking-s
 import { getD1 } from "../../../../lib/store-db";
 import { ensureOrderCheckoutColumns } from "../../../../lib/checkout-order";
 import { reverseEarnedPoints } from "../../../../lib/loyalty";
-import { ensureShopifyOrdersTable } from "../../../../lib/shopify/orders";
-import { fulfillShopifyOrder } from "../../../../lib/shopify/fulfillment";
 import { ensureTrendyolOrdersTable } from "../../../../lib/trendyol/orders";
 import { fulfillTrendyolOrder } from "../../../../lib/trendyol/fulfillment";
 import { ensureHepsiburadaOrdersTable } from "../../../../lib/hepsiburada/orders";
@@ -33,7 +31,6 @@ export async function GET(request: Request) {
 
   try {
     const db = getD1();
-    await ensureShopifyOrdersTable(db);
     await ensureTrendyolOrdersTable(db);
     await ensureHepsiburadaOrdersTable(db);
     await ensureN11OrdersTable(db);
@@ -50,7 +47,7 @@ export async function GET(request: Request) {
       )
       .run();
 
-    const [orders, items, trackingSettings, shopifyOrders, trendyolOrders, hepsiburadaOrders, n11Orders] = await Promise.all([
+    const [orders, items, trackingSettings, trendyolOrders, hepsiburadaOrders, n11Orders] = await Promise.all([
       db
         .prepare(
           `SELECT id, status, customer_first_name, customer_last_name,
@@ -114,44 +111,6 @@ export async function GET(request: Request) {
           unit_price: number;
         }>(),
       getShippingTrackingSettings(),
-      db
-        .prepare(
-          `SELECT id, status, customer_first_name, customer_last_name,
-                  customer_email, customer_phone, shipping_address,
-                  shipping_district, shipping_city, shipping_postcode,
-                  subtotal_amount, discount_amount, shipping_amount,
-                  total_amount, currency, customer_note, shipping_carrier,
-                  tracking_number, shipped_at, delivered_at, items_json,
-                  created_at
-           FROM shopify_orders
-           WHERE status IN ('pending', 'paid', 'shipped', 'delivered')
-           ORDER BY created_at DESC
-           LIMIT 150`,
-        )
-        .all<{
-          id: string;
-          status: string;
-          customer_first_name: string;
-          customer_last_name: string;
-          customer_email: string;
-          customer_phone: string;
-          shipping_address: string;
-          shipping_district: string;
-          shipping_city: string;
-          shipping_postcode: string;
-          subtotal_amount: number;
-          discount_amount: number;
-          shipping_amount: number;
-          total_amount: number;
-          currency: string;
-          customer_note: string;
-          shipping_carrier: string;
-          tracking_number: string;
-          shipped_at: string | null;
-          delivered_at: string | null;
-          items_json: string;
-          created_at: string;
-        }>(),
       db
         .prepare(
           `SELECT id, status, customer_first_name, customer_last_name,
@@ -327,67 +286,6 @@ export async function GET(request: Request) {
       }),
     );
 
-    const shopifyShippingOrders: AdminShippingOrder[] =
-      shopifyOrders.results.map((order) => {
-        let parsedItems: AdminShippingOrder["items"] = [];
-        try {
-          parsedItems = (
-            JSON.parse(order.items_json) as {
-              name: string;
-              quantity: number;
-              unitPrice: number;
-            }[]
-          ).map((item) => ({
-            name: item.name,
-            quantity: Number(item.quantity),
-            unitPrice: Number(item.unitPrice),
-          }));
-        } catch {
-          parsedItems = [];
-        }
-        return {
-          id: order.id,
-          status: order.status,
-          customerName:
-            `${order.customer_first_name} ${order.customer_last_name}`.trim(),
-          email: order.customer_email,
-          phone: order.customer_phone,
-          address: [
-            order.shipping_address,
-            order.shipping_district,
-            order.shipping_city,
-            order.shipping_postcode,
-          ]
-            .filter(Boolean)
-            .join(", "),
-          subtotalAmount: Number(order.subtotal_amount) || 0,
-          discountAmount: Number(order.discount_amount) || 0,
-          shippingAmount: Number(order.shipping_amount) || 0,
-          discountCode: null,
-          totalAmount: Number(order.total_amount) || 0,
-          currency: order.currency,
-          paymentProvider: "shopify",
-          salesChannel: "shopify",
-          customerNote: order.customer_note,
-          giftWrap: false,
-          giftMessage: "",
-          isCod: false,
-          shippingCarrier: order.shipping_carrier,
-          trackingNumber: order.tracking_number,
-          trackingUrl: createShippingTrackingUrl({
-            carrier: order.shipping_carrier,
-            trackingNumber: order.tracking_number,
-          }),
-          autoDeliverAt:
-            order.status === "shipped"
-              ? createAutoDeliverAt(order.shipped_at)
-              : null,
-          shippedAt: order.shipped_at,
-          deliveredAt: order.delivered_at,
-          createdAt: order.created_at,
-          items: parsedItems,
-        };
-      });
 
     const trendyolShippingOrders: AdminShippingOrder[] =
       trendyolOrders.results.map((order) => {
@@ -577,7 +475,6 @@ export async function GET(request: Request) {
 
     const combinedOrders = [
       ...shippingOrders,
-      ...shopifyShippingOrders,
       ...hepsiburadaShippingOrders,
       ...trendyolShippingOrders,
       ...n11ShippingOrders,
@@ -628,24 +525,16 @@ export async function PATCH(request: Request) {
     }
 
     const db = getD1();
-    await ensureShopifyOrdersTable(db);
     await ensureTrendyolOrdersTable(db);
     await ensureHepsiburadaOrdersTable(db);
     await ensureN11OrdersTable(db);
     await ensureOrderCheckoutColumns(db);
 
-    let table: "orders" | "shopify_orders" | "trendyol_orders" | "hepsiburada_orders" | "n11_orders" = "orders";
+    let table: "orders" | "trendyol_orders" | "hepsiburada_orders" | "n11_orders" = "orders";
     let current = await db
       .prepare("SELECT status FROM orders WHERE id = ? LIMIT 1")
       .bind(id)
       .first<{ status: string }>();
-    if (!current) {
-      table = "shopify_orders";
-      current = await db
-        .prepare("SELECT status FROM shopify_orders WHERE id = ? LIMIT 1")
-        .bind(id)
-        .first<{ status: string }>();
-    }
     if (!current) {
       table = "trendyol_orders";
       current = await db
@@ -722,24 +611,6 @@ export async function PATCH(request: Request) {
         await reverseEarnedPoints(db, id);
       } catch {
         // Never block the cancellation itself over a loyalty hiccup.
-      }
-    }
-
-    // Terragolds admin is the only place shipping status is edited - this
-    // just reports "shipped" to Shopify (one-directional) so the customer
-    // sees the right status there too. A failure here doesn't roll back the
-    // D1 update above (that stays authoritative); the admin is told to
-    // check Shopify manually instead.
-    if (table === "shopify_orders" && status === "shipped") {
-      try {
-        await fulfillShopifyOrder(id, shippingCarrier, trackingNumber);
-      } catch (error) {
-        return Response.json({
-          ok: true,
-          warning: `Sipariş güncellendi ama Shopify'a bildirilemedi: ${
-            error instanceof Error ? error.message : "bilinmeyen hata"
-          }`,
-        });
       }
     }
 

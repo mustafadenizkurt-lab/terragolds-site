@@ -14,8 +14,6 @@ type RuntimeBindings = {
   EMAIL_VERIFICATION_DEV_MODE?: string;
   GOOGLE_SITE_VERIFICATION?: string;
   ANTHROPIC_API_KEY?: string;
-  SHOPIFY_CLIENT_ID?: string;
-  SHOPIFY_CLIENT_SECRET?: string;
   // Not set yet - Trendyol Marketplace onboarding is still pending approval.
   // Referenced now so lib/trendyol/auth.ts's shape is ready; every call that
   // needs them throws a clear "ortam değişkeni ayarlanmamış" error via

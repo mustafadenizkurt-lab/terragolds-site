@@ -179,8 +179,8 @@ export type HepsiburadaPriceAndInventoryItem = {
 };
 
 // D1 tek gerçek kaynak (source of truth) - stok/fiyat her zaman D1'den
-// Hepsiburada'ya tek yönlü gönderilir, Shopify/Trendyol entegrasyonlarındaki
-// ile aynı prensip.
+// Hepsiburada'ya tek yönlü gönderilir, Trendyol entegrasyonundaki ile
+// aynı prensip.
 export async function updateStockAndPrice(
   items: HepsiburadaPriceAndInventoryItem[],
 ): Promise<HepsiburadaBatchResult> {
@@ -244,9 +244,9 @@ export async function getOrders(params: {
   );
 }
 
-// Terragolds admin, kargo durumunu değiştirebileceğimiz TEK yer - Shopify/
-// Trendyol entegrasyonlarındaki ile aynı "geri okuma yok" kuralı: bu sadece
-// Hepsiburada'ya kargoya verildi bilgisini tek yönlü bildirir.
+// Terragolds admin, kargo durumunu Hepsiburada'ya bildirdiğimiz TEK yer -
+// bu çağrının kendisi tek yönlü (henüz Trendyol'daki gibi bir periyodik
+// geri okuma yok, bkz. lib/trendyol/orders.ts importTrendyolOrder).
 export async function updateOrderStatus(
   packageNumber: string,
   input: { trackingNumber: string; cargoCompany: string },

@@ -39,7 +39,7 @@ export async function GET(request: Request) {
     const dump = JSON.stringify(record, null, 2);
     await db
       .prepare(
-        `CREATE TABLE IF NOT EXISTS shopify_theme_debug (
+        `CREATE TABLE IF NOT EXISTS admin_debug_cache (
           key TEXT PRIMARY KEY,
           content TEXT NOT NULL,
           updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -48,7 +48,7 @@ export async function GET(request: Request) {
       .run();
     await db
       .prepare(
-        `INSERT INTO shopify_theme_debug (key, content, updated_at)
+        `INSERT INTO admin_debug_cache (key, content, updated_at)
          VALUES ('xmlRecord', ?, CURRENT_TIMESTAMP)
          ON CONFLICT(key) DO UPDATE SET content = excluded.content, updated_at = CURRENT_TIMESTAMP`,
       )
