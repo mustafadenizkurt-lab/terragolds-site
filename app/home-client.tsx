@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { useRouter } from "next/navigation";
 import { Eye } from "lucide-react";
 import {
   defaultProducts,
@@ -324,7 +323,6 @@ type HomeClientProps = {
 };
 
 export default function HomeClient({ initialSettings }: HomeClientProps) {
-  const router = useRouter();
   const [category, setCategory] = useState("Tümü");
   const [catalogQuery, setCatalogQuery] = useState("");
   const [catalogMinPrice, setCatalogMinPrice] = useState("");
@@ -861,19 +859,26 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
     // own history entry in goToCatalogPage instead, so the back button can
     // step through 3 -> 2 -> 1 the way a paginated list is expected to.
     //
-    // Uses router.replace/push (next/navigation), NOT raw
-    // window.history.replaceState/pushState - a product card's link off this
-    // page is a real full navigation, and going back into an entry that was
-    // only ever created via the raw History API (never through Next's own
-    // router) left Next's App Router's internal navigation bookkeeping out of
-    // sync with the browser's real history stack. That desync made a single
-    // "back" press skip multiple entries at once - reported as landing all
-    // the way back on the Google results page instead of the product listing.
-    // Routing every URL change through the router keeps the two in sync.
+    // Uses the raw window.history API, not next/navigation's router.push/
+    // replace: this route's content is driven entirely by our own
+    // /api/products fetch, not by an RSC re-render, and vinext's router
+    // shim (node_modules/vinext/dist/shims/navigation.js) only commits the
+    // browser history entry *after* an async RSC round-trip finishes
+    // rendering - see navigateClientSide/createNavigationCommitEffect. Tap
+    // through pages quickly (turn a page, then immediately open a product)
+    // and a still-in-flight router.push gets superseded by the next
+    // navigation before its history entry is ever written, so that page
+    // silently never made it into the browser's real history stack. One
+    // "back" press then lands however many steps further back than
+    // expected - reported as skipping straight past the listing to the
+    // Google results page or the home page. window.history.pushState/
+    // replaceState (still routed through vinext's own synchronous
+    // patchedPushState/patchedReplaceState wrapper - see navigation.js)
+    // writes the entry immediately, with no async gap to race against.
     if (String(catalogData.page) === new URLSearchParams(window.location.search).get("sayfa")) return;
     if (catalogData.page === 1 && !new URLSearchParams(window.location.search).has("sayfa")) return;
-    router.replace(catalogPageUrl(catalogData.page), { scroll: false });
-  }, [catalogData.page, router]);
+    window.history.replaceState(window.history.state, "", catalogPageUrl(catalogData.page));
+  }, [catalogData.page]);
 
   const catalogPageWindow = buildPageWindow(
     catalogData.page,
@@ -884,8 +889,10 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
     const nextPage = Math.min(Math.max(1, page), catalogData.totalPages);
     // Push (not replace) so each explicit page turn is its own history step -
     // the back button can then step 3 -> 2 -> 1 like a normal paginated list,
-    // instead of jumping straight past every page in one go.
-    router.push(catalogPageUrl(nextPage), { scroll: false });
+    // instead of jumping straight past every page in one go. Synchronous
+    // window.history.pushState - see the comment above the "sayfa" sync
+    // effect for why this must not go through next/navigation's router.
+    window.history.pushState(window.history.state, "", catalogPageUrl(nextPage));
     setCatalogPage(nextPage);
     window.setTimeout(() => {
       catalogResultsRef.current?.scrollIntoView({
@@ -896,7 +903,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
   };
 
   useEffect(() => {
-    // router.push/replace above don't remount this component, so the
+    // pushState/replaceState above don't remount this component, so the
     // back/forward buttons moving between those pushed "sayfa" URLs fire
     // popstate without a navigation - read the restored URL back into state
     // so the catalog actually shows that page again.

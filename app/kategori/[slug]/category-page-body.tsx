@@ -214,7 +214,21 @@ export default function CategoryPageBody({
                     >
                       <Eye aria-hidden="true" size={17} strokeWidth={2} />
                     </button>
-                    <Link
+                    {/* Plain <a>, not next/link's <Link>: vinext's Link shim
+                        does its page-to-page navigation asynchronously
+                        (fetches RSC content, only writes the browser history
+                        entry once that resolves and renders - see
+                        node_modules/vinext/dist/server/app-browser-entry.js's
+                        navigateRsc/createNavigationCommitEffect). Turn a
+                        pagination page and tap straight into a product
+                        before that async commit lands, and the pending page
+                        navigation gets superseded with no history entry ever
+                        written for it - one "back" press from the product
+                        then skips past the listing entirely. A real <a> is a
+                        native full navigation: the browser writes its history
+                        entry synchronously and immediately, with no async
+                        step to race against. */}
+                    <a
                       className={`category-product-image${
                         product.hoverImage ? " has-hover-image" : ""
                       }`}
@@ -254,14 +268,14 @@ export default function CategoryPageBody({
                           <i className="right" />
                         </span>
                       )}
-                    </Link>
+                    </a>
                   </div>
                   <div className="category-product-copy">
                     <small>{product.stone}</small>
                     {product.xmlExternalId && (
                       <span className="product-code">#{product.xmlExternalId}</span>
                     )}
-                    <Link href={`/products/${product.slug || product.id}`}>{product.name}</Link>
+                    <a href={`/products/${product.slug || product.id}`}>{product.name}</a>
                     <CompareToggleButton productId={product.id} productName={product.name} />
                     <QuickAddToCart product={product} />
                   </div>
@@ -270,8 +284,14 @@ export default function CategoryPageBody({
             })}
           </div>
           {totalPages > 1 && (
+            // Plain <a>, not next/link's <Link> - same reasoning as the
+            // product links above: each page turn needs its own,
+            // immediately-written browser history entry so the back button
+            // can step back through the pages one at a time, and vinext's
+            // Link shim only writes that entry after an async RSC round
+            // trip completes, which a quick tap into a product can outrace.
             <nav className="catalog-pagination" aria-label={t.pageStatus(page, totalPages)}>
-              <Link
+              <a
                 href={pageHref(page - 1)}
                 aria-disabled={page === 1}
                 onClick={(event) => {
@@ -279,18 +299,18 @@ export default function CategoryPageBody({
                 }}
               >
                 {t.previousPage}
-              </Link>
+              </a>
               <div>
                 {pageWindow.map((item) =>
                   typeof item === "number" ? (
-                    <Link
+                    <a
                       href={pageHref(item)}
                       className={item === page ? "active" : ""}
                       key={item}
                       aria-current={item === page ? "page" : undefined}
                     >
                       {item}
-                    </Link>
+                    </a>
                   ) : (
                     <span
                       className="catalog-pagination-ellipsis"
@@ -302,7 +322,7 @@ export default function CategoryPageBody({
                   ),
                 )}
               </div>
-              <Link
+              <a
                 href={pageHref(page + 1)}
                 aria-disabled={page === totalPages}
                 onClick={(event) => {
@@ -310,7 +330,7 @@ export default function CategoryPageBody({
                 }}
               >
                 {t.nextPage}
-              </Link>
+              </a>
             </nav>
           )}
         </section>
