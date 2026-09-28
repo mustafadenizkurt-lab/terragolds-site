@@ -338,6 +338,35 @@ export default function AdminClient({
     }
   };
 
+  // Silinen bir ürünü "Silinenler" filtresinden taslağa geri alır - satır
+  // zaten duruyordu (bkz. DELETE route'undaki status='deleted' yorumu),
+  // sadece durumunu değiştirip normal ürün listesine döndürüyor. Tedarikçi
+  // hariç tutma kaydına (excluded_supplier_products) bilerek dokunulmuyor -
+  // geri alma o korumayı otomatik kaldırmamalı, tedarikçi senkronu bu
+  // ürünü yine görmezden gelmeye devam eder; gerekiyorsa ayrıca kaldırılır.
+  const restoreProduct = async (product: Product) => {
+    setSaving(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/admin/products/${product.id}`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...product, status: "draft" }),
+      });
+      await readJson(response);
+      await loadAdminData();
+      flash(`${product.name} taslağa geri alındı.`);
+    } catch (restoreError) {
+      setError(
+        restoreError instanceof Error
+          ? restoreError.message
+          : "Ürün geri alınamadı.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const applyBulkUpdate = async () => {
     if (!selectedProductIds.length) return;
     if (
@@ -461,10 +490,18 @@ export default function AdminClient({
     const matchesCategory =
       productCategoryFilter === "all" ||
       product.category === productCategoryFilter;
+    // "deleted" (admin panelinden silinen, tedarikçi feed'inde bir daha
+    // asla geri gelmeyen ürünler - bkz. DELETE route'larındaki yorum) hiçbir
+    // zaman "Tüm durumlar"a, "Taslak"a veya diğer filtrelere karışmaz -
+    // yalnızca "Silinenler" seçiliyken görünür. Aksi hâlde gerçekten
+    // incelenmeyi bekleyen taslaklarla silinmiş ürünler ayırt edilemiyordu.
     const matchesStatus =
-      productStatusFilter === "all" ||
-      product.status === productStatusFilter ||
-      (productStatusFilter === "low-stock" && product.stock <= 2);
+      productStatusFilter === "deleted"
+        ? product.status === "deleted"
+        : product.status !== "deleted" &&
+          (productStatusFilter === "all" ||
+            product.status === productStatusFilter ||
+            (productStatusFilter === "low-stock" && product.stock <= 2));
     return matchesSearch && matchesCategory && matchesStatus;
   });
   const productPageCount = Math.max(
@@ -800,6 +837,7 @@ export default function AdminClient({
                     <option value="published">Yayında</option>
                     <option value="draft">Taslak</option>
                     <option value="low-stock">Düşük stok</option>
+                    <option value="deleted">Silinenler</option>
                   </select>
                   <span>
                     <strong>{filteredProducts.length}</strong> ürün
@@ -983,7 +1021,11 @@ export default function AdminClient({
                     <span
                       className={`admin-status ${product.status}`}
                     >
-                      {product.status === "published" ? "Yayında" : "Taslak"}
+                      {product.status === "published"
+                        ? "Yayında"
+                        : product.status === "deleted"
+                          ? "Silinmiş"
+                          : "Taslak"}
                     </span>
                     <span
                       className={
@@ -995,28 +1037,40 @@ export default function AdminClient({
                       {product.shopierUrl ? "Bağlı" : "Bekliyor"}
                     </span>
                     <div className="admin-row-actions">
-                      <button
-                        type="button"
-                        aria-label={`${product.name} ürününü düzenle`}
-                        onClick={() => openProduct(product)}
-                      >
-                        Düzenle
-                      </button>
-                      <button
-                        type="button"
-                        aria-label={`${product.name} ürünü kopyala`}
-                        onClick={() => duplicateProduct(product)}
-                      >
-                        Kopyala
-                      </button>
-                      <button
-                        type="button"
-                        className="danger"
-                        aria-label={`${product.name} ürününü sil`}
-                        onClick={() => void deleteProduct(product)}
-                      >
-                        Sil
-                      </button>
+                      {product.status === "deleted" ? (
+                        <button
+                          type="button"
+                          aria-label={`${product.name} ürününü taslağa geri al`}
+                          onClick={() => void restoreProduct(product)}
+                        >
+                          Geri Yükle
+                        </button>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            aria-label={`${product.name} ürününü düzenle`}
+                            onClick={() => openProduct(product)}
+                          >
+                            Düzenle
+                          </button>
+                          <button
+                            type="button"
+                            aria-label={`${product.name} ürünü kopyala`}
+                            onClick={() => duplicateProduct(product)}
+                          >
+                            Kopyala
+                          </button>
+                          <button
+                            type="button"
+                            className="danger"
+                            aria-label={`${product.name} ürününü sil`}
+                            onClick={() => void deleteProduct(product)}
+                          >
+                            Sil
+                          </button>
+                        </>
+                      )}
                     </div>
                   </article>
                 ))}

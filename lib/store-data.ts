@@ -21,7 +21,10 @@ export type Product = {
   description: string;
   /** SEO-rewritten alternative to `description` (see scripts/generate-seo-descriptions.ts) - null/undefined until generated, product page falls back to `description`. */
   seoDescription?: string | null;
-  status: "published" | "draft";
+  /** "deleted": admin panelinden silinmiş, normal ürün listesinden ve
+   * "Taslak" filtresinden tamamen gizli - bkz. app/api/admin/products/[id]/route.ts'nin
+   * DELETE handler'ındaki yorum. Müşteri tarafında hiçbir zaman görünmez. */
+  status: "published" | "draft" | "deleted";
   slug: string;
   metaTitle?: string;
   metaDescription?: string;
