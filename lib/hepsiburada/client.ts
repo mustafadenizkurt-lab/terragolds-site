@@ -308,9 +308,29 @@ export async function importProductsFile(
 
 // GET /product/api/products/status/{trackingId} - içe aktarma sonucu (gerçek
 // yanıttan doğrulandı; ham döner, ayrıştırma import-parse.ts'te).
+// GET yanıtı sayfalanmış (Spring Page) - size verilmezse Hepsiburada'nın
+// varsayılanı 20'de kesiyor. Gerçek bir 25'lik batch'te bu, son 5 ürünün
+// hiç doğrulanmadan "beklemede" kalmasına yol açtı (2 batch'te 50 üründen
+// 10'u). Tüm sayfaları gezip data dizisini birleştiriyoruz.
 export async function getImportStatus(trackingId: string): Promise<unknown> {
-  return hepsiburadaFetch(
+  const first = await hepsiburadaFetch<{
+    data?: unknown[];
+    last?: boolean;
+    totalPages?: number;
+    [key: string]: unknown;
+  }>(
     HEPSIBURADA_PRODUCT_API_BASE,
-    `/product/api/products/status/${encodeURIComponent(trackingId)}`,
+    `/product/api/products/status/${encodeURIComponent(trackingId)}?page=0&size=100`,
   );
+  const data = [...(first.data ?? [])];
+  let page = 1;
+  while (first.last !== true && page < (first.totalPages ?? 1) && page < 10) {
+    const next = await hepsiburadaFetch<{ data?: unknown[] }>(
+      HEPSIBURADA_PRODUCT_API_BASE,
+      `/product/api/products/status/${encodeURIComponent(trackingId)}?page=${page}&size=100`,
+    );
+    data.push(...(next.data ?? []));
+    page += 1;
+  }
+  return { ...first, data };
 }
