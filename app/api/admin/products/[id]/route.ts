@@ -162,15 +162,18 @@ export async function DELETE(request: Request, context: RouteContext) {
   // A tedarikçi-senkron ürünü tamamen silinirse, o ürünün kodu feed'de hâlâ
   // varsa bir sonraki senkron onu "yeni ürün" sanıp sıfırdan yeniden
   // oluşturuyordu (syncSupplier.ts sadece (tedarikçi, ürün kodu) eşleşmesine
-  // bakıyor, satır yoksa INSERT ediyor). Bunun yerine satırı taslağa alıp
-  // xml_sync_status'u 'manual' yapıyoruz: syncSupplier.ts "synced" olmayan
-  // satırlara hiç dokunmuyor, yani bu ürün bir daha asla geri gelmiyor ve
-  // müşteriye de görünmüyor (status='draft'). Senkrona hiç bağlı olmayan
-  // (elle eklenmiş) ürünlerde bu risk yok, onlar gerçekten siliniyor.
+  // bakıyor, satır yoksa INSERT ediyor). Bunun yerine satırı 'deleted'
+  // durumuna alıp xml_sync_status'u 'manual' yapıyoruz: syncSupplier.ts
+  // "synced" olmayan satırlara hiç dokunmuyor, yani bu ürün bir daha asla
+  // geri gelmiyor ve müşteriye de görünmüyor. 'draft' değil ayrı bir
+  // 'deleted' durumu kullanılıyor - admin panelindeki normal ürün listesi
+  // ve "Taslak" filtresi bunu hiç göstermiyor, sadece incelenmemiş gerçek
+  // taslaklarla karışmasın diye. Senkrona hiç bağlı olmayan (elle eklenmiş)
+  // ürünlerde bu risk yok, onlar gerçekten siliniyor.
   if (product.xmlSyncStatus === "synced") {
     await db
       .prepare(
-        "UPDATE products SET status = 'draft', xml_sync_status = 'manual', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        "UPDATE products SET status = 'deleted', xml_sync_status = 'manual', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
       )
       .bind(id)
       .run();

@@ -8245,6 +8245,10 @@ footer {
   background: #f0ede6;
   color: #76746c;
 }
+.admin-status.deleted {
+  background: #fdf2ef;
+  color: #934334;
+}
 .admin-shopier.connected {
   background: #edf3ef;
   color: #355d4f;
