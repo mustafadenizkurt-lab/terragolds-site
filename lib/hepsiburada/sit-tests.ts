@@ -116,8 +116,9 @@ export async function runSitStep(
         query: { version: 1, page: 0, size: 20 },
       });
     case "product.delete-process":
+      // fastlisting'deki gibi: tekil nesne 500 verdi, dizi gövde çalıştı.
       return sitCall(step, "product", "POST", `${productPaths}/delete-process`, {
-        body: { merchant: merchantId, merchantSku },
+        body: [{ merchant: merchantId, merchantSku }],
       });
     case "product.delete-process-status":
       return sitCall(step, "product", "GET", `${productPaths}/delete-process/${encodeURIComponent(id)}`);
