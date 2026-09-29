@@ -123,16 +123,21 @@ export async function runSitStep(
     case "product.delete-process-status":
       return sitCall(step, "product", "GET", `${productPaths}/delete-process/${encodeURIComponent(id)}`);
     case "product.fastlisting": {
+      // Destek: "HB product not found by barcode" hatası için barcode yerine
+      // hbSku ile eşleştirme önerdi - params.hbSku verilirse barcode alanı
+      // hiç gönderilmiyor (ikisini birden göndermek karışıklık yaratabilir).
       const row = {
         merchant: merchantId,
         merchantSku,
         productName: String(params.productName ?? ""),
-        barcode: String(params.barcode ?? ""),
+        ...(params.hbSku !== undefined
+          ? { hbSku: String(params.hbSku) }
+          : { barcode: String(params.barcode ?? "") }),
         ...(params.price !== undefined ? { price: String(params.price) } : {}),
         ...(params.stock !== undefined ? { stock: String(params.stock) } : {}),
       };
       return sitCall(step, "product", "POST", `${productPaths}/fastlisting`, {
-        body: params.asArray ? [row] : row,
+        body: params.asArray === false ? row : [row],
       });
     }
     case "product.import-file": {
