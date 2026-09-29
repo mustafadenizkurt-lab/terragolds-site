@@ -43,6 +43,16 @@ export function parseImportStatus(raw: unknown): ParsedImportItem[] {
     const blockedProductStatus =
       ["missing_info", "rejected"].includes(statusText) ||
       /eksik|reddedil|görev aç/.test(statusText);
+    // ÖNEMLİ: productStatus'un dolu (null olmayan) gelmesi TEK BAŞINA başarı
+    // anlamına gelmiyordu - "WAITING" (incelenecek), "PRE_MATCHED" (eşleşen)
+    // ve "MATCHED_WITH_STAGED" gibi ürünün henüz Hepsiburada'nın gerçek
+    // envanterine hiç düşmediği ara durumlar da bu şekilde yanlışlıkla
+    // "success" sayılıp bir daha hiç kontrol edilmiyordu (gerçek örnek: 148
+    // ürün "doğrulandı" işaretliydi ama Hepsiburada test panelinde hiçbiri
+    // görünmüyordu). Gerçek başarı SADECE "MATCHED" ("satışa hazır") -
+    // diğer tüm ara durumlar reconcileHepsiburadaImports'un bir sonraki
+    // çalışmasında tekrar sorgulansın diye kasıtlı olarak "pending" kalıyor.
+    const isReadyForSale = statusText === "matched" || /satışa haz/.test(statusText);
     let outcome: ParsedImportItem["outcome"];
     if (errorMessages.some((message) => /access denied/i.test(message))) outcome = "accessDenied";
     else if (
@@ -52,8 +62,7 @@ export function parseImportStatus(raw: unknown): ParsedImportItem[] {
       blockedProductStatus
     )
       outcome = "failed";
-    else if (importStatus === "PROCESSING") outcome = "pending";
-    else if (importStatus === "SUCCESS" || productStatus !== null) outcome = "success";
+    else if (isReadyForSale) outcome = "success";
     else outcome = "pending";
     return { merchantSku: String(entry.merchantSku ?? ""), outcome, reason, productStatus };
   });
