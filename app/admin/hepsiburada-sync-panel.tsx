@@ -22,6 +22,16 @@ type OrderSyncResult = {
   errors: string[];
 };
 
+type ReconcileResult = {
+  checkedTrackings: number;
+  stillPending: number;
+  verified: number;
+  failed: number;
+  accessDenied: number;
+  failures: { merchantSku: string; reason: string }[];
+  errors: string[];
+};
+
 // Kimlik bilgileri bu ekranın en üstündeki MarketplaceCredentialsPanel'den
 // girilip D1'de şifreli saklanıyor - wrangler CLI gerekmiyor. Onay/gerçek
 // API bilgileri girilip "Senkronu etkinleştir" işaretlenmeden buradaki
@@ -43,6 +53,33 @@ export default function HepsiburadaSyncPanel({
   const [orderBusy, setOrderBusy] = useState(false);
   const [orderError, setOrderError] = useState("");
   const [lastOrderResult, setLastOrderResult] = useState<OrderSyncResult | null>(null);
+
+  const [reconcileBusy, setReconcileBusy] = useState(false);
+  const [reconcileError, setReconcileError] = useState("");
+  const [lastReconcile, setLastReconcile] = useState<ReconcileResult | null>(null);
+
+  const reconcile = async () => {
+    setReconcileBusy(true);
+    setReconcileError("");
+    try {
+      const response = await fetch("/api/admin/hepsiburada/reconcile", {
+        method: "POST",
+        cache: "no-store",
+      });
+      const body = (await response.json()) as ReconcileResult & { error?: string };
+      if (!response.ok) throw new Error(body.error ?? "Doğrulama başarısız.");
+      setLastReconcile(body);
+      onNotice(
+        `Hepsiburada doğrulama: ${body.verified} doğrulandı, ${body.failed} hata, ${body.accessDenied} yetki reddi, ${body.stillPending} işlemde.`,
+      );
+    } catch (reconcileErr) {
+      setReconcileError(
+        reconcileErr instanceof Error ? reconcileErr.message : "Doğrulama başarısız.",
+      );
+    } finally {
+      setReconcileBusy(false);
+    }
+  };
 
   const sync = async () => {
     setBusy(true);
@@ -183,6 +220,59 @@ export default function HepsiburadaSyncPanel({
               {lastResult.errors.map((message, index) => (
                 <tr key={index}>
                   <td>{message}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <div className="admin-panel-heading" style={{ marginTop: 32 }}>
+        <div>
+          <h2>Sonuçları doğrula</h2>
+          <p>
+            Hepsiburada gönderimi asenkron: trackingId almak kabul demek
+            değil. Bu düğme tamamlanmış gönderimleri sorgular, kabul
+            edilenleri doğrulanmış işaretler, hata alanları (ör. eksik
+            görsel) sonucu kaydeder.
+          </p>
+        </div>
+        <button
+          className="admin-primary-button"
+          type="button"
+          disabled={reconcileBusy}
+          onClick={() => void reconcile()}
+        >
+          {reconcileBusy ? "Doğrulanıyor…" : "Sonuçları doğrula"}
+        </button>
+      </div>
+      {reconcileError && (
+        <div className="admin-inline-error" role="alert">
+          {reconcileError}
+        </div>
+      )}
+      {lastReconcile && (
+        <div className="admin-bulk-toolbar">
+          <strong>{lastReconcile.verified} doğrulandı</strong>
+          <span>{lastReconcile.failed} hata</span>
+          <span>{lastReconcile.accessDenied} yetki reddi</span>
+          <span>{lastReconcile.stillPending} işlemde</span>
+        </div>
+      )}
+      {lastReconcile && lastReconcile.failures.length > 0 && (
+        <div className="admin-supplier-table-wrap">
+          <table className="admin-supplier-table">
+            <thead>
+              <tr>
+                <th>Stok kodu</th>
+                <th>Hata</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lastReconcile.failures.map((failure) => (
+                <tr key={failure.merchantSku}>
+                  <td>{failure.merchantSku}</td>
+                  <td>{failure.reason}</td>
                 </tr>
               ))}
             </tbody>
