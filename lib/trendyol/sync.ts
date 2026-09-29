@@ -11,6 +11,8 @@ type PendingProduct = {
   stock: number;
   image: string;
   hoverImage: string | null;
+  image3: string | null;
+  image4: string | null;
   category: string;
   xmlExternalId: string | null;
 };
@@ -206,12 +208,13 @@ function attributesFor(
 }
 
 // Trendyol v2'de en fazla 8 görsel kabul ediyor, ilki kapak fotoğrafı olarak
-// kullanılıyor - sitemizdeki ana görsel (image) + hover görseli (hoverImage,
-// üzerine gelince/karşılaştırmada görünen ikinci fotoğraf) sırasıyla
-// gönderiliyor. Daha önce sadece image gönderiliyordu, Trendyol'da tek
-// fotoğraf görünmesinin sebebi buydu.
+// kullanılıyor - sitemizdeki dört görsel alanının (image, hoverImage, image3,
+// image4) hepsi sırasıyla gönderiliyor. Daha önce sadece image gönderiliyordu,
+// Trendyol'da tek fotoğraf görünmesinin sebebi buydu; hoverImage eklendikten
+// sonra da image3/image4 unutulmuştu - admin panelinde dört fotoğraf
+// yüklenebilse bile Trendyol'a hep yalnızca ilk ikisi gidiyordu.
 function toTrendyolProduct(product: PendingProduct): TrendyolProduct {
-  const imageUrls = [product.image, product.hoverImage]
+  const imageUrls = [product.image, product.hoverImage, product.image3, product.image4]
     .map((url) => (url ? toAbsoluteImageUrl(url) : null))
     .filter((url): url is string => Boolean(url));
   return {
@@ -255,7 +258,7 @@ export async function syncProductsToTrendyol(
 
   const pending = await db
     .prepare(
-      `SELECT id, name, COALESCE(NULLIF(seo_description, ''), description) AS description, price, stock, image, hover_image AS hoverImage, category,
+      `SELECT id, name, COALESCE(NULLIF(seo_description, ''), description) AS description, price, stock, image, hover_image AS hoverImage, image3, image4, category,
               xml_external_id AS xmlExternalId
        FROM products
        WHERE status = 'published' AND trendyol_listing_id IS NULL
@@ -482,7 +485,7 @@ export async function refreshTrendyolImages(db: D1Database): Promise<TrendyolIma
 
   const pending = await db
     .prepare(
-      `SELECT id, name, COALESCE(NULLIF(seo_description, ''), description) AS description, price, stock, image, hover_image AS hoverImage, category,
+      `SELECT id, name, COALESCE(NULLIF(seo_description, ''), description) AS description, price, stock, image, hover_image AS hoverImage, image3, image4, category,
               xml_external_id AS xmlExternalId, trendyol_content_id AS contentId
        FROM products
        WHERE trendyol_content_id IS NOT NULL AND hover_image IS NOT NULL
@@ -498,7 +501,7 @@ export async function refreshTrendyolImages(db: D1Database): Promise<TrendyolIma
     const chunk = pending.results.slice(offset, offset + IMAGE_REFRESH_BATCH_SIZE);
     try {
       const items = chunk.map((product) => {
-        const imageUrls = [product.image, product.hoverImage]
+        const imageUrls = [product.image, product.hoverImage, product.image3, product.image4]
           .map((url) => (url ? toAbsoluteImageUrl(url) : null))
           .filter((url): url is string => Boolean(url));
         return { contentId: product.contentId, images: imageUrls.map((url) => ({ url })) };

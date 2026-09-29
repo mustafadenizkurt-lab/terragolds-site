@@ -110,12 +110,14 @@ export async function PATCH(request: Request) {
 
       // Senkron ürünü (xml_sync_status = 'synced') gerçekten silinirse,
       // kodu tedarikçi feed'inde hâlâ varsa bir sonraki senkronda sıfırdan
-      // geri geliyordu - taslağa alıp 'manual' işaretle, syncSupplier bir
-      // daha hiç dokunmasın. Elle eklenmiş ürünler (senkrona bağlı olmayan)
-      // gerçekten siliniyor.
+      // geri geliyordu - 'deleted' durumuna alıp 'manual' işaretle,
+      // syncSupplier bir daha hiç dokunmasın. 'draft' değil ayrı bir
+      // 'deleted' durumu kullanılıyor - bkz. app/api/admin/products/[id]/route.ts'deki
+      // aynı yorumun uzun hâli. Elle eklenmiş ürünler (senkrona bağlı
+      // olmayan) gerçekten siliniyor.
       const excluded = await db
         .prepare(
-          `UPDATE products SET status = 'draft', xml_sync_status = 'manual', updated_at = CURRENT_TIMESTAMP
+          `UPDATE products SET status = 'deleted', xml_sync_status = 'manual', updated_at = CURRENT_TIMESTAMP
            WHERE id IN (${placeholders}) AND xml_sync_status = 'synced'`,
         )
         .bind(...productIds)
