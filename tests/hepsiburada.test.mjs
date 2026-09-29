@@ -188,10 +188,14 @@ test("parseImportStatus yetki reddi, hata ve bekleyen durumları ayırır", () =
   assert.match(failed[0].reason, /Marka/);
   const pending = parseImportStatus({ data: [{ merchantSku: "C", importStatus: "IN_PROGRESS", importMessages: [] }] });
   assert.equal(pending[0].outcome, "pending");
-  const ok = parseImportStatus({
+  // "WAITING_FOR_APPROVAL" ürünün Hepsiburada'nın incelemesini beklediği
+  // anlamına geliyor, gerçek envantere düşmüş DEMEK DEĞİL - "pending"
+  // kalmalı ki reconcileHepsiburadaImports bir sonraki çalışmada tekrar
+  // sorgulasın (bkz. import-parse.ts'teki isReadyForSale yorumu).
+  const stillWaiting = parseImportStatus({
     data: [{ merchantSku: "D", importStatus: "SUCCESS", productStatus: "WAITING_FOR_APPROVAL", importMessages: [] }],
   });
-  assert.equal(ok[0].outcome, "success");
+  assert.equal(stillWaiting[0].outcome, "pending");
   assert.deepEqual(parseImportStatus(null), []);
 });
 
@@ -215,10 +219,13 @@ test("merchantSku büyük harf/boşluksuz, başlık marka ile başlar, fiyat vir
   assert.equal(hepsiburadaPrice(239), "239,00");
 });
 
-test("parseImportStatus resmi durumlar: PROCESSING bekler, MISSING_INFO hata, SUCCESS başarı", () => {
+test("parseImportStatus resmi durumlar: PROCESSING bekler, MISSING_INFO hata, WAITING hâlâ bekler, MATCHED başarı", () => {
   assert.equal(parseImportStatus({ data: [{ merchantSku: "A", importStatus: "PROCESSING", importMessages: [] }] })[0].outcome, "pending");
   assert.equal(parseImportStatus({ data: [{ merchantSku: "B", importStatus: "SUCCESS", productStatus: "MISSING_INFO", validationResults: [{ attributeName: "Renk", message: "gerekli" }], importMessages: [] }] })[0].outcome, "failed");
-  assert.equal(parseImportStatus({ data: [{ merchantSku: "C", importStatus: "SUCCESS", productStatus: "WAITING", importMessages: [] }] })[0].outcome, "success");
+  // "WAITING" (incelenecek) ürünün Hepsiburada'nın gerçek envanterine henüz
+  // düşmediği, incelemede olduğu anlamına geliyor - "success" değil.
+  assert.equal(parseImportStatus({ data: [{ merchantSku: "C", importStatus: "SUCCESS", productStatus: "WAITING", importMessages: [] }] })[0].outcome, "pending");
+  assert.equal(parseImportStatus({ data: [{ merchantSku: "D", importStatus: "SUCCESS", productStatus: "MATCHED", importMessages: [] }] })[0].outcome, "success");
 });
 
 import { applyHepsiburadaEnvironment, assertOwnIntegrator } from "../lib/hepsiburada/http-utils.ts";
@@ -237,8 +244,10 @@ test("başkasına ait kayıtlı entegratör adı (Selfit) engellenir, kendi adı
   assert.doesNotThrow(() => assertOwnIntegrator("terra_dev"));
 });
 
-test("parseImportStatus Türkçe durumlar: Incelenecek başarı, eksik/red hata", () => {
-  assert.equal(parseImportStatus({ data: [{ merchantSku: "A", importStatus: "SUCCESS", productStatus: "Incelenecek", importMessages: [], validationResults: [] }] })[0].outcome, "success");
+test("parseImportStatus Türkçe durumlar: Incelenecek hâlâ bekler, eksik/red hata, Satışa Hazır başarı", () => {
+  // "Incelenecek" = ürün Hepsiburada'da henüz incelemede, gerçek envantere
+  // düşmedi - "pending" kalmalı (bkz. import-parse.ts > isReadyForSale).
+  assert.equal(parseImportStatus({ data: [{ merchantSku: "A", importStatus: "SUCCESS", productStatus: "Incelenecek", importMessages: [], validationResults: [] }] })[0].outcome, "pending");
   assert.equal(parseImportStatus({ data: [{ merchantSku: "B", importStatus: "SUCCESS", productStatus: "Ürün bilgileri eksik", importMessages: [] }] })[0].outcome, "failed");
   assert.equal(parseImportStatus({ data: [{ merchantSku: "C", importStatus: "SUCCESS", productStatus: "Reddedildi", importMessages: [] }] })[0].outcome, "failed");
   assert.equal(parseImportStatus({ data: [{ merchantSku: "D", importStatus: "SUCCESS", productStatus: "Satışa Hazır", importMessages: [] }] })[0].outcome, "success");
