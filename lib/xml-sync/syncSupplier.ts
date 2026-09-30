@@ -9,6 +9,7 @@ import { pushStockAndPriceToTrendyol, categoryIdFor } from "../trendyol/sync";
 import { ensureTrendyolColumns } from "../trendyol/client";
 import { calculateTrendyolLimitsFromCost } from "../trendyol/pricing-formula";
 import { pushStockAndPriceToHepsiburada } from "../hepsiburada/sync";
+import { pushStockAndPriceToN11 } from "../n11/sync";
 import { loadExcludedExternalIds } from "./excluded-products";
 import { ensureImageLockColumn } from "../product-image-lock";
 import { ensurePriceLockColumn, costWithVat } from "../product-price-lock";
@@ -503,7 +504,9 @@ export async function restockSupplierProducts(
 
 // D1'deki yeni stok, ürünün listelendiği her pazaryerine tek tek gönderilir
 // (hiçbiri diğerinin varlığını varsaymadan - push* fonksiyonlarının her biri
-// zaten "bu kanala hiç gönderilmemişse no-op" davranışında).
+// zaten "bu kanala hiç gönderilmemişse no-op" davranışında). N11 eskiden bu
+// listede yoktu - tedarikçi kaynaklı stok değişiklikleri (özellikle 0'a
+// düşenler) N11'e HİÇ gönderilmiyordu.
 async function pushStockEverywhere(db: D1Database, productId: number): Promise<void> {
   try {
     await pushStockAndPriceToTrendyol(db, productId);
@@ -512,6 +515,11 @@ async function pushStockEverywhere(db: D1Database, productId: number): Promise<v
   }
   try {
     await pushStockAndPriceToHepsiburada(db, productId);
+  } catch {
+    // Self-heals on the next stock change or a manual price/stock backfill.
+  }
+  try {
+    await pushStockAndPriceToN11(db, productId);
   } catch {
     // Self-heals on the next stock change or a manual price/stock backfill.
   }

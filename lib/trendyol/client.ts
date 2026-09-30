@@ -171,6 +171,17 @@ export async function ensureTrendyolColumns(db: D1Database) {
   if (!names.has("trendyol_price_synced")) {
     await db.prepare("ALTER TABLE products ADD COLUMN trendyol_price_synced INTEGER").run();
   }
+  // trendyol_price_synced sadece FİYAT sürüklenmesini yakalıyordu -
+  // restockSupplierProducts()'ta stok değişse bile fiyat aynı kalan ürünler
+  // pushPendingTrendyolPrices'ın "pending" sorgusuna hiç girmiyordu, tek
+  // şansları syncSupplier.ts'teki tek seferlik (retry'sız, hata sessizce
+  // yutulan) pushStockEverywhere çağrısıydı. Gerçek örnek: 315 ürün stok=0
+  // durumuna düştüğü hâlde Trendyol'da hâlâ satılabilir görünüyordu. Bu
+  // kolon son GÖNDERİLEN stoğu tutar, pending sorgusu artık stok
+  // sürüklenmesini de yakalar (bkz. pushPendingTrendyolPrices).
+  if (!names.has("trendyol_stock_synced")) {
+    await db.prepare("ALTER TABLE products ADD COLUMN trendyol_stock_synced INTEGER").run();
+  }
   // Site fiyatından (products.price) bağımsız, sadece Trendyol'a giden
   // dinamik fiyat - bkz. lib/trendyol/pricing.ts. Burada da (pricing.ts'in
   // kendi ensure fonksiyonuna ek olarak, döngüsel import olmadan) garanti
