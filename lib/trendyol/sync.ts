@@ -611,8 +611,8 @@ export async function pushStockAndPriceToTrendyol(
   ]);
 
   await db
-    .prepare("UPDATE products SET trendyol_price_synced = ? WHERE id = ?")
-    .bind(salePrice, productId)
+    .prepare("UPDATE products SET trendyol_price_synced = ?, trendyol_stock_synced = ? WHERE id = ?")
+    .bind(salePrice, product.stock, productId)
     .run();
 }
 
@@ -640,14 +640,20 @@ export async function pushPendingTrendyolPrices(
   // Hedef fiyat trendyol_override_price varsa odur, yoksa products.price -
   // pushStockAndPriceToTrendyol'un gerçekte gönderdiğiyle aynı öncelik
   // (yoksa override'lı ürünler trendyol_price_synced hep "farklı" görünüp
-  // sonsuza kadar "pending" sayılırdı).
+  // sonsuza kadar "pending" sayılırdı). trendyol_stock_synced kontrolü de
+  // AYNI şekilde eklendi - sadece stok değişip fiyat aynı kalan ürünler
+  // (ör. tedarikçi stoğu tükenmiş bir ürün) eskiden bu "pending" sorgusuna
+  // hiç girmiyordu (bkz. ensureTrendyolColumns'taki not, 315 ürün örneği).
   const pending = await db
     .prepare(
       `SELECT id, stock, trendyol_barcode AS trendyolBarcode,
               COALESCE(trendyol_override_price, price) AS salePrice
        FROM products
        WHERE trendyol_barcode IS NOT NULL
-         AND (trendyol_price_synced IS NULL OR trendyol_price_synced != COALESCE(trendyol_override_price, price))
+         AND (
+           trendyol_price_synced IS NULL OR trendyol_price_synced != COALESCE(trendyol_override_price, price)
+           OR trendyol_stock_synced IS NULL OR trendyol_stock_synced != stock
+         )
        ORDER BY id LIMIT ?`,
     )
     .bind(batchSize)
@@ -658,7 +664,10 @@ export async function pushPendingTrendyolPrices(
       .prepare(
         `SELECT COUNT(*) AS c FROM products
          WHERE trendyol_barcode IS NOT NULL
-           AND (trendyol_price_synced IS NULL OR trendyol_price_synced != COALESCE(trendyol_override_price, price))`,
+           AND (
+             trendyol_price_synced IS NULL OR trendyol_price_synced != COALESCE(trendyol_override_price, price)
+             OR trendyol_stock_synced IS NULL OR trendyol_stock_synced != stock
+           )`,
       )
       .first<{ c: number }>();
     return row?.c ?? 0;
@@ -686,8 +695,10 @@ export async function pushPendingTrendyolPrices(
     };
   }
 
-  const updateStmt = db.prepare("UPDATE products SET trendyol_price_synced = ? WHERE id = ?");
-  await db.batch(pending.results.map((row) => updateStmt.bind(row.salePrice, row.id)));
+  const updateStmt = db.prepare(
+    "UPDATE products SET trendyol_price_synced = ?, trendyol_stock_synced = ? WHERE id = ?",
+  );
+  await db.batch(pending.results.map((row) => updateStmt.bind(row.salePrice, row.stock, row.id)));
 
   return { pushed: pending.results.length, failed: 0, remaining: await remainingCount(), errors: [] };
 }
