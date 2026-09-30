@@ -51,6 +51,8 @@ async function sitCall(
       authorization: buildHepsiburadaAuthHeader(merchantId, secretKey),
       "user-agent": buildHepsiburadaUserAgent(integratorName),
       accept: "application/json",
+      "accept-language": "tr-TR,tr;q=0.9",
+      "accept-encoding": "gzip, deflate, br",
       ...(options.body !== undefined ? { "content-type": "application/json" } : {}),
     },
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
