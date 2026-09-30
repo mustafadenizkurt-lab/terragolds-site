@@ -233,15 +233,8 @@ export default function StoreSubpageHeader({
 
   const submitSearch = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const firstResult = searchResults[0];
-    if (firstResult) {
-      selectSearchProduct(firstResult);
-      return;
-    }
     const query = searchQuery.trim();
-    window.location.href = query
-      ? `/#shop?search=${encodeURIComponent(query)}`
-      : "/#shop";
+    window.location.href = query ? `/arama?q=${encodeURIComponent(query)}` : "/#shop";
   };
 
   const whatsapp = formatWhatsappContact(
@@ -397,6 +390,16 @@ export default function StoreSubpageHeader({
                 </div>
               )}
             </div>
+
+            {searchQuery.trim() && (
+              <a
+                className="search-view-all"
+                href={`/arama?q=${encodeURIComponent(searchQuery.trim())}`}
+                onClick={() => setSearchOpen(false)}
+              >
+                {ui.viewAllResults}
+              </a>
+            )}
 
             <a
               className="search-support"

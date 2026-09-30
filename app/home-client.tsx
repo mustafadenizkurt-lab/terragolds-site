@@ -1104,8 +1104,8 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
             role="search"
             onSubmit={(event) => {
               event.preventDefault();
-              const firstResult = searchResults[0];
-              if (firstResult) selectSearchProduct(firstResult);
+              const query = searchQuery.trim();
+              if (query) window.location.href = `/arama?q=${encodeURIComponent(query)}`;
             }}
           >
             <span className="header-search-icon" aria-hidden="true">
@@ -1212,6 +1212,16 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
                   </div>
                 )}
               </div>
+
+              {searchQuery.trim() && (
+                <a
+                  className="search-view-all"
+                  href={`/arama?q=${encodeURIComponent(searchQuery.trim())}`}
+                  onClick={() => setSearchOpen(false)}
+                >
+                  {ui.viewAllResults}
+                </a>
+              )}
 
               <a
                 className="search-support"
