@@ -4564,6 +4564,18 @@ footer {
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
+.search-view-all {
+  display: block;
+  margin-top: 10px;
+  padding: 11px;
+  text-align: center;
+  border: 1px solid var(--line);
+  color: var(--gold-dark);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
 .search-support {
   margin-top: 12px;
   display: flex;
