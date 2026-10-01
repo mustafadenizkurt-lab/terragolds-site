@@ -7,6 +7,11 @@ export type HepsiburadaCredentials = {
   integratorName: string;
   // "test" ise Hepsiburada test (SIT) sunucularına gidilir, aksi halde canlı.
   environment?: string;
+  // Hepsiburada'nın sipariş/listeleme sunucuları Cloudflare Workers'tan gelen
+  // istekleri 520 ile engellediği için (bkz. http-utils.ts hepsiburadaRelayFetch),
+  // yapılandırılmışsa istekler bu Cloudflare dışı köprü servisi üzerinden gider.
+  proxyUrl?: string;
+  proxySecret?: string;
 };
 
 // Öncelik admin panelinden (Ayarlar > Hepsiburada) girilip D1'de şifreli
@@ -25,6 +30,8 @@ export async function getHepsiburadaCredentials(): Promise<HepsiburadaCredential
       secretKey: stored.secretKey,
       integratorName: stored.integratorName,
       environment: stored.environment,
+      proxyUrl: stored.proxyUrl,
+      proxySecret: stored.proxySecret,
     };
   }
   const integratorName = getRequiredEnv("HEPSIBURADA_INTEGRATOR_NAME");

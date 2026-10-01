@@ -1,5 +1,5 @@
 import { getHepsiburadaCredentials, buildHepsiburadaAuthHeader, buildHepsiburadaUserAgent } from "./auth";
-import { applyHepsiburadaEnvironment } from "./http-utils";
+import { applyHepsiburadaEnvironment, hepsiburadaRelayFetch } from "./http-utils";
 
 // Hepsiburada Marketplace (Merchant Panel Open Platform) entegrasyonu üç
 // ayrı host üzerinden çalışıyor - Trendyol'un tek base URL'inin aksine:
@@ -28,17 +28,22 @@ async function hepsiburadaFetch<T>(
   path: string,
   init: { method?: string; body?: unknown } = {},
 ): Promise<T> {
-  const { merchantId, secretKey, integratorName, environment } = await getHepsiburadaCredentials();
+  const { merchantId, secretKey, integratorName, environment, proxyUrl, proxySecret } =
+    await getHepsiburadaCredentials();
 
-  const response = await fetch(`${applyHepsiburadaEnvironment(baseUrl, environment)}${path}`, {
-    method: init.method ?? "GET",
-    headers: {
-      "content-type": "application/json",
-      authorization: buildHepsiburadaAuthHeader(merchantId, secretKey),
-      "user-agent": buildHepsiburadaUserAgent(integratorName),
+  const response = await hepsiburadaRelayFetch(
+    `${applyHepsiburadaEnvironment(baseUrl, environment)}${path}`,
+    {
+      method: init.method ?? "GET",
+      headers: {
+        "content-type": "application/json",
+        authorization: buildHepsiburadaAuthHeader(merchantId, secretKey),
+        "user-agent": buildHepsiburadaUserAgent(integratorName),
+      },
+      body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
     },
-    body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
-  });
+    proxyUrl && proxySecret ? { url: proxyUrl, secret: proxySecret } : undefined,
+  );
 
   if (!response.ok) {
     let message = await response.text();

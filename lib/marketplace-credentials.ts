@@ -105,6 +105,20 @@ export const marketplaceCredentialDefinitions: Record<
         placeholder: "test yazarsanız Hepsiburada test (SIT) sunucularına gidilir; boş = canlı",
         required: false,
       },
+      {
+        key: "proxyUrl",
+        label: "Köprü Servisi URL (opsiyonel)",
+        secret: false,
+        placeholder: "https://... (Cloudflare 520 engeli için Render vb. köprü servisinin adresi, boş = doğrudan bağlan)",
+        required: false,
+      },
+      {
+        key: "proxySecret",
+        label: "Köprü Servisi Anahtarı (opsiyonel)",
+        secret: true,
+        placeholder: "Köprü servisindeki PROXY_SECRET değeri",
+        required: false,
+      },
     ],
   },
   n11: {

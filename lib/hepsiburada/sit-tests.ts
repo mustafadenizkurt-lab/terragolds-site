@@ -5,7 +5,7 @@ import {
   HEPSIBURADA_ORDER_API_BASE,
   HEPSIBURADA_PRODUCT_API_BASE,
 } from "./client";
-import { applyHepsiburadaEnvironment } from "./http-utils";
+import { applyHepsiburadaEnvironment, hepsiburadaRelayFetch } from "./http-utils";
 
 // Hepsiburada test (SIT) sürecinin resmi adımlarını (katalog, listeleme,
 // sipariş) çalıştıran ham çağrılar. Uç noktalar developers.hepsiburada.com
@@ -33,7 +33,8 @@ async function sitCall(
   path: string,
   options: { query?: Record<string, string | number | undefined>; body?: unknown } = {},
 ): Promise<SitCallResult> {
-  const { merchantId, secretKey, integratorName, environment } = await getHepsiburadaCredentials();
+  const { merchantId, secretKey, integratorName, environment, proxyUrl, proxySecret } =
+    await getHepsiburadaCredentials();
   if (environment?.trim().toLowerCase() !== "test") {
     throw new Error("SIT test adımları yalnızca ortam 'test' iken çalışır (canlı mağazaya istek atılmaz).");
   }
@@ -45,18 +46,22 @@ async function sitCall(
   const url = `${applyHepsiburadaEnvironment(KIND_BASE[kind], environment)}${resolvedPath}${
     query.toString() ? `?${query.toString()}` : ""
   }`;
-  const response = await fetch(url, {
-    method,
-    headers: {
-      authorization: buildHepsiburadaAuthHeader(merchantId, secretKey),
-      "user-agent": buildHepsiburadaUserAgent(integratorName),
-      accept: "application/json",
-      "accept-language": "tr-TR,tr;q=0.9",
-      "accept-encoding": "gzip, deflate, br",
-      ...(options.body !== undefined ? { "content-type": "application/json" } : {}),
+  const response = await hepsiburadaRelayFetch(
+    url,
+    {
+      method,
+      headers: {
+        authorization: buildHepsiburadaAuthHeader(merchantId, secretKey),
+        "user-agent": buildHepsiburadaUserAgent(integratorName),
+        accept: "application/json",
+        "accept-language": "tr-TR,tr;q=0.9",
+        "accept-encoding": "gzip, deflate, br",
+        ...(options.body !== undefined ? { "content-type": "application/json" } : {}),
+      },
+      body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
     },
-    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
-  });
+    proxyUrl && proxySecret ? { url: proxyUrl, secret: proxySecret } : undefined,
+  );
   const text = await response.text();
   let body: unknown = text.slice(0, 4000);
   try {
