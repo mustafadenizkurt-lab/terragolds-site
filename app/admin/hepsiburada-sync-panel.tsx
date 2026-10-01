@@ -32,6 +32,14 @@ type ReconcileResult = {
   errors: string[];
 };
 
+type SitResult = {
+  step: string;
+  method: string;
+  url: string;
+  status: number;
+  body: unknown;
+};
+
 // Kimlik bilgileri bu ekranın en üstündeki MarketplaceCredentialsPanel'den
 // girilip D1'de şifreli saklanıyor - wrangler CLI gerekmiyor. Onay/gerçek
 // API bilgileri girilip "Senkronu etkinleştir" işaretlenmeden buradaki
@@ -57,6 +65,11 @@ export default function HepsiburadaSyncPanel({
   const [reconcileBusy, setReconcileBusy] = useState(false);
   const [reconcileError, setReconcileError] = useState("");
   const [lastReconcile, setLastReconcile] = useState<ReconcileResult | null>(null);
+
+  const [sitStep, setSitStep] = useState("order.list-paid");
+  const [sitBusy, setSitBusy] = useState(false);
+  const [sitError, setSitError] = useState("");
+  const [sitResult, setSitResult] = useState<SitResult | null>(null);
 
   const reconcile = async () => {
     setReconcileBusy(true);
@@ -134,6 +147,27 @@ export default function HepsiburadaSyncPanel({
       );
     } finally {
       setPriceBusy(false);
+    }
+  };
+
+  const runSit = async () => {
+    setSitBusy(true);
+    setSitError("");
+    try {
+      const response = await fetch("/api/admin/hepsiburada/sit-test", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ step: sitStep }),
+        cache: "no-store",
+      });
+      const body = (await response.json()) as SitResult & { error?: string };
+      if (!response.ok) throw new Error(body.error ?? "SIT adımı çalıştırılamadı.");
+      setSitResult(body);
+      onNotice(`SIT "${body.step}": HTTP ${body.status}`);
+    } catch (sitFail) {
+      setSitError(sitFail instanceof Error ? sitFail.message : "SIT adımı çalıştırılamadı.");
+    } finally {
+      setSitBusy(false);
     }
   };
 
@@ -359,6 +393,65 @@ export default function HepsiburadaSyncPanel({
             </tbody>
           </table>
         </div>
+      )}
+
+      <div className="admin-panel-heading" style={{ marginTop: 32 }}>
+        <div>
+          <h2>SIT testi (520 kontrolü)</h2>
+          <p>
+            Hepsiburada test (SIT) adımlarını ham olarak çalıştırır - D1&apos;e
+            hiçbir şey yazmaz. Ortam &quot;test&quot; değilse çalışmaz.
+            HEPSIBURADA_PROXY_URL/HEPSIBURADA_PROXY_SECRET tanımlıysa istek
+            vekil (Render) üzerinden gidiyor demektir - sipariş uç
+            noktalarının (order.list-paid, order.list-packages) artık 520
+            yerine gerçek bir durum kodu dönüp dönmediğini burada görün.
+          </p>
+        </div>
+      </div>
+      <label className="admin-field" style={{ maxWidth: 320 }}>
+        <span>SIT adımı</span>
+        <input
+          type="text"
+          value={sitStep}
+          onChange={(event) => setSitStep(event.target.value)}
+        />
+      </label>
+      <button
+        className="admin-primary-button"
+        type="button"
+        disabled={sitBusy}
+        onClick={() => void runSit()}
+        style={{ marginTop: 12 }}
+      >
+        {sitBusy ? "Çalıştırılıyor…" : "Çalıştır"}
+      </button>
+      {sitError && (
+        <div className="admin-inline-error" role="alert">
+          {sitError}
+        </div>
+      )}
+      {sitResult && (
+        <div className="admin-bulk-toolbar">
+          <strong>HTTP {sitResult.status}</strong>
+          <span>{sitResult.method}</span>
+          <span>{sitResult.url}</span>
+        </div>
+      )}
+      {sitResult && (
+        <pre
+          style={{
+            maxHeight: 320,
+            overflow: "auto",
+            background: "#111",
+            color: "#eee",
+            padding: 12,
+            fontSize: 12,
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-word",
+          }}
+        >
+          {JSON.stringify(sitResult.body, null, 2)}
+        </pre>
       )}
       </div>
     </div>
