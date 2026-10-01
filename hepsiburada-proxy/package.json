@@ -1,0 +1,13 @@
+{
+  "name": "hepsiburada-proxy",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Hepsiburada'nın bazı uç noktalarına (özellikle sipariş/oms-external) Cloudflare Workers'tan atılan isteklerin 520 almasını önlemek için, normal bir sunucu IP'sinden isteği yeniden atan ince bir vekil (proxy).",
+  "main": "server.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server.js"
+  }
+}
