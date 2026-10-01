@@ -56,39 +56,8 @@ export function assertOwnIntegrator(name: string): void {
   }
 }
 
-export type HepsiburadaProxyConfig = { url: string; secret: string } | undefined;
-
-// Hepsiburada'nın sipariş/listeleme sunucuları (oms-external-sit,
-// listing-external-sit) Cloudflare Workers'tan (bizim barınma ortamımız)
-// gelen istekleri Cloudflare 520 ile engelliyor - aynı istek normal bir
-// bağlantıdan (curl, Hepsiburada'nın kendi testi) sorunsuz çalışıyor. Bu
-// fonksiyon, yapılandırılmışsa isteği Cloudflare dışı bir sunucuda (Render
-// vb.) çalışan köprü servisine yönlendirir; o servis isteği olduğu gibi
-// Hepsiburada'ya iletip ham cevabı geri döner. Köprü yapılandırılmamışsa
-// normal fetch'e düşer (davranış değişmez).
-export async function hepsiburadaRelayFetch(
-  url: string,
-  init: { method?: string; headers?: Record<string, string>; body?: string },
-  proxy?: HepsiburadaProxyConfig,
-): Promise<Response> {
-  if (!proxy?.url || !proxy.secret) return fetch(url, init);
-
-  const relayResponse = await fetch(`${proxy.url.replace(/\/$/, "")}/relay`, {
-    method: "POST",
-    headers: { "content-type": "application/json", "x-proxy-secret": proxy.secret },
-    body: JSON.stringify({ method: init.method ?? "GET", url, headers: init.headers ?? {}, body: init.body }),
-  });
-  if (!relayResponse.ok) {
-    throw new Error(`Hepsiburada köprü servisi hatası: HTTP ${relayResponse.status}`);
-  }
-  const data = (await relayResponse.json()) as { status: number; headers: Record<string, string>; body: string };
-  // Köprü servisi gövdeyi zaten çözülmüş (decompressed) metin olarak
-  // döndürüyor - content-encoding/content-length gibi header'lar olduğu
-  // gibi iletilirse burada ikinci kez çözülmeye çalışılıp bozulabilir.
-  const safeHeaders = Object.fromEntries(
-    Object.entries(data.headers).filter(
-      ([key]) => !["content-encoding", "content-length", "transfer-encoding"].includes(key.toLowerCase()),
-    ),
-  );
-  return new Response(data.body, { status: data.status, headers: safeHeaders });
-}
+// NOT: Hepsiburada sipariş/listeleme sunucularının Cloudflare 520 engelini
+// aşan köprü/vekil mantığı burada değil lib/hepsiburada/client.ts'teki
+// hepsiburadaRawFetch'te - orada POST /forward ile hedef host/method
+// x-target-url/x-target-method header'larında, gövde ve diğer header'lar
+// olduğu gibi (JSON'a sarmadan) iletiliyor; bkz. hepsiburada-proxy/server.js.

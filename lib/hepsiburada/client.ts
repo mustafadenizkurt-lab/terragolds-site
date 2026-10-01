@@ -1,5 +1,6 @@
 import { getHepsiburadaCredentials, buildHepsiburadaAuthHeader, buildHepsiburadaUserAgent } from "./auth";
-import { applyHepsiburadaEnvironment, hepsiburadaRelayFetch } from "./http-utils";
+import { applyHepsiburadaEnvironment } from "./http-utils";
+import { getOptionalEnv } from "../runtime-env";
 
 // Hepsiburada Marketplace (Merchant Panel Open Platform) entegrasyonu üç
 // ayrı host üzerinden çalışıyor - Trendyol'un tek base URL'inin aksine:
@@ -18,6 +19,41 @@ type HepsiburadaErrorPayload = {
   errors?: { message?: string; errorCode?: string }[];
 };
 
+// Cloudflare Workers'tan Hepsiburada'nın (kendisi de Cloudflare arkasında)
+// bazı uç noktalarına - özellikle sipariş/oms-external - atılan istekler 520
+// ile dönüyor (bkz. sit-tests.ts'teki "sunucu 520 olduğu sürece
+// doğrulanamaz" notu); gerçekçi header eklemek tek başına çözmedi. Bilinen
+// bir Cloudflare Workers -> Cloudflare origin bot-koruması çakışması.
+// HEPSIBURADA_PROXY_URL/HEPSIBURADA_PROXY_SECRET tanımlıysa (bkz.
+// hepsiburada-proxy/ - Render'da barındırılan, normal bir sunucu IP'sinden
+// isteği ATAN basit bir vekil), istek doğrudan değil bu vekil üzerinden
+// gönderilir: orijinal URL/method x-target-url/x-target-method header'larına
+// konur, geri kalan her şey (auth, body, diğer header'lar) olduğu gibi
+// vekile taşınır. İkisi de tanımlı değilse eskisi gibi doğrudan fetch edilir.
+export async function hepsiburadaRawFetch(
+  url: string,
+  init: RequestInit,
+  proxyOverride?: { url?: string; secret?: string },
+): Promise<Response> {
+  // Önce admin panelinden (Hepsiburada ayarları, D1'de şifreli saklanan
+  // Köprü Servisi URL/Anahtarı) gelen değer, yoksa Worker secret'ı
+  // (wrangler secret put HEPSIBURADA_PROXY_URL/HEPSIBURADA_PROXY_SECRET) -
+  // admin panelinden kaydetmek bir deploy gerektirmediği için önceliklidir.
+  const proxyUrl = proxyOverride?.url || getOptionalEnv("HEPSIBURADA_PROXY_URL");
+  const proxySecret = proxyOverride?.secret || getOptionalEnv("HEPSIBURADA_PROXY_SECRET");
+  if (!proxyUrl || !proxySecret) return fetch(url, init);
+
+  const headers = new Headers(init.headers);
+  headers.set("x-proxy-secret", proxySecret);
+  headers.set("x-target-url", url);
+  headers.set("x-target-method", init.method ?? "GET");
+  return fetch(`${proxyUrl.replace(/\/+$/, "")}/forward`, {
+    method: "POST",
+    headers,
+    body: init.body as BodyInit | null | undefined,
+  });
+}
+
 // NOT: HEPSIBURADA_MERCHANT_ID/USERNAME/PASSWORD henüz .env'de/Worker
 // secret olarak tanımlı değil (onay bekleniyor) - bu yüzden bu dosyadaki
 // hiçbir fonksiyon şu an gerçekten çalıştırılamaz; her çağrı
@@ -31,7 +67,7 @@ async function hepsiburadaFetch<T>(
   const { merchantId, secretKey, integratorName, environment, proxyUrl, proxySecret } =
     await getHepsiburadaCredentials();
 
-  const response = await hepsiburadaRelayFetch(
+  const response = await hepsiburadaRawFetch(
     `${applyHepsiburadaEnvironment(baseUrl, environment)}${path}`,
     {
       method: init.method ?? "GET",
@@ -42,7 +78,7 @@ async function hepsiburadaFetch<T>(
       },
       body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
     },
-    proxyUrl && proxySecret ? { url: proxyUrl, secret: proxySecret } : undefined,
+    { url: proxyUrl, secret: proxySecret },
   );
 
   if (!response.ok) {
@@ -288,21 +324,26 @@ export async function importProductsFile(
   path = "/product/api/products/import",
   userAgentOverride?: string,
 ): Promise<{ status: number; body: string; headers: Record<string, string> }> {
-  const { merchantId, secretKey, integratorName, environment } = await getHepsiburadaCredentials();
+  const { merchantId, secretKey, integratorName, environment, proxyUrl, proxySecret } =
+    await getHepsiburadaCredentials();
   const form = new FormData();
   form.append(
     "file",
     new Blob([JSON.stringify(items)], { type: "application/json" }),
     "integrator.json",
   );
-  const response = await fetch(`${applyHepsiburadaEnvironment(HEPSIBURADA_PRODUCT_API_BASE, environment)}${path}`, {
-    method: "POST",
-    headers: {
-      authorization: buildHepsiburadaAuthHeader(merchantId, secretKey),
-      "user-agent": userAgentOverride ?? buildHepsiburadaUserAgent(integratorName),
+  const response = await hepsiburadaRawFetch(
+    `${applyHepsiburadaEnvironment(HEPSIBURADA_PRODUCT_API_BASE, environment)}${path}`,
+    {
+      method: "POST",
+      headers: {
+        authorization: buildHepsiburadaAuthHeader(merchantId, secretKey),
+        "user-agent": userAgentOverride ?? buildHepsiburadaUserAgent(integratorName),
+      },
+      body: form,
     },
-    body: form,
-  });
+    { url: proxyUrl, secret: proxySecret },
+  );
   // Destek talebi için izlenebilirlik: yanıt başlıkları (X-Request-Id vb.).
   const headers: Record<string, string> = {};
   response.headers.forEach((value, key) => {

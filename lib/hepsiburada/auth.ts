@@ -8,7 +8,7 @@ export type HepsiburadaCredentials = {
   // "test" ise Hepsiburada test (SIT) sunucularına gidilir, aksi halde canlı.
   environment?: string;
   // Hepsiburada'nın sipariş/listeleme sunucuları Cloudflare Workers'tan gelen
-  // istekleri 520 ile engellediği için (bkz. http-utils.ts hepsiburadaRelayFetch),
+  // istekleri 520 ile engellediği için (bkz. client.ts hepsiburadaRawFetch),
   // yapılandırılmışsa istekler bu Cloudflare dışı köprü servisi üzerinden gider.
   proxyUrl?: string;
   proxySecret?: string;

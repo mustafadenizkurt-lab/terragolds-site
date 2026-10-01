@@ -1,11 +1,12 @@
 import { getHepsiburadaCredentials, buildHepsiburadaAuthHeader, buildHepsiburadaUserAgent } from "./auth";
 import {
   importProductsFile,
+  hepsiburadaRawFetch,
   HEPSIBURADA_LISTING_API_BASE,
   HEPSIBURADA_ORDER_API_BASE,
   HEPSIBURADA_PRODUCT_API_BASE,
 } from "./client";
-import { applyHepsiburadaEnvironment, hepsiburadaRelayFetch } from "./http-utils";
+import { applyHepsiburadaEnvironment } from "./http-utils";
 
 // Hepsiburada test (SIT) sürecinin resmi adımlarını (katalog, listeleme,
 // sipariş) çalıştıran ham çağrılar. Uç noktalar developers.hepsiburada.com
@@ -46,7 +47,7 @@ async function sitCall(
   const url = `${applyHepsiburadaEnvironment(KIND_BASE[kind], environment)}${resolvedPath}${
     query.toString() ? `?${query.toString()}` : ""
   }`;
-  const response = await hepsiburadaRelayFetch(
+  const response = await hepsiburadaRawFetch(
     url,
     {
       method,
@@ -60,7 +61,7 @@ async function sitCall(
       },
       body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
     },
-    proxyUrl && proxySecret ? { url: proxyUrl, secret: proxySecret } : undefined,
+    { url: proxyUrl, secret: proxySecret },
   );
   const text = await response.text();
   let body: unknown = text.slice(0, 4000);
