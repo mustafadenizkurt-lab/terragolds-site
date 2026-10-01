@@ -105,6 +105,13 @@ const server = http.createServer(async (req, res) => {
   const hasBody = targetMethod !== "GET" && targetMethod !== "HEAD";
   const body = hasBody ? await readRequestBody(req) : undefined;
 
+  // Hepsiburada destek, bulut platformlarının User-Agent header'ını
+  // ezdiğini iddia etti - bunu doğrulamak için gerçekten gönderilen
+  // header'ları logluyoruz (Render Logs sekmesinden görülebilir).
+  console.log(
+    `[forward] -> ${targetMethod} ${targetUrl.hostname}${targetUrl.pathname} user-agent=${JSON.stringify(forwardHeaders["user-agent"])}`,
+  );
+
   let upstream;
   try {
     upstream = await fetch(targetUrl, {
@@ -124,6 +131,7 @@ const server = http.createServer(async (req, res) => {
     if (STRIP_RESPONSE_HEADERS.has(key.toLowerCase())) return;
     responseHeaders[key] = value;
   });
+  console.log(`[forward] <- ${upstream.status} cf-ray=${upstream.headers.get("cf-ray")}`);
   res.writeHead(upstream.status, responseHeaders);
   res.end(responseBuffer);
 });
