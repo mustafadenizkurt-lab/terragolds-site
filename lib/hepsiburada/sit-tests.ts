@@ -1,6 +1,7 @@
 import { getHepsiburadaCredentials, buildHepsiburadaAuthHeader, buildHepsiburadaUserAgent } from "./auth";
 import {
   importProductsFile,
+  hepsiburadaRawFetch,
   HEPSIBURADA_LISTING_API_BASE,
   HEPSIBURADA_ORDER_API_BASE,
   HEPSIBURADA_PRODUCT_API_BASE,
@@ -45,7 +46,7 @@ async function sitCall(
   const url = `${applyHepsiburadaEnvironment(KIND_BASE[kind], environment)}${resolvedPath}${
     query.toString() ? `?${query.toString()}` : ""
   }`;
-  const response = await fetch(url, {
+  const response = await hepsiburadaRawFetch(url, {
     method,
     headers: {
       authorization: buildHepsiburadaAuthHeader(merchantId, secretKey),

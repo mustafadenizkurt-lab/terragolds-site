@@ -39,6 +39,15 @@ type RuntimeBindings = {
   HEPSIBURADA_MERCHANT_ID?: string;
   HEPSIBURADA_SECRET_KEY?: string;
   HEPSIBURADA_INTEGRATOR_NAME?: string;
+  // Cloudflare Workers'tan Hepsiburada'nın (kendisi de Cloudflare arkasında)
+  // bazı uç noktalarına, özellikle sipariş (oms-external), atılan istekler
+  // 520 ile dönüyor - bilinen bir Cloudflare Workers -> Cloudflare origin
+  // çakışması, gerçekçi header eklemek tek başına çözmedi. İkisi de
+  // tanımlıysa (bkz. hepsiburada-proxy/) istekler normal bir sunucu
+  // IP'sinden atan bu vekil üzerinden gönderilir - bkz.
+  // lib/hepsiburada/client.ts'teki hepsiburadaRawFetch.
+  HEPSIBURADA_PROXY_URL?: string;
+  HEPSIBURADA_PROXY_SECRET?: string;
 };
 
 function runtimeBindings() {
