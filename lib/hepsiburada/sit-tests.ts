@@ -193,6 +193,47 @@ export async function runSitStep(
       return sitCall(step, "order", "GET", "/packages/merchantid/{merchantId}", {
         query: { offset: 0, limit: 10 },
       });
+    case "order.create-test": {
+      // Destek: canlıya geçmeden önce test ortamında bir test siparişi
+      // oluşturup API ile listelenmesi gerekiyor. Dokümanda tam URL
+      // verilmemiş - "Ödemesi Tamamlanmış Siparişleri Listeleme" ile aynı
+      // kaynağa (POST /orders/merchantid/{merchantId}) REST deseniyle
+      // deniyoruz. Sku, daha önce listing testlerinde kullandığımız
+      // Hepsiburada'nın kendi SIT örnek ürünü (HBV000010AOXN).
+      const now = new Date().toISOString().replace(/\.\d+Z$/, "");
+      const orderNumber = String(params.orderNumber ?? `TGTEST${Date.now()}`);
+      return sitCall(step, "order", "POST", "/orders/merchantid/{merchantId}", {
+        body: {
+          OrderNumber: orderNumber,
+          OrderDate: now,
+          Customer: { CustomerId: crypto.randomUUID(), Name: "Terragolds Test" },
+          DeliveryAddress: {
+            AddressId: crypto.randomUUID(),
+            Name: "Terragolds Test",
+            AddressDetail: "Test Adres No:1",
+            Email: "test@terragolds.com",
+            CountryCode: "TR",
+            PhoneNumber: "905000000000",
+            AlternatePhoneNumber: "905000000000",
+            Town: "Kadıköy",
+            District: "Merkez",
+            City: "İstanbul",
+          },
+          LineItems: [
+            {
+              Sku: String(params.sku ?? "HBV000010AOXN"),
+              MerchantId: merchantId,
+              Quantity: 1,
+              Price: { Amount: 25.5, Currency: "TRY" },
+              Vat: 0,
+              TotalPrice: { Amount: 25.5, Currency: "TRY" },
+              CargoCompanyId: 1,
+              DeliveryOptionId: 1,
+            },
+          ],
+        },
+      });
+    }
     default:
       throw new Error(`Bilinmeyen SIT adımı: ${step}`);
   }
