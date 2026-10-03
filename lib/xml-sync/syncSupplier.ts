@@ -13,6 +13,7 @@ import { pushStockAndPriceToN11 } from "../n11/sync";
 import { loadExcludedExternalIds } from "./excluded-products";
 import { ensureImageLockColumn } from "../product-image-lock";
 import { ensurePriceLockColumn, costWithVat } from "../product-price-lock";
+import { correctMaterialWording } from "./material-correction";
 
 export type SupplierMapping = {
   externalId?: string;
@@ -326,7 +327,7 @@ export function mapRecord(record: XmlRecord, mapping: SupplierMapping, markup: n
 
   return {
     externalId: readMappedValue(record, mapping.externalId),
-    name: readMappedValue(record, mapping.name),
+    name: correctMaterialWording(readMappedValue(record, mapping.name)),
     stone: readMappedValue(record, mapping.stone),
     category: readMappedValue(record, mapping.category) || "Takı",
     brand: readMappedValue(record, mapping.brand),
@@ -342,7 +343,7 @@ export function mapRecord(record: XmlRecord, mapping: SupplierMapping, markup: n
     stock: Math.max(0, Number.parseInt(readMappedValue(record, mapping.stock) || "0", 10) || 0),
     image: readMappedValue(record, mapping.image),
     hoverImage: readMappedValue(record, mapping.hoverImage) || null,
-    description: readMappedValue(record, mapping.description),
+    description: correctMaterialWording(readMappedValue(record, mapping.description)),
   };
 }
 
