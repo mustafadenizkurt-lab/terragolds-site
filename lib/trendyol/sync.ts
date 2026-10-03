@@ -1,4 +1,4 @@
-import { ensureTrendyolColumns, createProduct, updateProduct, updateProductImages, updateStockAndPrice, getProductByBarcode, getBatchRequestResult, type TrendyolProduct, type TrendyolProductAttribute } from "./client";
+import { ensureTrendyolColumns, createProduct, updateProduct, updateProductImages, updateProductTitles, updateStockAndPrice, getProductByBarcode, getBatchRequestResult, type TrendyolProduct, type TrendyolProductAttribute } from "./client";
 import { trendyolListPriceFor } from "./pricing-formula";
 import { toAbsoluteImageUrl } from "../image-url";
 import { groupForCategory } from "../category-groups";
@@ -507,6 +507,55 @@ export async function refreshTrendyolImages(db: D1Database): Promise<TrendyolIma
         return { contentId: product.contentId, images: imageUrls.map((url) => ({ url })) };
       });
       const { batchRequestId } = await updateProductImages(items);
+      batches.push({ batchRequestId, itemCount: chunk.length });
+      updated += chunk.length;
+    } catch (error) {
+      return {
+        updated,
+        remaining: pending.results.length - updated,
+        batches,
+        error: error instanceof Error ? error.message : "bilinmeyen hata",
+      };
+    }
+  }
+
+  return { updated, remaining: 0, batches, error: null };
+}
+
+export type TrendyolTitleRefreshResult = {
+  updated: number;
+  remaining: number;
+  batches: { batchRequestId: string; itemCount: number }[];
+  error: string | null;
+};
+
+// Tedarikçinin pirinçten çeliğe geçmesiyle düzeltilen ürün adlarını (bkz.
+// lib/xml-sync/material-correction.ts) Trendyol'a göndermek için eklendi -
+// onaylı/canlı ürünlerde isim güncellemesi updateProduct() (v2/products,
+// barcode ile) ile YAPILAMAZ (bkz. client.ts'teki updateProduct yorumu, 404
+// döner), content-bulk-update + contentId gerekiyor - refreshTrendyolImages
+// ile aynı prensip, sadece images yerine title gönderiyor. trendyol_content_id
+// boş olan ürünler atlanıyor (önce backfillTrendyolContentIds() gerekir).
+export async function refreshTrendyolTitles(db: D1Database): Promise<TrendyolTitleRefreshResult> {
+  await ensureTrendyolColumns(db);
+
+  const pending = await db
+    .prepare(
+      `SELECT id, name, trendyol_content_id AS contentId
+       FROM products
+       WHERE trendyol_content_id IS NOT NULL
+       ORDER BY id`,
+    )
+    .all<{ id: number; name: string; contentId: number }>();
+
+  const batches: { batchRequestId: string; itemCount: number }[] = [];
+  let updated = 0;
+
+  for (let offset = 0; offset < pending.results.length; offset += IMAGE_REFRESH_BATCH_SIZE) {
+    const chunk = pending.results.slice(offset, offset + IMAGE_REFRESH_BATCH_SIZE);
+    try {
+      const items = chunk.map((product) => ({ contentId: product.contentId, title: product.name }));
+      const { batchRequestId } = await updateProductTitles(items);
       batches.push({ batchRequestId, itemCount: chunk.length });
       updated += chunk.length;
     } catch (error) {
