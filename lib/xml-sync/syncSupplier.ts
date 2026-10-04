@@ -1,4 +1,3 @@
-import { calculatePrice } from "./calculatePrice";
 import { fetchFeed } from "./fetchFeed";
 import { parseFeed, readMappedValue, type XmlRecord } from "./parseFeed";
 import { matchesFilters, type ImportFilters } from "../xml-import-filters";
@@ -24,10 +23,11 @@ export type SupplierMapping = {
   price?: string;
   /**
    * Optional path to a supplier-suggested consumer/retail price (e.g. a
-   * feed's "son_kullanici" field). When mapped and present, this is used
-   * directly as the sell price instead of `price` (wholesale cost) run
-   * through calculatePrice() - the supplier's own recommendation, not our
-   * markup formula. `price` is still read and stored as `cost` either way.
+   * feed's "son_kullanici" field). NOT used for pricing (see mapRecord's
+   * price calculation) - the supplier's suggestion didn't cover our real
+   * landed cost (VAT + per-order shipping fee), so site price is always
+   * computed from `cost` with our own fixed formula. Kept in the mapping
+   * type only so existing supplier configs with this field set don't break.
    */
   retailPrice?: string;
   stock?: string;
@@ -154,7 +154,7 @@ export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<
     // the feed entirely means the supplier has actually discontinued it.
     const seenExternalIds = new Set<string>();
     for (const record of records) {
-      const product = mapRecord(record, mapping, supplier.defaultMarkupPercent);
+      const product = mapRecord(record, mapping);
       if (product.externalId) seenExternalIds.add(product.externalId);
       if (!product.externalId || !product.name || product.price === null) {
         skipped += 1;
@@ -316,14 +316,18 @@ async function uniqueDescriptionForNewProduct(product: {
   }
 }
 
-export function mapRecord(record: XmlRecord, mapping: SupplierMapping, markup: number) {
+// Tedarikçinin "son kullanıcı fiyatı" önerisi (varsa) bizim gerçek
+// maliyetimizi (KDV + sipariş başına kargo hizmet bedeli) karşılamıyordu -
+// gerçek örnek: maliyet 33₺, KDV+kargo sonrası gerçek maliyetimiz ~90₺
+// iken tedarikçi önerisi sadece 100₺ idi, neredeyse hiç kâr kalmıyordu.
+// Bu yüzden site fiyatı artık HER ZAMAN kendi sabit formülümüzle
+// hesaplanıyor, tedarikçinin önerisi kullanılmıyor.
+const SITE_SHIPPING_FEE = 80; // TL, sipariş başına sabit kargo/hizmet bedeli
+
+export function mapRecord(record: XmlRecord, mapping: SupplierMapping) {
   const rawPrice = readMappedValue(record, mapping.price);
   const cost = rawPrice ? Number(rawPrice.replace(",", ".")) : NaN;
   const hasCost = Number.isFinite(cost) && cost > 0;
-
-  const rawRetailPrice = readMappedValue(record, mapping.retailPrice);
-  const retailPrice = rawRetailPrice ? Number(rawRetailPrice.replace(",", ".")) : NaN;
-  const hasRetailPrice = Number.isFinite(retailPrice) && retailPrice > 0;
 
   return {
     externalId: readMappedValue(record, mapping.externalId),
@@ -334,11 +338,7 @@ export function mapRecord(record: XmlRecord, mapping: SupplierMapping, markup: n
     // cost must be a positive finite number: an empty/unmapped price string
     // coerces to 0 via Number(""), which would otherwise pass Number.isFinite
     // and silently zero out the product's price.
-    price: hasRetailPrice
-      ? Math.max(0, Math.round(retailPrice))
-      : hasCost
-        ? calculatePrice(cost, markup)
-        : null,
+    price: hasCost ? costWithVat(cost) + SITE_SHIPPING_FEE : null,
     cost: hasCost ? Math.max(0, Math.round(cost)) : 0,
     stock: Math.max(0, Number.parseInt(readMappedValue(record, mapping.stock) || "0", 10) || 0),
     image: readMappedValue(record, mapping.image),
@@ -367,7 +367,7 @@ export async function repriceSupplierProducts(
   let updated = 0;
   let skipped = 0;
   for (const record of records) {
-    const product = mapRecord(record, mapping, supplier.defaultMarkupPercent);
+    const product = mapRecord(record, mapping);
     if (!product.externalId || product.price === null) {
       skipped += 1;
       continue;
@@ -448,7 +448,7 @@ export async function restockSupplierProducts(
   const changed: { id: number; newStock: number; discontinued: boolean }[] = [];
 
   for (const record of records) {
-    const product = mapRecord(record, mapping, supplier.defaultMarkupPercent);
+    const product = mapRecord(record, mapping);
     if (!product.externalId) {
       skipped += 1;
       continue;
@@ -557,7 +557,7 @@ export async function backfillHoverImages(
   let skipped = 0;
   const changed: { id: number; hoverImage: string }[] = [];
   for (const record of records) {
-    const product = mapRecord(record, mapping, supplier.defaultMarkupPercent);
+    const product = mapRecord(record, mapping);
     if (!product.externalId || !product.hoverImage) {
       skipped += 1;
       continue;
