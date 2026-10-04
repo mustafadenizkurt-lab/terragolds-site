@@ -565,6 +565,27 @@ export async function updateProductImages(
   });
 }
 
+export type TrendyolProductTitleUpdate = {
+  contentId: number;
+  title: string;
+};
+
+// updateProductImages ile AYNI "Ürün Güncelleme - Onaylı Ürün v2"
+// (content-bulk-update) servisi - sadece gövdedeki alan farklı (images yerine
+// title). Pirinç->Çelik malzeme düzeltmesi gibi, onaylı/canlı ürünlerin
+// adını değiştirmek için updateProduct() (v2/products, barcode ile) KULLANILAMAZ
+// - updateProduct()'ın kendi yorumunda açıklandığı gibi onaylı üründe 404
+// döner, bu yüzden bu da contentId ile çalışıyor.
+export async function updateProductTitles(
+  items: TrendyolProductTitleUpdate[],
+): Promise<TrendyolBatchRequestResult> {
+  const { supplierId } = await getTrendyolCredentials();
+  return trendyolFetch(`/product/sellers/${supplierId}/products/content-bulk-update`, {
+    method: "POST",
+    body: { items },
+  });
+}
+
 // --- Price & Inventory Integration ---
 // https://developers.trendyol.com/docs/marketplace/fiyat-ve-stok-entegrasyonu
 
