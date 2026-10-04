@@ -72,9 +72,16 @@ async function hepsiburadaFetch<T>(
     {
       method: init.method ?? "GET",
       headers: {
-        "content-type": "application/json",
         authorization: buildHepsiburadaAuthHeader(merchantId, secretKey),
         "user-agent": buildHepsiburadaUserAgent(integratorName),
+        accept: "application/json",
+        // Gövdesiz GET isteklerinde de "content-type: application/json"
+        // gönderiliyordu - büyük ürün durumu sorgularında Hepsiburada
+        // sunucusunun yanıtı erken kesmesiyle ilişkili görünüyor (gerçek
+        // örnek: "Unterminated string in JSON", probe.ts bu header'ı hiç
+        // göndermiyor ve aynı istek sorunsuz çalışıyordu). Sadece gerçekten
+        // gövde varsa ekleniyor.
+        ...(init.body !== undefined ? { "content-type": "application/json" } : {}),
       },
       body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
     },
