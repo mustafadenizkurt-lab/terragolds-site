@@ -97,7 +97,12 @@ async function hepsiburadaFetch<T>(
   }
 
   if (response.status === 204) return undefined as T;
-  return response.json() as Promise<T>;
+  // response.json() bazı büyük yanıtlarda Cloudflare Workers'ta sessizce
+  // kesiliyordu (gerçek örnek: büyük ürün durumu sorgularında "Unterminated
+  // string in JSON" - aynı byte'lar response.text() + JSON.parse ile
+  // sorunsuz ayrıştırılıyor). Önce ham metni alıp kendimiz ayrıştırıyoruz.
+  const text = await response.text();
+  return JSON.parse(text) as T;
 }
 
 export async function ensureHepsiburadaColumns(db: D1Database) {
