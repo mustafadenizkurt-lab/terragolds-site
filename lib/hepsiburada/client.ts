@@ -1,5 +1,5 @@
 import { getHepsiburadaCredentials, buildHepsiburadaAuthHeader, buildHepsiburadaUserAgent } from "./auth";
-import { applyHepsiburadaEnvironment } from "./http-utils";
+import { applyHepsiburadaEnvironment, proxyForEnvironment } from "./http-utils";
 import { getOptionalEnv } from "../runtime-env";
 
 // Hepsiburada Marketplace (Merchant Panel Open Platform) entegrasyonu üç
@@ -78,7 +78,7 @@ async function hepsiburadaFetch<T>(
       },
       body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
     },
-    { url: proxyUrl, secret: proxySecret },
+    proxyForEnvironment(environment, proxyUrl, proxySecret),
   );
 
   if (!response.ok) {
@@ -342,7 +342,7 @@ export async function importProductsFile(
       },
       body: form,
     },
-    { url: proxyUrl, secret: proxySecret },
+    proxyForEnvironment(environment, proxyUrl, proxySecret),
   );
   // Destek talebi için izlenebilirlik: yanıt başlıkları (X-Request-Id vb.).
   const headers: Record<string, string> = {};

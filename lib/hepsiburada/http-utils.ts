@@ -44,6 +44,20 @@ export function applyHepsiburadaEnvironment(baseUrl: string, environment?: strin
   return environment?.trim().toLowerCase() === "test" ? (TEST_HOSTS[baseUrl] ?? baseUrl) : baseUrl;
 }
 
+// Köprü servisi (Render) sadece test (SIT) sunucularının Cloudflare 520/502
+// engeli için var - canlı sunucularda bu engel yok (doğrudan bağlantı
+// sorunsuz çalışıyor) ve köprü üzerinden giden bazı yanıtlarda JSON gövdesi
+// bozuluyor (gerçek örnek: getImportStatus "Unterminated string" hatası).
+// Bu yüzden canlı ortamda köprü ayarları kayıtlı olsa bile kullanılmaz.
+export function proxyForEnvironment(
+  environment: string | undefined,
+  proxyUrl: string | undefined,
+  proxySecret: string | undefined,
+): { url: string; secret: string } | undefined {
+  if (environment?.trim().toLowerCase() !== "test") return undefined;
+  return proxyUrl && proxySecret ? { url: proxyUrl, secret: proxySecret } : undefined;
+}
+
 // Hepsiburada kendi kayıtlı entegratör firmalarının (ör. Selfit) adlarının
 // kendi geliştirmemiz için KULLANILMASINI kesinlikle yasakladı. Bu ad
 // yapılandırmada durursa hiçbir Hepsiburada isteği gönderilmez.
