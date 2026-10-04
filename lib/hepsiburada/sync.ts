@@ -214,7 +214,20 @@ export async function pushPendingHepsiburadaPrices(
   const errors: string[] = [];
   for (const row of pending.results) {
     try {
-      await pushStockAndPriceToHepsiburada(db, row.id);
+      try {
+        await pushStockAndPriceToHepsiburada(db, row.id);
+      } catch (error) {
+        // "exceeds his inventory upload limit" (429) - Hepsiburada aynı anda
+        // en fazla 5 bekleyen listing güncellemesine izin veriyor. Bir kez
+        // kısa bir bekleme sonrası yeniden deniyoruz, çoğu zaman önceki
+        // istekler bu sürede tamamlanmış oluyor.
+        if (error instanceof Error && /429|upload limit/i.test(error.message)) {
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+          await pushStockAndPriceToHepsiburada(db, row.id);
+        } else {
+          throw error;
+        }
+      }
       pushed += 1;
     } catch (error) {
       failed += 1;
