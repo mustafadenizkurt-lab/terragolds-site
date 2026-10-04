@@ -1,6 +1,5 @@
 import { getHepsiburadaCredentials, buildHepsiburadaAuthHeader, buildHepsiburadaUserAgent } from "./auth";
 import { applyHepsiburadaEnvironment, proxyForEnvironment } from "./http-utils";
-import { getOptionalEnv } from "../runtime-env";
 
 // Hepsiburada Marketplace (Merchant Panel Open Platform) entegrasyonu üç
 // ayrı host üzerinden çalışıyor - Trendyol'un tek base URL'inin aksine:
@@ -23,24 +22,22 @@ type HepsiburadaErrorPayload = {
 // bazı uç noktalarına - özellikle sipariş/oms-external - atılan istekler 520
 // ile dönüyor (bkz. sit-tests.ts'teki "sunucu 520 olduğu sürece
 // doğrulanamaz" notu); gerçekçi header eklemek tek başına çözmedi. Bilinen
-// bir Cloudflare Workers -> Cloudflare origin bot-koruması çakışması.
-// HEPSIBURADA_PROXY_URL/HEPSIBURADA_PROXY_SECRET tanımlıysa (bkz.
-// hepsiburada-proxy/ - Render'da barındırılan, normal bir sunucu IP'sinden
-// isteği ATAN basit bir vekil), istek doğrudan değil bu vekil üzerinden
-// gönderilir: orijinal URL/method x-target-url/x-target-method header'larına
-// konur, geri kalan her şey (auth, body, diğer header'lar) olduğu gibi
-// vekile taşınır. İkisi de tanımlı değilse eskisi gibi doğrudan fetch edilir.
+// bir Cloudflare Workers -> Cloudflare origin bot-koruması çakışması -
+// SADECE test (SIT) sunucularında (canlıda bu engel yok, doğrudan bağlantı
+// sorunsuz çalışıyor). hepsiburadaFetch/importProductsFile/sit-tests.ts
+// çağıranlar proxyForEnvironment() ile zaten ortam "test" değilse undefined
+// geçiyor - bu fonksiyon SADECE açıkça geçirilen proxyOverride'ı kullanır,
+// Worker secret'ına (HEPSIBURADA_PROXY_URL/HEPSIBURADA_PROXY_SECRET) geri
+// DÜŞMEZ: o secret hâlâ kayıtlı olduğu için eskiden canlı ortamda da
+// sessizce köprüye gidiliyordu (gerçek örnek: büyük ürün durumu
+// sorgularında köprünün bozduğu "Unterminated string in JSON" yanıtları).
 export async function hepsiburadaRawFetch(
   url: string,
   init: RequestInit,
   proxyOverride?: { url?: string; secret?: string },
 ): Promise<Response> {
-  // Önce admin panelinden (Hepsiburada ayarları, D1'de şifreli saklanan
-  // Köprü Servisi URL/Anahtarı) gelen değer, yoksa Worker secret'ı
-  // (wrangler secret put HEPSIBURADA_PROXY_URL/HEPSIBURADA_PROXY_SECRET) -
-  // admin panelinden kaydetmek bir deploy gerektirmediği için önceliklidir.
-  const proxyUrl = proxyOverride?.url || getOptionalEnv("HEPSIBURADA_PROXY_URL");
-  const proxySecret = proxyOverride?.secret || getOptionalEnv("HEPSIBURADA_PROXY_SECRET");
+  const proxyUrl = proxyOverride?.url;
+  const proxySecret = proxyOverride?.secret;
   if (!proxyUrl || !proxySecret) return fetch(url, init);
 
   const headers = new Headers(init.headers);
