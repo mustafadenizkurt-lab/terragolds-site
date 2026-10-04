@@ -230,16 +230,35 @@ export type HepsiburadaPriceAndInventoryItem = {
 
 // D1 tek gerçek kaynak (source of truth) - stok/fiyat her zaman D1'den
 // Hepsiburada'ya tek yönlü gönderilir, Trendyol entegrasyonundaki ile
-// aynı prensip.
+// aynı prensip. "/price-inventory" diye birleşik bir endpoint YOK (404) -
+// SIT testlerinde doğrulanan ayrı price-uploads/stock-uploads kullanılıyor
+// (bkz. sit-tests.ts "listing.price"/"listing.stock" - ikisi de SIT'te
+// gerçek bir SKU üzerinde fiyat/stok değişimini doğrulamıştı).
 export async function updateStockAndPrice(
   items: HepsiburadaPriceAndInventoryItem[],
 ): Promise<HepsiburadaBatchResult> {
   const { merchantId } = await getHepsiburadaCredentials();
-  return hepsiburadaFetch(
-    HEPSIBURADA_LISTING_API_BASE,
-    `/listings/merchantid/${merchantId}/price-inventory`,
-    { method: "PUT", body: { items } },
-  );
+  const priceBody = items.map((item) => ({
+    MerchantSku: item.merchantSku,
+    Price: item.price,
+  }));
+  const stockBody = items.map((item) => ({
+    MerchantSku: item.merchantSku,
+    AvailableStock: item.availableStock,
+  }));
+  const [priceResult] = await Promise.all([
+    hepsiburadaFetch<HepsiburadaBatchResult>(
+      HEPSIBURADA_LISTING_API_BASE,
+      `/listings/merchantid/${merchantId}/price-uploads`,
+      { method: "POST", body: priceBody },
+    ),
+    hepsiburadaFetch(
+      HEPSIBURADA_LISTING_API_BASE,
+      `/listings/merchantid/${merchantId}/stock-uploads`,
+      { method: "POST", body: stockBody },
+    ),
+  ]);
+  return priceResult;
 }
 
 // --- Order Integration ---
