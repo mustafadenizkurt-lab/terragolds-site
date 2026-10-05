@@ -240,6 +240,90 @@ export async function pushPendingHepsiburadaPrices(
   return { pushed, failed, remaining: await remainingCount(), errors };
 }
 
+export type HepsiburadaTitleRefreshResult = {
+  updated: number;
+  remaining: number;
+  batches: { status: number; itemCount: number }[];
+  errors: string[];
+};
+
+// Tedarikçinin pirinçten çeliğe geçmesiyle düzeltilen ürün adlarını (bkz.
+// lib/xml-sync/material-correction.ts) zaten Hepsiburada'ya gönderilmiş
+// ürünlere yeniden gönderir - refreshTrendyolTitles/refreshN11Titles ile
+// aynı amaç. Hepsiburada'da güncelleme de aynı import endpoint'i üzerinden
+// merchantSku eşleştirmesiyle yapılıyor (bkz. client.ts > updateProduct
+// yorumu), yani syncProductsToHepsiburada'daki GERÇEK, doğrulanmış
+// importProductsFile çağrısı tekrar kullanılıyor. hepsiburada_last_error
+// dolu ürünler hariç - onlarda kategori eşlemesi zaten yok.
+export async function refreshHepsiburadaTitles(
+  db: D1Database,
+  batchSize = 100,
+): Promise<HepsiburadaTitleRefreshResult> {
+  await ensureHepsiburadaColumns(db);
+  const pending = await db
+    .prepare(
+      `SELECT id, name, COALESCE(NULLIF(seo_description, ''), description) AS description,
+              price, hepsiburada_override_price AS overridePrice, stock,
+              image, hover_image AS hoverImage, category, xml_external_id AS xmlExternalId
+       FROM products
+       WHERE hepsiburada_listing_id IS NOT NULL AND hepsiburada_last_error IS NULL
+       ORDER BY id`,
+    )
+    .all<{
+      id: number;
+      name: string;
+      description: string;
+      price: number;
+      overridePrice: number | null;
+      stock: number;
+      image: string;
+      hoverImage: string | null;
+      category: string;
+      xmlExternalId: string | null;
+    }>();
+
+  const batches: { status: number; itemCount: number }[] = [];
+  const errors: string[] = [];
+  let updated = 0;
+  const { merchantId } = await getHepsiburadaCredentials();
+
+  for (let offset = 0; offset < pending.results.length; offset += batchSize) {
+    const chunk = pending.results.slice(offset, offset + batchSize);
+    try {
+      const items: HepsiburadaImportItem[] = chunk.map((row) => {
+        const categoryId = hepsiburadaCategoryFor(row);
+        if (!categoryId) {
+          throw new Error(`#${row.id}: Hepsiburada kategori eşlemesi yok`);
+        }
+        return buildImportItem({
+          merchantId,
+          categoryId,
+          productId: row.id,
+          price: row.overridePrice ?? row.price,
+          stock: row.stock,
+          merchantSku: merchantSkuFor(row),
+          title: row.name,
+          description: row.description?.trim() || row.name,
+          images: [row.image, row.hoverImage]
+            .map((url) => (url ? toAbsoluteImageUrl(url) : null))
+            .filter((url): url is string => Boolean(url)),
+          male: isMaleProduct(row),
+        });
+      });
+      const result = await importProductsFile(items);
+      if (result.status !== 200) {
+        throw new Error(`Hepsiburada içe aktarma başarısız (${result.status}): ${result.body.slice(0, 300)}`);
+      }
+      batches.push({ status: result.status, itemCount: chunk.length });
+      updated += chunk.length;
+    } catch (error) {
+      errors.push(error instanceof Error ? error.message : "bilinmeyen hata");
+      return { updated, remaining: pending.results.length - updated, batches, errors };
+    }
+  }
+  return { updated, remaining: 0, batches, errors };
+}
+
 // Deneme: verilen stok kodlarındaki ürünleri Hepsiburada'ya GERÇEK şemayla
 // (kategori + zorunlu özellikler, multipart içe aktarma) gönderir ve ham
 // yanıtı döner. D1'e HİÇBİR ŞEY yazmaz - şema doğrulanana kadar küçük
