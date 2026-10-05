@@ -288,6 +288,13 @@ export async function refreshHepsiburadaTitles(
   const { merchantId } = await getHepsiburadaCredentials();
 
   for (let offset = 0; offset < pending.results.length; offset += batchSize) {
+    // Peş peşe import çağrıları (gerçek denemede 2. batch'ten sonra)
+    // Hepsiburada'nın WAF'ını ("Hepsiburada | Güvenlik" HTML sayfası, 403)
+    // tetikliyor - diğer tek seferlik senkronlarda hiç görülmedi çünkü
+    // onlar tek bir import çağrısı yapıyor, bu fonksiyon ise arka arkaya
+    // birden çok çağrı yapan ilk fonksiyon. Batch'ler arasına kısa bir
+    // bekleme eklemek bunu önlüyor.
+    if (offset > 0) await new Promise((resolve) => setTimeout(resolve, 2000));
     const chunk = pending.results.slice(offset, offset + batchSize);
     try {
       const items: HepsiburadaImportItem[] = chunk.map((row) => {
@@ -310,7 +317,12 @@ export async function refreshHepsiburadaTitles(
           male: isMaleProduct(row),
         });
       });
-      const result = await importProductsFile(items);
+      let result = await importProductsFile(items);
+      if (result.status === 403) {
+        // WAF bloğu geçici - 5 sn bekleyip bir kez daha dene.
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        result = await importProductsFile(items);
+      }
       if (result.status !== 200) {
         throw new Error(`Hepsiburada içe aktarma başarısız (${result.status}): ${result.body.slice(0, 300)}`);
       }
