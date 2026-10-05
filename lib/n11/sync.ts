@@ -1,6 +1,7 @@
 import {
   ensureN11Columns,
   createProduct,
+  updateProduct,
   updateStockAndPrice,
   type N11Product,
   type N11ProductAttribute,
@@ -407,6 +408,57 @@ export async function pushPendingN11Prices(
   await db.batch(pending.results.map((row) => updateStmt.bind(effectivePriceFor(row), row.id)));
 
   return { pushed: pending.results.length, failed: 0, remaining: await remainingCount(), errors: [] };
+}
+
+export type N11TitleRefreshResult = {
+  updated: number;
+  remaining: number;
+  batches: { taskId: string; itemCount: number }[];
+  errors: string[];
+};
+
+// Tedarikçinin pirinçten çeliğe geçmesiyle düzeltilen ürün adlarını (bkz.
+// lib/xml-sync/material-correction.ts) zaten N11'e gönderilmiş ürünlere
+// yeniden gönderir - refreshTrendyolTitles ile aynı amaç. CatalogRejected/
+// hatalı ürünler (n11_last_error dolu) kasıtlı olarak hariç: N11 bunları
+// reddedince satıcı kataloğundan tamamen kaldırıyor, stockCode hâlâ D1'de
+// kayıtlı olsa da updateProduct "SellerStockCode ile mağazanızda bir ürün
+// bulunmamaktadır" hatasıyla döner (bkz. resubmitRejectedToN11 yorumu).
+export async function refreshN11Titles(
+  db: D1Database,
+  batchSize = 100,
+): Promise<N11TitleRefreshResult> {
+  await ensureN11Columns(db);
+  const pending = await db
+    .prepare(
+      `SELECT id, name, description, price, n11_override_price AS n11OverridePrice, stock,
+              image, hover_image AS hoverImage, category, xml_external_id AS xmlExternalId,
+              n11_stock_code AS n11StockCode
+       FROM products WHERE n11_stock_code IS NOT NULL AND n11_last_error IS NULL ORDER BY id`,
+    )
+    .all<PendingProduct & { n11StockCode: string }>();
+
+  const batches: { taskId: string; itemCount: number }[] = [];
+  const errors: string[] = [];
+  let updated = 0;
+  const credentials = await getN11Credentials();
+
+  for (let offset = 0; offset < pending.results.length; offset += batchSize) {
+    const chunk = pending.results.slice(offset, offset + batchSize);
+    try {
+      const items = chunk.map((product) => {
+        const base = toN11Product(product, credentials);
+        return { ...base, stockCode: product.n11StockCode, productMainId: product.n11StockCode };
+      });
+      const task = await updateProduct(items, credentials.integrator);
+      batches.push({ taskId: String(task.id ?? ""), itemCount: chunk.length });
+      updated += chunk.length;
+    } catch (error) {
+      errors.push(error instanceof Error ? error.message : "bilinmeyen hata");
+      return { updated, remaining: pending.results.length - updated, batches, errors };
+    }
+  }
+  return { updated, remaining: 0, batches, errors };
 }
 
 export type N11ResubmitResult = {
