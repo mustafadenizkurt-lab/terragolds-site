@@ -1,7 +1,8 @@
-import { ensureTrendyolColumns, createProduct, updateProduct, updateProductImages, updateProductTitles, updateStockAndPrice, getProductByBarcode, getBatchRequestResult, type TrendyolProduct, type TrendyolProductAttribute } from "./client";
+import { ensureTrendyolColumns, createProduct, updateProduct, updateProductAttributes, updateProductImages, updateProductTitles, updateStockAndPrice, getProductByBarcode, getBatchRequestResult, type TrendyolProduct, type TrendyolProductAttribute } from "./client";
 import { trendyolListPriceFor } from "./pricing-formula";
 import { toAbsoluteImageUrl } from "../image-url";
 import { groupForCategory } from "../category-groups";
+import { COLOR_FACETS } from "../product-facets";
 
 type PendingProduct = {
   id: number;
@@ -167,10 +168,39 @@ const TRENDYOL_COMMON_ATTRIBUTES: TrendyolProductAttribute[] = [
   { attributeId: 343, attributeValueId: 4296 }, // Cinsiyet: Unisex
   { attributeId: 14, attributeValueId: 688 }, // Materyal: Paslanmaz Çelik
   { attributeId: 1192, attributeValueId: 10617344 }, // Menşei: TR
-  { attributeId: 348, attributeValueId: 7000 }, // Web Color: Gümüş
   { attributeId: 260, attributeValueId: 1209593 }, // Taş Cinsi: Yok
-  { attributeId: 47, customAttributeValue: "Gümüş" }, // Renk (allowCustom)
 ];
+
+// Web Color (attributeId 348) için geçerli değer ID'leri -
+// developers.trendyol.com "Kategori Özellik Değerleri Listesi v2" ile Çelik
+// Kolye (2853) kategorisinde doğrulandı. Trendyol'da ayrı bir "Rose Gold"
+// seçeneği yok, en yakın karşılığı "Pembe".
+const TRENDYOL_WEB_COLOR_BY_FACET_KEY: Record<string, { attributeValueId: number; renk: string }> = {
+  altin: { attributeValueId: 6996, renk: "Altın" },
+  gumus: { attributeValueId: 7000, renk: "Gümüş" },
+  rose: { attributeValueId: 7007, renk: "Rose Gold" },
+  siyah: { attributeValueId: 7009, renk: "Siyah" },
+  kahverengi: { attributeValueId: 7001, renk: "Kahverengi" },
+};
+
+// ÖNCEDEN tüm ürünler için (gerçek rengi ne olursa olsun) sabit "Gümüş"
+// gönderiliyordu - renk bilgisini ayrı bir D1 kolonunda tutmadığımız için tek
+// bir varsayılan kullanılmıştı. Sonuç: adında "Gold Renk" yazan ürünler bile
+// Trendyol'da Gümüş görünüyor, müşteriyi yanıltıyordu. lib/product-facets.ts
+// > COLOR_FACETS (sitenin kendi renk filtresiyle aynı, zaten kanıtlanmış
+// anahtar kelime listesi) kullanılarak ürün adından gerçek renk tespit
+// ediliyor; eşleşme yoksa eski varsayılan olan Gümüş'e düşülüyor.
+function trendyolColorFor(product: { name: string }): { attributeValueId: number; renk: string } {
+  const name = product.name.toLocaleLowerCase("tr-TR");
+  for (const facet of COLOR_FACETS) {
+    const mapped = TRENDYOL_WEB_COLOR_BY_FACET_KEY[facet.key];
+    if (!mapped) continue;
+    if (facet.keywords.some((keyword) => name.includes(keyword.toLocaleLowerCase("tr-TR")))) {
+      return mapped;
+    }
+  }
+  return TRENDYOL_WEB_COLOR_BY_FACET_KEY.gumus;
+}
 
 // Kategoriye özgü ek zorunlu alan(lar) - grup slug'ına göre (bkz.
 // TRENDYOL_CATEGORY_BY_GROUP_SLUG). Kolye/Bileklik "Beden", Küpe "Model",
@@ -204,7 +234,13 @@ function attributesFor(
   const extra =
     (group && TRENDYOL_EXTRA_ATTRIBUTES_BY_GROUP_SLUG[group.slug]) ||
     TRENDYOL_FALLBACK_EXTRA_ATTRIBUTES;
-  return [...TRENDYOL_COMMON_ATTRIBUTES, ...extra];
+  const color = trendyolColorFor(product);
+  return [
+    ...TRENDYOL_COMMON_ATTRIBUTES,
+    { attributeId: 348, attributeValueId: color.attributeValueId },
+    { attributeId: 47, customAttributeValue: color.renk },
+    ...extra,
+  ];
 }
 
 // Trendyol v2'de en fazla 8 görsel kabul ediyor, ilki kapak fotoğrafı olarak
@@ -556,6 +592,59 @@ export async function refreshTrendyolTitles(db: D1Database): Promise<TrendyolTit
     try {
       const items = chunk.map((product) => ({ contentId: product.contentId, title: product.name }));
       const { batchRequestId } = await updateProductTitles(items);
+      batches.push({ batchRequestId, itemCount: chunk.length });
+      updated += chunk.length;
+    } catch (error) {
+      return {
+        updated,
+        remaining: pending.results.length - updated,
+        batches,
+        error: error instanceof Error ? error.message : "bilinmeyen hata",
+      };
+    }
+  }
+
+  return { updated, remaining: 0, batches, error: null };
+}
+
+export type TrendyolColorRefreshResult = {
+  updated: number;
+  remaining: number;
+  batches: { batchRequestId: string; itemCount: number }[];
+  error: string | null;
+};
+
+// Zaten Trendyol'a gönderilmiş ürünlerin attributes listesini (bkz.
+// trendyolColorFor yorumu - önceden tüm ürünler Gümüş gönderiliyordu)
+// düzeltilmiş rengiyle yeniden gönderir. content-bulk-update'in attributes
+// alanını PARÇALI mı yoksa TAMAMEN mi değiştirdiği dokümante değil, bu
+// yüzden güvenli taraf: attributesFor() ile create'teki ile birebir aynı TAM
+// listeyi (Cinsiyet/Materyal/Menşei/Beden vb. dahil) üretip gönderiyoruz,
+// sadece Web Color/Renk alanlarını değil. trendyol_content_id boş olan
+// ürünler atlanıyor (önce backfillTrendyolContentIds() gerekir).
+export async function refreshTrendyolColors(db: D1Database): Promise<TrendyolColorRefreshResult> {
+  await ensureTrendyolColumns(db);
+
+  const pending = await db
+    .prepare(
+      `SELECT id, name, category, trendyol_content_id AS contentId
+       FROM products
+       WHERE trendyol_content_id IS NOT NULL
+       ORDER BY id`,
+    )
+    .all<{ id: number; name: string; category: string; contentId: number }>();
+
+  const batches: { batchRequestId: string; itemCount: number }[] = [];
+  let updated = 0;
+
+  for (let offset = 0; offset < pending.results.length; offset += IMAGE_REFRESH_BATCH_SIZE) {
+    const chunk = pending.results.slice(offset, offset + IMAGE_REFRESH_BATCH_SIZE);
+    try {
+      const items = chunk.map((product) => ({
+        contentId: product.contentId,
+        attributes: attributesFor(product),
+      }));
+      const { batchRequestId } = await updateProductAttributes(items);
       batches.push({ batchRequestId, itemCount: chunk.length });
       updated += chunk.length;
     } catch (error) {
