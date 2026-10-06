@@ -586,6 +586,28 @@ export async function updateProductTitles(
   });
 }
 
+export type TrendyolProductAttributeUpdate = {
+  contentId: number;
+  attributes: TrendyolProductAttribute[];
+};
+
+// updateProductImages/updateProductTitles ile AYNI "Ürün Güncelleme - Onaylı
+// Ürün v2" (content-bulk-update) servisi - gövdede attributes alanıyla.
+// Gold/Rose Gold ürünlerin Trendyol'da sabit "Gümüş" görünmesi düzeltmesi
+// (bkz. sync.ts > trendyolColorFor) için eklendi - attributes'un content-
+// bulk-update'te PARÇALI mı yoksa TAMAMEN mi değiştirildiği dokümante
+// değil, bu yüzden çağıran taraf (refreshTrendyolColors) her zaman create'teki
+// ile aynı TAM attributes listesini gönderiyor, sadece rengi değil.
+export async function updateProductAttributes(
+  items: TrendyolProductAttributeUpdate[],
+): Promise<TrendyolBatchRequestResult> {
+  const { supplierId } = await getTrendyolCredentials();
+  return trendyolFetch(`/product/sellers/${supplierId}/products/content-bulk-update`, {
+    method: "POST",
+    body: { items },
+  });
+}
+
 // --- Price & Inventory Integration ---
 // https://developers.trendyol.com/docs/marketplace/fiyat-ve-stok-entegrasyonu
 
