@@ -82,6 +82,22 @@ export const excludedSupplierProducts = sqliteTable(
   ],
 );
 
+// Ürün sayfası için 301 yönlendirme tablosu: slug değişince ya da ürün
+// silinince eski adres buraya kaydediliyor (bkz. lib/product-redirects.ts).
+// Google Search Console'da 404 veren eski linklerin canlı kalması için -
+// target_path hem /products/{slug} (ürün başka bir slug'a taşındıysa) hem
+// /kategori/{slug} (ürün tamamen silindiyse) olabilir.
+export const productRedirects = sqliteTable(
+  "product_redirects",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    oldSlug: text("old_slug").notNull(),
+    targetPath: text("target_path").notNull(),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [uniqueIndex("product_redirects_old_slug_unique").on(table.oldSlug)],
+);
+
 export const products = sqliteTable("products", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),

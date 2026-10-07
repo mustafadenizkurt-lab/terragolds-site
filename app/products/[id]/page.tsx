@@ -7,10 +7,16 @@ import {
 } from "../../../lib/store-data";
 import {
   findProductSlugByLegacySlug,
+  getD1,
   readProductByIdOrSlug,
   readRelatedProducts,
   readSettings,
 } from "../../../lib/store-db";
+import {
+  findActiveProductByStrippedSlug,
+  findManualRedirect,
+  guessCategoryFromSlug,
+} from "../../../lib/product-redirects";
 import { optimizedImageUrl } from "../../../lib/image-transform";
 import { decodeHtmlEntities } from "../../../lib/text-utils";
 import { categoryToSlug } from "../../../lib/category-slugs";
@@ -100,6 +106,25 @@ export default async function ProductPage({ params }: ProductPageProps) {
   if (!product) {
     const currentSlug = await findProductSlugByLegacySlug(param).catch(() => null);
     if (currentSlug) permanentRedirect(`/products/${currentSlug}`);
+  }
+
+  // Ürün değişikliği (slug değişti / ürün silindi) admin panelinden
+  // product_redirects tablosuna kaydediliyor (bkz. lib/product-redirects.ts) -
+  // yukarıdaki sonek kontrolünden sonra, en spesifik eşleşme önce denensin
+  // diye burada. Sırayla: 1) elle/otomatik kaydedilmiş yönlendirme,
+  // 2) sondaki sayı ekini atıp çıplak slug'a sahip aktif ürün,
+  // 3) anahtar kelimeden kategori tahmini. Hiçbiri yoksa normal 404'e düşer
+  // (worker/index.ts bunu gerçek bir 410'a çevirir).
+  if (!product) {
+    const db = getD1();
+    const manualTarget = await findManualRedirect(db, param).catch(() => null);
+    if (manualTarget) permanentRedirect(manualTarget);
+
+    const strippedMatch = await findActiveProductByStrippedSlug(db, param).catch(() => null);
+    if (strippedMatch) permanentRedirect(`/products/${strippedMatch}`);
+
+    const guessedCategory = guessCategoryFromSlug(param);
+    if (guessedCategory) permanentRedirect(`/kategori/${categoryToSlug(guessedCategory)}`);
   }
 
   // A nonexistent product must respond 404, not 200 with a client-rendered

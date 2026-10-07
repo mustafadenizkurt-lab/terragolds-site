@@ -162,6 +162,13 @@
       "when": 1790504241831,
       "tag": "0022_wide_pete_wisdom",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "6",
+      "when": 1791403578177,
+      "tag": "0023_peaceful_franklin_richards",
+      "breakpoints": true
     }
   ]
 }
