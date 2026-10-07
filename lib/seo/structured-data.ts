@@ -120,6 +120,14 @@ export type ProductSchemaInput = {
   stock: number;
   reviewAverage?: number;
   reviewCount?: number;
+  // Google'ın "Ürün snippet'leri" (Merchant listing) zenginleştirmesi, bir
+  // ürün ürün sayfasında review/aggregateRating YOKSA (çoğu ürünümüzde
+  // durum bu - gerçek olmayan bir puan uydurmuyoruz, bkz. dosya başı not)
+  // bunun yerine shippingDetails + hasMerchantReturnPolicy'yi ZORUNLU
+  // kılıyor - olmadan Search Console tüm bu sayfaları doğrulama
+  // başarısız/uygun değil olarak işaretliyor. Gerçek store_settings
+  // değerlerinden (lib/cart-pricing.ts ile aynı kaynak) geliyor.
+  shippingFee: string;
 };
 
 /** schema.org/Product for a single product detail page. */
@@ -148,6 +156,34 @@ export function productSchema(product: ProductSchemaInput) {
           ? "https://schema.org/InStock"
           : "https://schema.org/OutOfStock",
       itemCondition: "https://schema.org/NewCondition",
+      // Google yalnızca yurt içi (TR) kargo yapıyoruz (checkout'ta
+      // billing/shipping_country hep "Turkey" - bkz. payment-gateways.ts).
+      // Teslimat süresi (handlingTime/transitTime) için sitede taahhüt
+      // edilmiş bir gün sayısı yok, uydurmamak için deliveryTime atlandı.
+      shippingDetails: {
+        "@type": "OfferShippingDetails",
+        shippingRate: {
+          "@type": "MonetaryAmount",
+          value: product.shippingFee,
+          currency: "TRY",
+        },
+        shippingDestination: {
+          "@type": "DefinedRegion",
+          addressCountry: "TR",
+        },
+      },
+      // Cayma hakkı süresi (14 gün) ve iadenin anlaşmalı kargoyla
+      // yapılması legalDeliveryReturnsSections içeriğinden (site_content,
+      // "Cayma bildirimi"/"İade gönderimi" bölümleri) alınan gerçek,
+      // yasal (6502 sayılı Kanun) koşul - returnFees (kimin ödediği) net
+      // olarak belirtilmediği için uydurmamak adına atlandı.
+      hasMerchantReturnPolicy: {
+        "@type": "MerchantReturnPolicy",
+        applicableCountry: "TR",
+        returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow",
+        merchantReturnDays: 14,
+        returnMethod: "https://schema.org/ReturnByMail",
+      },
     },
     ...(product.reviewCount && product.reviewAverage
       ? {

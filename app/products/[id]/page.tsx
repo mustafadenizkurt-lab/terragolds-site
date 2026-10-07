@@ -113,6 +113,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
         stock: product.stock,
         reviewAverage: product.reviewAverage,
         reviewCount: product.reviewCount,
+        shippingFee: settings.shippingFee,
       })
     : null;
   const breadcrumb = product
