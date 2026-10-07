@@ -7,6 +7,8 @@ import { excludeSupplierProducts } from "../../../../../lib/xml-sync/excluded-pr
 import { pushStockAndPriceToTrendyol } from "../../../../../lib/trendyol/sync";
 import { pushStockAndPriceToHepsiburada } from "../../../../../lib/hepsiburada/sync";
 import { pushStockAndPriceToN11 } from "../../../../../lib/n11/sync";
+import { recordDeletionRedirect } from "../../../../../lib/product-redirects";
+import { categoryToSlug } from "../../../../../lib/category-slugs";
 
 export const dynamic = "force-dynamic";
 
@@ -76,6 +78,20 @@ export async function PATCH(request: Request) {
         .bind(...productIds)
         .all<{ supplierId: number; externalId: string }>();
       await excludeSupplierProducts(db, toExclude.results, admin.id);
+
+      // Tek ürün DELETE route'uyla aynı SEO koruması: silinen ürünlerin eski
+      // adresi kategori sayfasına 301 ile yönlendirilsin, direkt 410'a düşmesin.
+      const toRedirect = await db
+        .prepare(
+          `SELECT slug, category FROM products WHERE id IN (${placeholders}) AND slug IS NOT NULL`,
+        )
+        .bind(...productIds)
+        .all<{ slug: string; category: string }>();
+      await Promise.all(
+        toRedirect.results.map((row) =>
+          recordDeletionRedirect(db, row.slug, categoryToSlug(row.category)).catch(() => {}),
+        ),
+      );
 
       // Tek ürün DELETE route'uyla aynı mantık: satır silinmeden/taslağa
       // alınmadan ÖNCE stoğu 0'a çekip Trendyol/Hepsiburada/N11'e

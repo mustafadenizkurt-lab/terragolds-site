@@ -152,7 +152,7 @@ export default function DashboardOverview({
         dashboard.stock.outOfStockProducts > 0) && (
         <section className="admin-attention-strip">
           <div>
-            <span>Bugün ilgilenmeniz gerekenler</span>
+            <span>Bugün ilgilenmeniz gerekenler (tüm zamanlar, seçili dönemden bağımsız)</span>
             <strong>
               {dashboard.summary.awaitingShipment} hazırlanacak sipariş ·{" "}
               {dashboard.summary.pendingPayment} ödeme bekliyor ·{" "}
@@ -214,7 +214,10 @@ export default function DashboardOverview({
         <article className={dashboard.summary.awaitingShipment ? "attention" : ""}>
           <span>Hazırlanacak sipariş</span>
           <strong>{dashboard.summary.awaitingShipment}</strong>
-          <small>Şu anda kargoya verilmeyi bekliyor</small>
+          <small>
+            Şu anda kargoya verilmeyi bekliyor (tüm zamanlar — seçili dönemle
+            sınırlı değil)
+          </small>
         </article>
       </section>
 

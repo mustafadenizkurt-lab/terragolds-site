@@ -425,6 +425,7 @@ export const orders = sqliteTable(
     customerNote: text("customer_note").notNull().default(""),
     shippingCarrier: text("shipping_carrier").notNull().default(""),
     trackingNumber: text("tracking_number").notNull().default(""),
+    invoiceNumber: text("invoice_number").notNull().default(""),
     shippedAt: text("shipped_at"),
     deliveredAt: text("delivered_at"),
     paidAt: text("paid_at"),

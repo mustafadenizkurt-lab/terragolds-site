@@ -40,14 +40,10 @@ function buildUserPrompt(product: ProductSeoFacts): string {
     .join("\n");
 }
 
-// Model kasıtlı olarak burada sabitlenmiş (çağıran script'in kendi
-// argümanından değil) - istek üzerine "claude-sonnet-4-6" kullanılıyor.
-// NOT: Bu tam model ID'sinin geçerliliği doğrulanmadı, bilinen güncel model
-// adlandırma deseniyle (claude-sonnet-5, claude-opus-5, tarihli snapshot'lar
-// gibi) örtüşmüyor - çalıştırmadan önce Anthropic hesabınızda gerçekten
-// erişilebilir olduğunu teyit edin, aksi halde her istek "model not found"
-// ile başarısız olur.
-const MODEL = "claude-sonnet-4-6";
+// lib/product-description-rewrite.ts'teki (aynı amaç için zaten üretimde
+// çalışan) kardeş fonksiyonla aynı model - "claude-sonnet-4-6" geçerli bir
+// model id değildi, her çağrı "model not found" ile başarısız olurdu.
+const MODEL = "claude-opus-5";
 
 export async function generateSeoDescription(
   apiKey: string,

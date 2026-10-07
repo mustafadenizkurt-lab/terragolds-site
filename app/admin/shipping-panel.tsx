@@ -158,7 +158,7 @@ export default function ShippingPanel({
 
   const updateDraft = (
     orderId: string,
-    field: "shippingCarrier" | "trackingNumber",
+    field: "shippingCarrier" | "trackingNumber" | "invoiceNumber",
     value: string,
   ) => {
     setOrders((current) =>
@@ -185,6 +185,7 @@ export default function ShippingPanel({
             status: nextStatus,
             shippingCarrier: order.shippingCarrier,
             trackingNumber: order.trackingNumber,
+            invoiceNumber: order.invoiceNumber,
           }),
         }),
       );
@@ -468,6 +469,22 @@ export default function ShippingPanel({
                           placeholder="Takip numarasını girin"
                         />
                       </label>
+                      {order.salesChannel === "terragolds.com" && (
+                        <label>
+                          <span>Fatura / e-arşiv numarası</span>
+                          <input
+                            value={order.invoiceNumber}
+                            onChange={(event) =>
+                              updateDraft(
+                                order.id,
+                                "invoiceNumber",
+                                event.target.value,
+                              )
+                            }
+                            placeholder="Fatura kesildiğinde girin"
+                          />
+                        </label>
+                      )}
                       {(trackingUrl || order.autoDeliverAt) && (
                         <div className="admin-tracking-link-card">
                           {trackingUrl && (

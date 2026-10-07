@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import PaymentProvidersPanel from "./payment-providers-panel";
 import DiscountCodesPanel from "./discount-codes-panel";
+import ReviewsPanel from "./reviews-panel";
+import OrdersPanel from "./orders-panel";
 import ReturnRequestsPanel from "./return-requests-panel";
 import DashboardOverview from "./dashboard-overview";
 import ShippingPanel from "./shipping-panel";
@@ -59,9 +61,11 @@ type AdminView =
   | "reports"
   | "media"
   | "savedCards"
+  | "orders"
   | "shipping"
   | "payments"
   | "discounts"
+  | "reviews"
   | "returnRequests"
   | "tests"
   | "settings";
@@ -638,6 +642,13 @@ export default function AdminClient({
           </button>
           <button
             type="button"
+            className={view === "orders" ? "active" : ""}
+            onClick={() => setView("orders")}
+          >
+            <span>▤</span> Siparişler
+          </button>
+          <button
+            type="button"
             className={view === "shipping" ? "active" : ""}
             onClick={() => setView("shipping")}
           >
@@ -654,6 +665,13 @@ export default function AdminClient({
             onClick={() => setView("discounts")}
           >
             <span>％</span> İndirim kodları
+          </button>
+          <button
+            type="button"
+            className={view === "reviews" ? "active" : ""}
+            onClick={() => setView("reviews")}
+          >
+            <span>★</span> Yorum moderasyonu
           </button>
           <button
             type="button"
@@ -736,9 +754,11 @@ export default function AdminClient({
               {view === "hepsiburada" && "Hepsiburada senkronu"}
               {view === "n11" && "N11 senkronu"}
               {view === "skuBackfill" && "Ürün Kodu Eşleştirme"}
+              {view === "orders" && "Siparişler"}
               {view === "shipping" && "Kargo yönetimi"}
               {view === "payments" && "Ödeme yöntemleri"}
               {view === "discounts" && "İndirim kodları"}
+              {view === "reviews" && "Yorum moderasyonu"}
               {view === "returnRequests" && "İade talepleri"}
               {view === "tests" && "Sistem test merkezi"}
               {view === "settings" && "Mağaza ayarları"}
@@ -1194,6 +1214,10 @@ export default function AdminClient({
                   if (product) openProduct(product);
                 }}
               />
+            )}
+
+            {view === "orders" && (
+              <OrdersPanel onNavigateShipping={() => setView("shipping")} />
             )}
 
             {view === "shipping" && (
@@ -1938,6 +1962,43 @@ export default function AdminClient({
                           placeholder="https://maps.google.com/..."
                         />
                       </label>
+                      <label className="admin-field full">
+                        <span>Tüzel kişilik unvanı (fatura/sözleşme)</span>
+                        <input
+                          value={settings.legalName}
+                          onChange={(event) =>
+                            setSettings({
+                              ...settings,
+                              legalName: event.target.value,
+                            })
+                          }
+                          placeholder="Terragolds Tekstil ve Takı Tic. Ltd. Şti."
+                        />
+                      </label>
+                      <label className="admin-field">
+                        <span>Vergi dairesi</span>
+                        <input
+                          value={settings.taxOffice}
+                          onChange={(event) =>
+                            setSettings({
+                              ...settings,
+                              taxOffice: event.target.value,
+                            })
+                          }
+                        />
+                      </label>
+                      <label className="admin-field">
+                        <span>Vergi numarası</span>
+                        <input
+                          value={settings.taxId}
+                          onChange={(event) =>
+                            setSettings({
+                              ...settings,
+                              taxId: event.target.value,
+                            })
+                          }
+                        />
+                      </label>
                     </div>
                   </section>
 
@@ -2134,6 +2195,7 @@ export default function AdminClient({
             {view === "discounts" && (
               <DiscountCodesPanel onNotice={flash} />
             )}
+            {view === "reviews" && <ReviewsPanel onNotice={flash} />}
             {view === "returnRequests" && (
               <ReturnRequestsPanel onNotice={flash} />
             )}

@@ -52,6 +52,10 @@ export type StoreSettings = {
   district: string;
   city: string;
   mapUrl: string;
+  /** Fatura/sözleşme belgelerinde görünen tüzel kişilik unvanı (örn. "Terragolds Tekstil ve Takı Tic. Ltd. Şti."). */
+  legalName: string;
+  taxOffice: string;
+  taxId: string;
   facebook: string;
   instagram: string;
   pinterest: string;
@@ -635,6 +639,9 @@ export const defaultSettings: StoreSettings = {
   district: "",
   city: "",
   mapUrl: "",
+  legalName: "",
+  taxOffice: "",
+  taxId: "",
   facebook: "https://www.facebook.com/profile.php?id=61592677166035",
   instagram: "https://www.instagram.com/terragolds/",
   pinterest: "",

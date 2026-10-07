@@ -98,6 +98,10 @@ export type AdminShippingOrder = {
   isCod: boolean;
   shippingCarrier: string;
   trackingNumber: string;
+  // Sadece kendi site siparişlerimizde (orders tablosu) var - pazaryeri
+  // siparişlerinin faturası kendi platformlarında kesiliyor, bu alan onlar
+  // için her zaman boş string döner.
+  invoiceNumber: string;
   trackingUrl: string;
   autoDeliverAt: string | null;
   shippedAt: string | null;

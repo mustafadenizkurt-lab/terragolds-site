@@ -5,7 +5,7 @@ import AdminClient from "./admin-client";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Yönetim Paneli | Terragolds",
+  title: "Yönetim Paneli",
   robots: { index: false, follow: false },
 };
 

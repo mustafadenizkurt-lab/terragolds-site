@@ -16,6 +16,7 @@ import { fulfillTrendyolOrder } from "../../../../lib/trendyol/fulfillment";
 import { ensureHepsiburadaOrdersTable } from "../../../../lib/hepsiburada/orders";
 import { fulfillHepsiburadaOrder } from "../../../../lib/hepsiburada/fulfillment";
 import { ensureN11OrdersTable } from "../../../../lib/n11/orders";
+import { sendShippingStatusEmail } from "../../../../lib/order-shipping-email";
 
 export const dynamic = "force-dynamic";
 
@@ -35,17 +36,37 @@ export async function GET(request: Request) {
     await ensureHepsiburadaOrdersTable(db);
     await ensureN11OrdersTable(db);
     await ensureOrderCheckoutColumns(db);
-    await db
+    const autoDelivered = await db
       .prepare(
-        `UPDATE orders
-         SET status = 'delivered',
-             delivered_at = COALESCE(delivered_at, CURRENT_TIMESTAMP),
-             updated_at = CURRENT_TIMESTAMP
+        `SELECT id FROM orders
          WHERE status = 'shipped'
            AND shipped_at IS NOT NULL
            AND datetime(shipped_at) <= datetime('now', '-7 days')`,
       )
-      .run();
+      .all<{ id: string }>();
+    if (autoDelivered.results.length) {
+      const placeholders = autoDelivered.results.map(() => "?").join(", ");
+      await db
+        .prepare(
+          `UPDATE orders
+           SET status = 'delivered',
+               delivered_at = COALESCE(delivered_at, CURRENT_TIMESTAMP),
+               updated_at = CURRENT_TIMESTAMP
+           WHERE id IN (${placeholders})`,
+        )
+        .bind(...autoDelivered.results.map((row) => row.id))
+        .run();
+      await Promise.all(
+        autoDelivered.results.map((row) =>
+          sendShippingStatusEmail({
+            orderId: row.id,
+            status: "delivered",
+            shippingCarrier: "",
+            trackingNumber: "",
+          }).catch(() => {}),
+        ),
+      );
+    }
 
     const [orders, items, trackingSettings, trendyolOrders, hepsiburadaOrders, n11Orders] = await Promise.all([
       db
@@ -56,7 +77,7 @@ export async function GET(request: Request) {
                   subtotal_amount, discount_amount, shipping_amount,
                   discount_code, total_amount, currency, payment_provider, customer_note,
                   gift_wrap, gift_message, is_cod,
-                  shipping_carrier, tracking_number, shipped_at,
+                  shipping_carrier, tracking_number, invoice_number, shipped_at,
                   delivered_at, created_at
            FROM orders
            WHERE status IN ('pending', 'paid', 'shipped', 'delivered')
@@ -94,6 +115,7 @@ export async function GET(request: Request) {
           is_cod: number;
           shipping_carrier: string;
           tracking_number: string;
+          invoice_number: string;
           shipped_at: string | null;
           delivered_at: string | null;
           created_at: string;
@@ -271,6 +293,7 @@ export async function GET(request: Request) {
         isCod: Boolean(order.is_cod),
         shippingCarrier: order.shipping_carrier,
         trackingNumber: order.tracking_number,
+        invoiceNumber: order.invoice_number,
         trackingUrl: createShippingTrackingUrl({
           carrier: order.shipping_carrier,
           trackingNumber: order.tracking_number,
@@ -334,6 +357,7 @@ export async function GET(request: Request) {
           isCod: false,
           shippingCarrier: order.shipping_carrier,
           trackingNumber: order.tracking_number,
+          invoiceNumber: "",
           trackingUrl: createShippingTrackingUrl({
             carrier: order.shipping_carrier,
             trackingNumber: order.tracking_number,
@@ -396,6 +420,7 @@ export async function GET(request: Request) {
           isCod: false,
           shippingCarrier: order.shipping_carrier,
           trackingNumber: order.tracking_number,
+          invoiceNumber: "",
           trackingUrl: createShippingTrackingUrl({
             carrier: order.shipping_carrier,
             trackingNumber: order.tracking_number,
@@ -458,6 +483,7 @@ export async function GET(request: Request) {
           isCod: false,
           shippingCarrier: order.shipping_carrier,
           trackingNumber: order.tracking_number,
+          invoiceNumber: "",
           trackingUrl: createShippingTrackingUrl({
             carrier: order.shipping_carrier,
             trackingNumber: order.tracking_number,
@@ -508,6 +534,9 @@ export async function PATCH(request: Request) {
       .trim()
       .slice(0, 80);
     const trackingNumber = String(body.trackingNumber ?? "")
+      .trim()
+      .slice(0, 120);
+    const invoiceNumber = String(body.invoiceNumber ?? "")
       .trim()
       .slice(0, 120);
 
@@ -601,6 +630,34 @@ export async function PATCH(request: Request) {
 
     if (!result.meta.changes) {
       return Response.json({ error: "Sipariş bulunamadı." }, { status: 404 });
+    }
+
+    // invoice_number kolonu sadece orders tablosunda var - pazaryeri
+    // siparişlerinin faturası kendi platformlarında kesiliyor.
+    if (table === "orders") {
+      await db
+        .prepare(
+          "UPDATE orders SET invoice_number = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        )
+        .bind(invoiceNumber, id)
+        .run();
+    }
+
+    // Sadece kendi site siparişlerimiz için - Trendyol/Hepsiburada/N11
+    // müşterileri kendi platformlarında bildirim alıyor. current.status !==
+    // status koşulu, aynı kargo bilgisiyle tekrar kaydetmede (gerçek bir
+    // durum geçişi olmadığında) e-postanın yeniden gitmesini önler.
+    if (
+      table === "orders" &&
+      current.status !== status &&
+      (status === "shipped" || status === "delivered")
+    ) {
+      await sendShippingStatusEmail({
+        orderId: id,
+        status,
+        shippingCarrier,
+        trackingNumber,
+      }).catch(() => {});
     }
 
     // Cancelling an order that had already earned loyalty points claws

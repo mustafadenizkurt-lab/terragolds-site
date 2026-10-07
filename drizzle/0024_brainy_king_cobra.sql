@@ -1,0 +1,1 @@
+ALTER TABLE `orders` ADD `invoice_number` text DEFAULT '' NOT NULL;
