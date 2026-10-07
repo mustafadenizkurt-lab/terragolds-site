@@ -223,15 +223,22 @@ function stars(rating: number) {
 export default function ProductDetailClient({
   productId,
   showHeader = true,
+  initialProduct = null,
 }: {
   productId: number;
   showHeader?: boolean;
+  /** Server-fetched product. When given, the page's real content (H1,
+   * description, price, images) is in the initial HTML instead of a
+   * "Ürün hazırlanıyor…" placeholder - Google was seeing thousands of
+   * identical empty product pages and leaving them "Keşfedildi - şu anda
+   * dizine eklenmemiş" / picking a different canonical. */
+  initialProduct?: Product | null;
 }) {
   const cart = useCart();
   const [language] = useLanguage();
   const t = copy[language];
-  const [product, setProduct] = useState<Product | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [product, setProduct] = useState<Product | null>(initialProduct);
+  const [loading, setLoading] = useState(!initialProduct);
   const [notFound, setNotFound] = useState(false);
   const [favorite, setFavorite] = useState(false);
   const [quantity, setQuantity] = useState(1);
@@ -282,13 +289,15 @@ export default function ProductDetailClient({
 
   useEffect(() => {
     Promise.all([
-      fetch(`/api/products/${productId}`, { cache: "no-store" }).then(
-        (response) => response.json() as Promise<{ product?: Product }>,
-      ),
-      fetchReviews(),
+      initialProduct
+        ? Promise.resolve({ product: initialProduct })
+        : fetch(`/api/products/${productId}`, { cache: "no-store" }).then(
+            (response) => response.json() as Promise<{ product?: Product }>,
+          ),
+      fetchReviews().catch(() => null),
     ])
       .then(([{ product: selected }, reviews]) => {
-        setReviewData(reviews);
+        if (reviews) setReviewData(reviews);
         if (!selected) {
           setNotFound(true);
           return;
@@ -307,6 +316,9 @@ export default function ProductDetailClient({
       })
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
+    // initialProduct is server data for this same productId - it only
+    // changes together with productId, so it doesn't need its own dep.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchReviews, productId]);
 
   useEffect(() => {
