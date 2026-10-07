@@ -48,9 +48,9 @@ export async function generateMetadata(): Promise<Metadata> {
       "el işçiliği takı",
       "Terragolds",
     ],
-    alternates: {
-      canonical: `${origin}/`,
-    },
+    // No site-wide canonical here: every page inherited "/" as its
+    // canonical, so 404s, /karsilastir, /arama etc. all declared the
+    // homepage as their canonical. The homepage sets its own in app/page.tsx.
     openGraph: {
       title: content.seoHomeTitle,
       description: content.seoHomeDescription,

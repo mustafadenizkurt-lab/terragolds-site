@@ -300,6 +300,62 @@ export async function readProductByIdOrSlug(idOrSlug: string, includeDrafts = fa
   return row ? mapProduct(row) : null;
 }
 
+/**
+ * A few other published, in-stock products from the same category, for the
+ * server-rendered "Benzer ürünler" links on a product page. Gives Googlebot
+ * crawlable internal links between product pages (URL Denetimi showed
+ * product URLs with "Hiç yönlendiren sayfa algılanmadı" - reachable only
+ * via the sitemap). Deterministic (id-based) rather than random so the same
+ * page links to the same neighbours on every crawl.
+ */
+export async function readRelatedProducts(
+  category: string,
+  excludeId: number,
+  limit = 12,
+) {
+  await ensureSeedData();
+  const result = await getD1()
+    .prepare(
+      `SELECT products.*, 0 AS review_average, 0 AS review_count
+       FROM products
+       WHERE products.status = 'published'
+         AND products.category = ?1
+         AND products.id != ?2
+         AND products.stock > 0
+       ORDER BY ABS(products.id - ?2)
+       LIMIT ?3`,
+    )
+    .bind(category, excludeId, limit)
+    .all<ProductRow>();
+  return result.results.map(mapProduct);
+}
+
+/**
+ * Slug of a published product whose slug is `legacySlug` plus a numeric
+ * "-1234" suffix. Some products got that suffix added after Google had
+ * already indexed the bare slug, and the old URL started returning 404
+ * (e.g. /products/...-yassi-fiyonk-model-kupe -> ...-kupe-1736). Only an
+ * unambiguous single match is returned, so a bare name shared by several
+ * products never redirects to an arbitrary one of them.
+ */
+export async function findProductSlugByLegacySlug(legacySlug: string) {
+  if (!legacySlug || /^\d+$/.test(legacySlug)) return null;
+  await ensureSeedData();
+  const result = await getD1()
+    .prepare(
+      `SELECT slug FROM products
+       WHERE status = 'published' AND slug LIKE ?1 ESCAPE '\\'
+       LIMIT 5`,
+    )
+    .bind(`${legacySlug.replace(/[\\%_]/g, (c) => `\\${c}`)}-%`)
+    .all<{ slug: string }>();
+  const prefix = `${legacySlug}-`;
+  const matches = result.results.filter((row) =>
+    /^\d+$/.test(row.slug.slice(prefix.length)),
+  );
+  return matches.length === 1 ? matches[0].slug : null;
+}
+
 export async function readSettings() {
   await ensureSeedData();
   const result = await getD1()
