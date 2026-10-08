@@ -5,7 +5,7 @@ import PartnerClient from "./partner-client";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "İş Ortağı Paneli | Terragolds",
+  title: "İş Ortağı Paneli",
   robots: { index: false, follow: false },
 };
 

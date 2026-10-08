@@ -3,7 +3,7 @@ import ProfileClient from "./profile-client";
 import { readSettings } from "../../lib/store-db";
 
 export const metadata: Metadata = {
-  title: "Profilim | Terragolds",
+  title: "Profilim",
   robots: { index: false, follow: false },
 };
 

@@ -4,7 +4,7 @@ import { FloatingSocialLinks } from "../store-shared-chrome";
 import { readSettings } from "../../lib/store-db";
 
 export const metadata: Metadata = {
-  title: "Ürün Karşılaştır | Terragolds",
+  title: "Ürün Karşılaştır",
   description: "Seçtiğiniz Terragolds ürünlerini yan yana karşılaştırın.",
   robots: { index: false, follow: false },
 };

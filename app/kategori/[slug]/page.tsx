@@ -130,7 +130,7 @@ export async function generateMetadata({
   const pageSuffix = page > 1 && !isFilteredView ? ` - Sayfa ${page}` : "";
 
   return {
-    title: `${title}${pageSuffix} | Terragolds`,
+    title: `${title}${pageSuffix}`,
     description,
     alternates: { canonical: url },
     ...(isFilteredView ? { robots: { index: false, follow: true } } : {}),

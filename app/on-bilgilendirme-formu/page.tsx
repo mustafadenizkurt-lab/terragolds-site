@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import LegalDocumentPage from "../legal/legal-document-page";
 
 export const metadata: Metadata = {
-  title: "Ön Bilgilendirme Formu | Terragolds",
+  title: "Ön Bilgilendirme Formu",
   description:
     "Terragolds ön bilgilendirme formu: satın alma öncesi ürün, fiyat, teslimat ve cayma hakkı bilgilendirmesi.",
   alternates: {

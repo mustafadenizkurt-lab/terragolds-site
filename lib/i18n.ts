@@ -162,6 +162,7 @@ export const uiText = {
     // Site chrome (header/footer) - shared across every page, not just the homepage.
     home: "Ana Sayfa",
     blog: "Blog",
+    customProduction: "Özel Üretim",
     compare: "Karşılaştır",
     orderTracking: "Sipariş Takibi",
     contact: "İletişim",
@@ -308,6 +309,7 @@ export const uiText = {
     // Site chrome (header/footer) - shared across every page, not just the homepage.
     home: "Home",
     blog: "Blog",
+    customProduction: "Custom Production",
     compare: "Compare",
     orderTracking: "Track Order",
     contact: "Contact",

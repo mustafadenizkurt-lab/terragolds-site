@@ -20,7 +20,7 @@ export async function generateMetadata({
   const { q } = await searchParams;
   const query = (q ?? "").trim();
   return {
-    title: query ? `"${query}" için arama sonuçları | Terragolds` : "Arama | Terragolds",
+    title: query ? `"${query}" için arama sonuçları` : "Arama",
     // Sorgu bazlı sayfalar taranmasın - kategori sayfalarının aksine sabit,
     // linklenebilir bir içeriği yok.
     robots: { index: false, follow: true },

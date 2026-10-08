@@ -36,7 +36,8 @@ export async function generateMetadata({
   if (!post) {
     return { title: "Yazı Bulunamadı", robots: { index: false, follow: false } };
   }
-  const title = post.metaTitle || `${post.title} | Terragolds Blog`;
+  const pageTitle = post.metaTitle || post.title;
+  const socialTitle = post.metaTitle || `${post.title} | Terragolds Blog`;
   const description =
     post.metaDescription || post.excerpt || post.content.slice(0, 155);
   const url = `${SITE_URL}/blog/${post.slug}`;
@@ -44,11 +45,11 @@ export async function generateMetadata({
     ? new URL(post.coverImage, SITE_URL).toString()
     : undefined;
   return {
-    title,
+    title: pageTitle,
     description,
     alternates: { canonical: url },
     openGraph: {
-      title,
+      title: socialTitle,
       description,
       url,
       type: "article",
@@ -56,7 +57,7 @@ export async function generateMetadata({
     },
     twitter: {
       card: "summary_large_image",
-      title,
+      title: socialTitle,
       description,
       images: image ? [image] : undefined,
     },

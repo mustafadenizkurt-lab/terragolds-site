@@ -371,6 +371,15 @@ export async function readSettings() {
   return settings;
 }
 
+export async function readCustomProductionPhotos() {
+  const result = await getD1()
+    .prepare(
+      "SELECT image_url AS imageUrl, caption FROM custom_production_photos ORDER BY sort_order, id",
+    )
+    .all<{ imageUrl: string; caption: string }>();
+  return result.results;
+}
+
 // --- Below: query-level building blocks for the storefront-catalog
 // performance work (see PROJECT NOTES: "en büyük performans sorunu" plan).
 // Not wired into any route or component yet - that's later, per-consumer

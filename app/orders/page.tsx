@@ -3,7 +3,7 @@ import OrdersClient from "./orders-client";
 import { readSettings } from "../../lib/store-db";
 
 export const metadata: Metadata = {
-  title: "Siparişlerim | Terragolds",
+  title: "Siparişlerim",
   robots: { index: false, follow: false },
 };
 

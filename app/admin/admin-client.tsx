@@ -6,6 +6,7 @@ import PaymentProvidersPanel from "./payment-providers-panel";
 import DiscountCodesPanel from "./discount-codes-panel";
 import ReviewsPanel from "./reviews-panel";
 import OrdersPanel from "./orders-panel";
+import CustomProductionPanel from "./custom-production-panel";
 import ReturnRequestsPanel from "./return-requests-panel";
 import DashboardOverview from "./dashboard-overview";
 import ShippingPanel from "./shipping-panel";
@@ -66,6 +67,7 @@ type AdminView =
   | "payments"
   | "discounts"
   | "reviews"
+  | "customProduction"
   | "returnRequests"
   | "tests"
   | "settings";
@@ -675,6 +677,13 @@ export default function AdminClient({
           </button>
           <button
             type="button"
+            className={view === "customProduction" ? "active" : ""}
+            onClick={() => setView("customProduction")}
+          >
+            <span>⌁</span> Özel üretim
+          </button>
+          <button
+            type="button"
             className={view === "returnRequests" ? "active" : ""}
             onClick={() => setView("returnRequests")}
           >
@@ -759,6 +768,7 @@ export default function AdminClient({
               {view === "payments" && "Ödeme yöntemleri"}
               {view === "discounts" && "İndirim kodları"}
               {view === "reviews" && "Yorum moderasyonu"}
+              {view === "customProduction" && "Özel üretim"}
               {view === "returnRequests" && "İade talepleri"}
               {view === "tests" && "Sistem test merkezi"}
               {view === "settings" && "Mağaza ayarları"}
@@ -2196,6 +2206,9 @@ export default function AdminClient({
               <DiscountCodesPanel onNotice={flash} />
             )}
             {view === "reviews" && <ReviewsPanel onNotice={flash} />}
+            {view === "customProduction" && (
+              <CustomProductionPanel onNotice={flash} />
+            )}
             {view === "returnRequests" && (
               <ReturnRequestsPanel onNotice={flash} />
             )}

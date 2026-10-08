@@ -11,7 +11,7 @@ import {
 } from "../../lib/seo/structured-data";
 
 export const metadata: Metadata = {
-  title: "Hakkımızda | Terragolds",
+  title: "Hakkımızda",
   description: "Terragolds takı koleksiyonu, seçim ve paketleme yaklaşımı.",
   alternates: { canonical: "https://www.terragolds.com/hakkimizda" },
 };

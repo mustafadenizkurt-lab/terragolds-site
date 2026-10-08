@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import LegalDocumentPage from "../legal/legal-document-page";
 
 export const metadata: Metadata = {
-  title: "Mesafeli Satış Sözleşmesi | Terragolds",
+  title: "Mesafeli Satış Sözleşmesi",
   description:
     "Terragolds mesafeli satış sözleşmesi: sipariş, teslimat ve cayma hakkına dair yasal koşullar.",
   alternates: {

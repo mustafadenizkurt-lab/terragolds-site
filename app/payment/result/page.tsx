@@ -6,7 +6,7 @@ import PaymentResultClient from "./payment-result-client";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Ödeme Sonucu | Terragolds",
+  title: "Ödeme Sonucu",
   robots: { index: false, follow: false },
 };
 

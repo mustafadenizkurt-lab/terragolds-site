@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import AuthForm from "../account/auth-form";
 
 export const metadata: Metadata = {
-  title: "Giriş Yap | Terragolds",
+  title: "Giriş Yap",
   robots: { index: false, follow: false },
 };
 

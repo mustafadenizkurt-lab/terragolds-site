@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
-import { readPublishedBlogPosts } from "../../lib/blog";
-import { readSettings } from "../../lib/store-db";
+import { readSettings, readCustomProductionPhotos } from "../../lib/store-db";
 import { FloatingSocialLinks } from "../store-shared-chrome";
 import StoreSiteFooter from "../store-site-footer";
 import StoreSubpageHeader from "../store-subpage-header";
-import BlogPageBody from "./blog-page-body";
+import CustomProductionBody from "./custom-production-body";
 import {
   breadcrumbSchema,
   toJsonLd,
@@ -14,31 +13,30 @@ import {
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Blog",
+  title: "Özel Üretim",
   description:
-    "Takı bakımı, taş rehberleri ve stil önerileri - Terragolds blogunda.",
-  alternates: { canonical: `${SITE_URL}/blog` },
+    "Hayalinizdeki takıyı birlikte tasarlayalım. Adınızı ve telefon numaranızı bırakın, WhatsApp üzerinden size özel üretim süreci hakkında dönüş yapalım.",
+  alternates: { canonical: "https://www.terragolds.com/ozel-uretim" },
 };
 
-export default async function BlogIndexPage() {
-  const [posts, settings] = await Promise.all([
-    readPublishedBlogPosts(),
+export default async function CustomProductionPage() {
+  const [settings, photos] = await Promise.all([
     readSettings(),
+    readCustomProductionPhotos().catch(() => []),
   ]);
   const breadcrumb = breadcrumbSchema([
     { name: "Ana Sayfa", url: `${SITE_URL}/` },
-    { name: "Blog", url: `${SITE_URL}/blog` },
+    { name: "Özel Üretim", url: `${SITE_URL}/ozel-uretim` },
   ]);
 
   return (
-    <main className="blog-page market-subpage">
+    <main className="about-page market-subpage">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: toJsonLd(breadcrumb) }}
       />
       <StoreSubpageHeader />
-      <BlogPageBody posts={posts} />
-
+      <CustomProductionBody whatsapp={settings.whatsapp} photos={photos} />
       <StoreSiteFooter
         footerNote={settings.footerNote}
         businessName={settings.businessName}

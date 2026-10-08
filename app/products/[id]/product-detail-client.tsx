@@ -18,6 +18,7 @@ import { decodeHtmlEntities } from "../../../lib/text-utils";
 import { optimizedImageUrl } from "../../../lib/image-transform";
 import { groupForCategory, categoryGroupLabel } from "../../../lib/category-groups";
 import { categoryToSlug } from "../../../lib/category-slugs";
+import { SITE_URL } from "../../../lib/seo/structured-data";
 
 type Review = {
   id: number;
@@ -61,6 +62,7 @@ const copy = {
     ratingNew: "Yeni",
     verifiedReviewCount: (count: number) => `${count} doğrulanmış yorum`,
     beFirstToReview: "İlk yorumu siz yapın",
+    vatIncluded: "KDV dahil",
     carefulPackaging: "Özenli paketleme",
     carefulPackagingDetail: "Ürünü hasarsız ulaştıran güvenli gönderim",
     verifiedPiece: "Doğrulanmış parça",
@@ -147,6 +149,7 @@ const copy = {
     ratingNew: "New",
     verifiedReviewCount: (count: number) => `${count} verified reviews`,
     beFirstToReview: "Be the first to review",
+    vatIncluded: "VAT included",
     carefulPackaging: "Careful packaging",
     carefulPackagingDetail: "Secure delivery, undamaged on arrival",
     verifiedPiece: "Verified piece",
@@ -410,13 +413,12 @@ export default function ProductDetailClient({
   }
 
   const currentPrice = getDiscountedPrice(product);
-  // This page's own URL is already the canonical product link - no need to
-  // rebuild it from the slug/id.
-  const shareUrl = typeof window !== "undefined" ? window.location.href : "";
-  const shareImageUrl =
-    typeof window !== "undefined"
-      ? new URL(product.image, window.location.origin).toString()
-      : product.image;
+  // window.location.href is empty during SSR (typeof window === "undefined"),
+  // which made every share button's URL param blank in the server-rendered
+  // HTML - built from the product slug/id instead, same as generateMetadata's
+  // own canonical URL, so it's correct on both server and client.
+  const shareUrl = `${SITE_URL}/products/${product.slug || product.id}`;
+  const shareImageUrl = new URL(product.image, SITE_URL).toString();
   const productImages = [...new Set(
     [product.image, product.hoverImage, product.image3, product.image4].filter(
       (image): image is string => Boolean(image),
@@ -526,6 +528,7 @@ export default function ProductDetailClient({
               <del>{money.format(product.price)}</del>
             )}
             <strong>{money.format(currentPrice)}</strong>
+            <small className="product-profile-price-vat">{t.vatIncluded}</small>
           </div>
 
           <p className="product-profile-description">

@@ -1477,6 +1477,9 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
             <a href="/blog" onClick={() => setMenuOpen(false)}>
               {ui.blog}
             </a>
+            <a href="/ozel-uretim" onClick={() => setMenuOpen(false)}>
+              {ui.customProduction}
+            </a>
           </div>
 
           <div className="mobile-menu-section">
@@ -1523,6 +1526,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
           Her Şey 50 TL
         </button>
         <a href="/blog">{uiUpper(ui.blog, language)}</a>
+        <a href="/ozel-uretim">{uiUpper(ui.customProduction, language)}</a>
       </nav>
 
       <section className="intro section-shell">

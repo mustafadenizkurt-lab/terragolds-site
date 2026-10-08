@@ -4,7 +4,7 @@ import { FloatingSocialLinks } from "../store-shared-chrome";
 import { readSettings } from "../../lib/store-db";
 
 export const metadata: Metadata = {
-  title: "Favorilerim | Terragolds",
+  title: "Favorilerim",
   description: "Beğendiğiniz Terragolds takılarını tek yerde inceleyin.",
   robots: { index: false, follow: false },
 };

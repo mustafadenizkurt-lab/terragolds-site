@@ -6,7 +6,7 @@ import StoreSubpageHeader from "./store-subpage-header";
 import NotFoundBody from "./not-found-body";
 
 export const metadata: Metadata = {
-  title: "Sayfa Bulunamadı | Terragolds",
+  title: "Sayfa Bulunamadı",
   robots: { index: false, follow: true },
 };
 

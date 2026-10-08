@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import LegalDocumentPage from "../legal/legal-document-page";
 
 export const metadata: Metadata = {
-  title: "Teslimat, İptal ve İade | Terragolds",
+  title: "Teslimat, İptal ve İade",
   description:
     "Terragolds teslimat süreleri, kargo bilgileri, iptal ve iade koşulları hakkında detaylı bilgi.",
   alternates: { canonical: "https://www.terragolds.com/teslimat-ve-iade" },

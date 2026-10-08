@@ -10,7 +10,7 @@ import ProductRemovedBody from "./product-removed-body";
 // çeviriyor - bu dosya kendisi hiçbir zaman 200 ile ziyaret edilmemeli,
 // bu yüzden indexlenmesin.
 export const metadata: Metadata = {
-  title: "Ürün Artık Mevcut Değil | Terragolds",
+  title: "Ürün Artık Mevcut Değil",
   robots: { index: false, follow: true },
 };
 

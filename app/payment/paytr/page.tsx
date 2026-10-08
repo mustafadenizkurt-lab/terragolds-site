@@ -5,7 +5,7 @@ import PaytrFrame from "./paytr-frame";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Güvenli Ödeme | Terragolds",
+  title: "Güvenli Ödeme",
   robots: { index: false, follow: false },
 };
 

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import PasswordRecoveryForm from "../account/password-recovery-form";
 
 export const metadata: Metadata = {
-  title: "Yeni Şifre | Terragolds",
+  title: "Yeni Şifre",
   robots: { index: false, follow: false },
 };
 

@@ -8,6 +8,7 @@ import * as adminCategories from "../app/api/admin/categories/route";
 import * as adminCategoryById from "../app/api/admin/categories/[id]/route";
 import * as adminContent from "../app/api/admin/content/route";
 import * as adminCustomers from "../app/api/admin/customers/route";
+import * as adminCustomProductionPhotos from "../app/api/admin/custom-production-photos/route";
 import * as adminDashboard from "../app/api/admin/dashboard/route";
 import * as adminDiscountCodes from "../app/api/admin/discount-codes/route";
 import * as adminDiscountCodeById from "../app/api/admin/discount-codes/[id]/route";
@@ -86,6 +87,7 @@ const exactRoutes: Record<string, RouteModule> = {
   "/api/admin/categories": adminCategories,
   "/api/admin/content": adminContent,
   "/api/admin/customers": adminCustomers,
+  "/api/admin/custom-production-photos": adminCustomProductionPhotos,
   "/api/admin/dashboard": adminDashboard,
   "/api/admin/discount-codes": adminDiscountCodes,
   "/api/admin/payment-methods": adminPaymentMethods,
