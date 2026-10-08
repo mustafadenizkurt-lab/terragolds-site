@@ -87,7 +87,27 @@ const worker = {
       }, allowedWidths);
     }
 
-    return handler.fetch(request, env, ctx);
+    const response = await handler.fetch(request, env, ctx);
+
+    // app/products/[id]/page.tsx tüm 301 yönlendirme ihtimallerini
+    // (product_redirects kaydı, sonek eşleştirme, kategori tahmini) zaten
+    // denedi - hâlâ 404 ise ürün gerçekten kalıcı olarak gitmiş demektir.
+    // Next.js sayfa bileşeninden 410 döndürülemediği için (notFound() hep
+    // 404 veriyor) burada, dahili olarak /urun-kaldirildi'nin render edilmiş
+    // HTML'ini alıp durum kodunu 410'a çeviriyoruz - tasarım/menü/footer
+    // sitenin geri kalanıyla birebir aynı kalıyor.
+    if (response.status === 404 && url.pathname.startsWith("/products/")) {
+      const removedPageRequest = new Request(new URL("/urun-kaldirildi", request.url), request);
+      const removedPageResponse = await handler.fetch(removedPageRequest, env, ctx);
+      if (removedPageResponse.status === 200) {
+        return new Response(removedPageResponse.body, {
+          status: 410,
+          headers: removedPageResponse.headers,
+        });
+      }
+    }
+
+    return response;
   },
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext) {
     // Trendyol dinamik fiyatlama botu: 03:04 Türkiye saati (bkz.

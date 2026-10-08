@@ -7,6 +7,8 @@ import { pushStockAndPriceToTrendyol } from "../../../../../lib/trendyol/sync";
 import { pushStockAndPriceToHepsiburada } from "../../../../../lib/hepsiburada/sync";
 import { pushStockAndPriceToN11 } from "../../../../../lib/n11/sync";
 import { ensureImageLockColumn } from "../../../../../lib/product-image-lock";
+import { recordDeletionRedirect, recordSlugChangeRedirect } from "../../../../../lib/product-redirects";
+import { categoryToSlug } from "../../../../../lib/category-slugs";
 
 export const dynamic = "force-dynamic";
 
@@ -35,9 +37,9 @@ export async function PUT(request: Request, context: RouteContext) {
     // tedarikçinin orijinal görseliyle EZMESİN diye kilitliyoruz - bkz.
     // lib/product-image-lock.ts ve syncSupplier()'daki CASE koruması.
     const current = await db
-      .prepare("SELECT image FROM products WHERE id = ?")
+      .prepare("SELECT image, slug FROM products WHERE id = ?")
       .bind(id)
-      .first<{ image: string }>();
+      .first<{ image: string; slug: string | null }>();
     const imageChanged = Boolean(current) && current!.image !== product.image;
 
     const result = await db
@@ -87,6 +89,13 @@ export async function PUT(request: Request, context: RouteContext) {
     if (!result.meta.changes) {
       return Response.json({ error: "Ürün bulunamadı." }, { status: 404 });
     }
+
+    // Slug değiştiyse eski adres product_redirects'e kaydedilir ki Google'ın
+    // indeksindeki eski link 404 yerine 301 ile yeni sayfaya gitsin.
+    if (current?.slug && current.slug !== slug) {
+      await recordSlugChangeRedirect(db, current.slug, slug).catch(() => {});
+    }
+
     return Response.json({ ok: true });
   } catch (error) {
     return Response.json(
@@ -111,12 +120,25 @@ export async function DELETE(request: Request, context: RouteContext) {
   const db = getD1();
   const product = await db
     .prepare(
-      "SELECT xml_sync_status AS xmlSyncStatus, xml_supplier_id AS xmlSupplierId, xml_external_id AS xmlExternalId FROM products WHERE id = ?",
+      "SELECT xml_sync_status AS xmlSyncStatus, xml_supplier_id AS xmlSupplierId, xml_external_id AS xmlExternalId, slug, category FROM products WHERE id = ?",
     )
     .bind(id)
-    .first<{ xmlSyncStatus: string | null; xmlSupplierId: number | null; xmlExternalId: string | null }>();
+    .first<{
+      xmlSyncStatus: string | null;
+      xmlSupplierId: number | null;
+      xmlExternalId: string | null;
+      slug: string | null;
+      category: string;
+    }>();
   if (!product) {
     return Response.json({ error: "Ürün bulunamadı." }, { status: 404 });
+  }
+
+  // Silinen ürünün eski adresi kategori sayfasına yönlendirilir ki Google'ın
+  // indeksindeki link 404 yerine 301 ile anlamlı bir sayfaya gitsin - mevcut
+  // hariç tutma kaydına (aşağıda) EK olarak, onu değiştirmeden.
+  if (product.slug) {
+    await recordDeletionRedirect(db, product.slug, categoryToSlug(product.category)).catch(() => {});
   }
 
   // Bir tedarikçiye bağlı ürün silinirse (taslağa alınsa da gerçekten

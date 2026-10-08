@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import StoreSubpageHeader from "../../store-subpage-header";
 import StoreSiteFooter from "../../store-site-footer";
 import { FloatingSocialLinks } from "../../store-shared-chrome";
@@ -90,30 +91,49 @@ export async function generateMetadata({
   searchParams,
 }: CategoryPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const { alt } = await searchParams;
+  const { alt, sayfa, malzeme, renk, sirala } = await searchParams;
   const products = await readProducts();
   const resolved = resolveCategoryOrGroup(products, slug, alt);
 
-  if (!resolved) {
-    return {
-      title: "Kategori Bulunamadı",
-      robots: { index: false, follow: false },
-    };
-  }
+  // Removed/unknown category: a real 404 (was a 200 "Kategori bulunamadı"
+  // soft-404 with noindex + canonical to the homepage).
+  if (!resolved) notFound();
 
   const { title, products: categoryProducts } = resolved;
-  const url = alt
-    ? `${SITE_URL}/kategori/${slug}?alt=${alt}`
+  const baseUrl = alt
+    ? `${SITE_URL}/kategori/${slug}?alt=${encodeURIComponent(alt)}`
     : `${SITE_URL}/kategori/${slug}`;
+  // Filtered/sorted views are near-duplicates of the plain listing: keep
+  // them out of the index but let Google follow their product links.
+  const isFilteredView = Boolean(malzeme || renk || sirala);
+  // Each pagination page canonicalizes to itself. Pointing ?sayfa=2..N at
+  // page 1 told Google they were duplicates, so it stopped crawling them
+  // and never reached the products listed on the deeper pages.
+  const totalPages = Math.max(
+    1,
+    Math.ceil(categoryProducts.length / CATEGORY_PRODUCTS_PER_PAGE),
+  );
+  const requestedPage = Number(sayfa);
+  const page =
+    Number.isInteger(requestedPage) && requestedPage > 1
+      ? Math.min(requestedPage, totalPages)
+      : 1;
+  const url =
+    isFilteredView || page === 1
+      ? baseUrl
+      : `${baseUrl}${alt ? "&" : "?"}sayfa=${page}`;
   const heroImage = categoryProducts[0]?.image
     ? new URL(categoryProducts[0].image, SITE_URL).toString()
     : `${SITE_URL}/og.jpg`;
   const description = `${title} kategorisinde ${categoryProducts.length} seçilmiş ürün. Terragolds koleksiyonunu inceleyin.`;
 
+  const pageSuffix = page > 1 && !isFilteredView ? ` - Sayfa ${page}` : "";
+
   return {
-    title: `${title} | Terragolds`,
+    title: `${title}${pageSuffix} | Terragolds`,
     description,
     alternates: { canonical: url },
+    ...(isFilteredView ? { robots: { index: false, follow: true } } : {}),
     openGraph: {
       title: `${title} | Terragolds`,
       description,
@@ -138,6 +158,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
     readSettings(),
   ]);
   const resolved = resolveCategoryOrGroup(products, slug, alt);
+  if (!resolved) notFound();
   const title = resolved?.title ?? null;
   const titleEn = resolved?.titleEn ?? null;
   const unfilteredCategoryProducts = resolved?.products ?? [];

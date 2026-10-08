@@ -1,6 +1,11 @@
 import { defaultSettings } from "../lib/store-data";
 import { readSettings } from "../lib/store-db";
+import type { Metadata } from "next";
 import HomeClient from "./home-client";
+
+export const metadata: Metadata = {
+  alternates: { canonical: "https://www.terragolds.com/" },
+};
 
 export const dynamic = "force-dynamic";
 
@@ -13,5 +18,12 @@ export const dynamic = "force-dynamic";
 // IDs). Products/content/categories stay client-fetched, same as before.
 export default async function Home() {
   const settings = await readSettings().catch(() => defaultSettings);
-  return <HomeClient initialSettings={settings} />;
+  return (
+    <>
+      {/* The visible homepage is client-rendered and has no <h1>; this gives
+          crawlers the page's main heading in the initial HTML. */}
+      <h1 className="sr-only">Terragolds – Zarif Takı ve Aksesuar Koleksiyonları</h1>
+      <HomeClient initialSettings={settings} />
+    </>
+  );
 }

@@ -1,5 +1,6 @@
 import type { PaymentProviderId } from "./payment-types";
 import { computePointsEarned, ensureLoyaltyColumns, refundRedeemedPoints } from "./loyalty";
+import { sendOrderConfirmationEmail } from "./order-confirmation-email";
 import { getD1 } from "./store-db";
 
 type OrderPaymentRow = {
@@ -164,4 +165,9 @@ export async function markOrderPaid(input: {
       )
       .bind(input.paymentId, input.orderId, input.provider),
   ]);
+
+  // E-posta gönderimi sipariş durumunun kalıcı olarak değiştiği bu tek
+  // noktadan (yukarıdaki batch'in erken-çıkış koruması sayesinde her
+  // sipariş için en fazla bir kez) tetiklenir - asla ödeme akışını kesmesin.
+  await sendOrderConfirmationEmail(input.orderId).catch(() => {});
 }

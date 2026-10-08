@@ -5,7 +5,19 @@ import {
   getDiscountedPrice,
   productDescriptorPhrase,
 } from "../../../lib/store-data";
-import { readProductByIdOrSlug, readSettings } from "../../../lib/store-db";
+import {
+  findProductSlugByLegacySlug,
+  getD1,
+  readProductByIdOrSlug,
+  readRelatedProducts,
+  readSettings,
+} from "../../../lib/store-db";
+import {
+  findActiveProductByStrippedSlug,
+  findManualRedirect,
+  guessCategoryFromSlug,
+} from "../../../lib/product-redirects";
+import { optimizedImageUrl } from "../../../lib/image-transform";
 import { decodeHtmlEntities } from "../../../lib/text-utils";
 import { categoryToSlug } from "../../../lib/category-slugs";
 import {
@@ -41,14 +53,18 @@ export async function generateMetadata({
       robots: { index: false, follow: false },
     };
   }
+  // The supplier code keeps titles unique - many supplier products share
+  // the exact same name (e.g. 11x "14K Gold Renk Kaplama CM Kadın Küpe"),
+  // and Google was folding them together as duplicates.
+  const code = product.xmlExternalId ? ` #${product.xmlExternalId}` : "";
   const title =
-    product.metaTitle || `${product.name} – ${product.stone || product.category}`;
+    product.metaTitle ||
+    `${product.name}${code} – ${product.stone || product.category}`;
   const description =
     product.metaDescription ||
-    `${product.name}, ${productDescriptorPhrase(product)}. ${decodeHtmlEntities(product.description)}`.slice(
-      0,
-      155,
-    );
+    `${product.name}${code}, ${productDescriptorPhrase(product)}. ${decodeHtmlEntities(
+      product.seoDescription || product.description,
+    )}`.slice(0, 155);
   const url = `https://www.terragolds.com/products/${product.slug || product.id}`;
   const images = [product.image, product.hoverImage, product.image3, product.image4]
     .filter(Boolean)
@@ -85,6 +101,32 @@ export default async function ProductPage({ params }: ProductPageProps) {
     readSettings(),
   ]);
 
+  // Old bare slug of a product that later got a "-1234" suffix: send it to
+  // the current URL instead of a 404 (GSC "Bulunamadı (404)").
+  if (!product) {
+    const currentSlug = await findProductSlugByLegacySlug(param).catch(() => null);
+    if (currentSlug) permanentRedirect(`/products/${currentSlug}`);
+  }
+
+  // Ürün değişikliği (slug değişti / ürün silindi) admin panelinden
+  // product_redirects tablosuna kaydediliyor (bkz. lib/product-redirects.ts) -
+  // yukarıdaki sonek kontrolünden sonra, en spesifik eşleşme önce denensin
+  // diye burada. Sırayla: 1) elle/otomatik kaydedilmiş yönlendirme,
+  // 2) sondaki sayı ekini atıp çıplak slug'a sahip aktif ürün,
+  // 3) anahtar kelimeden kategori tahmini. Hiçbiri yoksa normal 404'e düşer
+  // (worker/index.ts bunu gerçek bir 410'a çevirir).
+  if (!product) {
+    const db = getD1();
+    const manualTarget = await findManualRedirect(db, param).catch(() => null);
+    if (manualTarget) permanentRedirect(manualTarget);
+
+    const strippedMatch = await findActiveProductByStrippedSlug(db, param).catch(() => null);
+    if (strippedMatch) permanentRedirect(`/products/${strippedMatch}`);
+
+    const guessedCategory = guessCategoryFromSlug(param);
+    if (guessedCategory) permanentRedirect(`/kategori/${categoryToSlug(guessedCategory)}`);
+  }
+
   // A nonexistent product must respond 404, not 200 with a client-rendered
   // "not found" message - search engines were indexing dead product URLs
   // as if they were real pages (see app/blog/[slug]/page.tsx for the same
@@ -97,6 +139,12 @@ export default async function ProductPage({ params }: ProductPageProps) {
   if (product?.slug && param !== product.slug) {
     permanentRedirect(`/products/${product.slug}`);
   }
+
+  const relatedProducts = await readRelatedProducts(product.category, product.id).catch(
+    () => [],
+  );
+  // Purchase cost never goes into the page payload.
+  const initialProduct = { ...product, cost: 0 };
 
   const structuredData = product
     ? productSchema({
@@ -146,7 +194,44 @@ export default async function ProductPage({ params }: ProductPageProps) {
       )}
       <StoreSubpageHeader />
       <StoreTrustBar />
-      <ProductDetailClient productId={product?.id ?? 0} showHeader={false} />
+      <ProductDetailClient
+        productId={product.id}
+        showHeader={false}
+        initialProduct={initialProduct}
+      />
+      {relatedProducts.length > 0 && (
+        <section className="category-products section-shell related-products">
+          <h2>Benzer ürünler</h2>
+          <div className="category-grid">
+            {relatedProducts.map((related) => (
+              <article className="category-product-card" key={related.id}>
+                <div className="category-product-image-wrap">
+                  <a
+                    className="category-product-image"
+                    href={`/products/${related.slug || related.id}`}
+                  >
+                    <img
+                      className="product-hover-image primary"
+                      src={optimizedImageUrl(related.image, 500)}
+                      alt={related.name}
+                      loading="lazy"
+                    />
+                  </a>
+                </div>
+                <div className="category-product-copy">
+                  <small>{related.stone}</small>
+                  <a href={`/products/${related.slug || related.id}`}>{related.name}</a>
+                </div>
+              </article>
+            ))}
+          </div>
+          <p>
+            <a href={`/kategori/${categoryToSlug(product.category)}`}>
+              Tüm {product.category} ürünleri
+            </a>
+          </p>
+        </section>
+      )}
       <StoreSiteFooter
         businessName={settings.businessName}
         address={[settings.address, settings.district, settings.city]
