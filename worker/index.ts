@@ -10,6 +10,7 @@ import { reconcilePendingPaytrOrders } from "../lib/paytr-reconcile";
 import { scanTrendyolArchivedProducts } from "../lib/trendyol/archived-scan";
 import { auditAndFixTrendyolPrices } from "../lib/trendyol/price-audit";
 import { applyTrendyolDynamicPricing } from "../lib/trendyol/pricing";
+import { rehostHotlinkedImages } from "../lib/image-rehost";
 
 interface Env {
   ASSETS: Fetcher;
@@ -169,6 +170,13 @@ const worker = {
     // gerçekten aktif/pozitif fiyatlı, kesin yanlış olan ürünlerde) fiyatı
     // otomatik yeniden gönderiyor - bkz. lib/trendyol/price-audit.ts.
     ctx.waitUntil(auditAndFixTrendyolPrices(env.DB).catch(() => {}));
+    // Tedarikçinin sunucusu (ebijuteri) daha önce defalarca düştü (HTTP 521) -
+    // syncSupplier() hover_image'ı kilit kontrolü olmadan her zaman
+    // tedarikçinin URL'siyle eziyor, bu yüzden bir ürün "taşındıktan" sonra
+    // bile bir sonraki senkronda yeniden hotlink'e dönebilir. Bu, her
+    // çalıştığında küçük bir grubu (30) kendi R2'mize taşıyarak bunu sürekli
+    // temizliyor - idempotent, zaten taşınmış ürünlere dokunmuyor.
+    ctx.waitUntil(rehostHotlinkedImages(env.DB, 30).catch(() => {}));
   },
 };
 
