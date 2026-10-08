@@ -153,6 +153,37 @@ export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<
     // in a state we import/update it in right now. Only an id absent from
     // the feed entirely means the supplier has actually discontinued it.
     const seenExternalIds = new Set<string>();
+    // BB8694/benzeri büyük feed'lerde (3000+ ürün) her kayıt için ayrı bir
+    // SELECT atmak (eskiden buradaydı) Worker'ın CPU süresini zorluyordu
+    // (Error 1102). Bunun yerine bu tedarikçinin TÜM ürünlerini (durumu ne
+    // olursa olsun - 'manual' satırlar da dahil, aksi halde onlar "yok"
+    // sanılıp yeniden INSERT edilirdi) tek sorguda belleğe alıp eşleştirmeyi
+    // Map üzerinden yapıyoruz; UPDATE yazımları da aşağıda tek tek değil,
+    // restockSupplierProducts'taki gibi parça parça db.batch() ile gidiyor.
+    const existingRows = await db
+      .prepare(
+        "SELECT id, xml_external_id AS xmlExternalId, xml_sync_status AS xmlSyncStatus, price AS price, price_locked_at AS priceLockedAt FROM products WHERE xml_supplier_id = ? AND xml_external_id IS NOT NULL",
+      )
+      .bind(supplier.id)
+      .all<{ id: number; xmlExternalId: string; xmlSyncStatus: string; price: number; priceLockedAt: string | null }>();
+    const existingByExternalId = new Map(
+      existingRows.results.map((row) => [row.xmlExternalId, row]),
+    );
+    const pendingUpdates: {
+      matchedId: number;
+      name: string;
+      stone: string;
+      category: string;
+      finalPrice: number;
+      finalPriceLockedAt: string | null;
+      cost: number;
+      stock: number;
+      image: string;
+      hoverImage: string | null;
+      description: string;
+      lowerLimit: number | null;
+      upperLimit: number | null;
+    }[] = [];
     for (const record of records) {
       const product = mapRecord(record, mapping);
       if (product.externalId) seenExternalIds.add(product.externalId);
@@ -176,9 +207,7 @@ export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<
         skipped += 1;
         continue;
       }
-      const existing = await db.prepare(
-        "SELECT id, xml_sync_status AS xmlSyncStatus, price AS price, price_locked_at AS priceLockedAt FROM products WHERE xml_supplier_id = ? AND xml_external_id = ? LIMIT 1",
-      ).bind(supplier.id, product.externalId).first<{ id: number; xmlSyncStatus: string; price: number; priceLockedAt: string | null }>();
+      const existing = existingByExternalId.get(product.externalId);
       // Match only on an exact (supplier, external id) link, never by name:
       // products without that link may be sourced independently of this
       // feed (e.g. added by hand from a different supplier) and coincidentally
@@ -223,19 +252,21 @@ export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<
         // hâlâ NULL'sa (hiç admin/otomatik değer atanmamışsa) dolduruluyor -
         // admin panelden (/api/admin/products/trendyol-limits) elle girilmiş
         // bir sınırın üzerine XML senkronu bir daha asla yazmıyor.
-        await db.prepare(
-          `UPDATE products SET name = ?, stone = ?, category = ?, price = ?, price_locked_at = ?, cost = ?, stock = ?,
-             image = CASE WHEN image_locked_at IS NULL THEN ? ELSE image END,
-             hover_image = COALESCE(?, hover_image), description = ?, xml_sync_status = 'synced',
-             trendyol_lower_limit_price = CASE WHEN trendyol_lower_limit_price IS NULL THEN ? ELSE trendyol_lower_limit_price END,
-             trendyol_upper_limit_price = CASE WHEN trendyol_upper_limit_price IS NULL THEN ? ELSE trendyol_upper_limit_price END,
-             updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-        ).bind(
-          product.name, product.stone, product.category, finalPrice, finalPriceLockedAt, product.cost, product.stock,
-          product.image, product.hoverImage, product.description,
-          autoLimits?.lowerLimit ?? null, autoLimits?.upperLimit ?? null,
+        pendingUpdates.push({
           matchedId,
-        ).run();
+          name: product.name,
+          stone: product.stone,
+          category: product.category,
+          finalPrice,
+          finalPriceLockedAt,
+          cost: product.cost,
+          stock: product.stock,
+          image: product.image,
+          hoverImage: product.hoverImage,
+          description: product.description,
+          lowerLimit: autoLimits?.lowerLimit ?? null,
+          upperLimit: autoLimits?.upperLimit ?? null,
+        });
         updated += 1;
       } else {
         const description = await uniqueDescriptionForNewProduct(product);
@@ -253,6 +284,29 @@ export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<
         imported += 1;
       }
     }
+
+    const updateStmt = db.prepare(
+      `UPDATE products SET name = ?, stone = ?, category = ?, price = ?, price_locked_at = ?, cost = ?, stock = ?,
+         image = CASE WHEN image_locked_at IS NULL THEN ? ELSE image END,
+         hover_image = COALESCE(?, hover_image), description = ?, xml_sync_status = 'synced',
+         trendyol_lower_limit_price = CASE WHEN trendyol_lower_limit_price IS NULL THEN ? ELSE trendyol_lower_limit_price END,
+         trendyol_upper_limit_price = CASE WHEN trendyol_upper_limit_price IS NULL THEN ? ELSE trendyol_upper_limit_price END,
+         updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+    );
+    for (let offset = 0; offset < pendingUpdates.length; offset += RESTOCK_WRITE_BATCH_SIZE) {
+      const chunk = pendingUpdates.slice(offset, offset + RESTOCK_WRITE_BATCH_SIZE);
+      await db.batch(
+        chunk.map((entry) =>
+          updateStmt.bind(
+            entry.name, entry.stone, entry.category, entry.finalPrice, entry.finalPriceLockedAt, entry.cost, entry.stock,
+            entry.image, entry.hoverImage, entry.description,
+            entry.lowerLimit, entry.upperLimit,
+            entry.matchedId,
+          ),
+        ),
+      );
+    }
+
     const discontinued = await markDiscontinuedProducts(db, supplier.id, seenExternalIds);
 
     const completedAt = new Date().toISOString();
