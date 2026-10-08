@@ -24,7 +24,12 @@ const copy = {
     lastUpdated: "Son güncelleme:",
     sellerCardTitle: "Satıcı / veri sorumlusu iletişim bilgileri",
     business: "İşletme",
-    address: "Adres",
+    legalName: "Ticari unvan",
+    address: "İletişim adresi",
+    legalAddress: "Kayıtlı (ticaret sicili) adresi",
+    taxInfo: "Vergi dairesi / no",
+    mersisNo: "MERSİS no",
+    returnCarrier: "İade kargo firması",
     phone: "Telefon",
     email: "E-posta",
     fillFromAdmin: "Yönetim panelinden eklenmelidir.",
@@ -43,7 +48,12 @@ const copy = {
     lastUpdated: "Last updated:",
     sellerCardTitle: "Seller / data controller contact details",
     business: "Business",
-    address: "Address",
+    legalName: "Legal (trade) name",
+    address: "Contact address",
+    legalAddress: "Registered (trade registry) address",
+    taxInfo: "Tax office / number",
+    mersisNo: "MERSİS no",
+    returnCarrier: "Return shipping carrier",
     phone: "Phone",
     email: "Email",
     fillFromAdmin: "Must be added from the admin panel.",
@@ -88,17 +98,30 @@ export function LegalSidebar() {
 
 export function LegalSellerCard({
   businessName,
+  legalName,
   address,
+  legalAddress,
+  taxOffice,
+  taxId,
+  mersisNo,
+  returnCarrier,
   phone,
   email,
 }: {
   businessName?: string;
+  legalName?: string;
   address?: string;
+  legalAddress?: string;
+  taxOffice?: string;
+  taxId?: string;
+  mersisNo?: string;
+  returnCarrier?: string;
   phone?: string;
   email?: string;
 }) {
   const [language] = useLanguage();
   const t = copy[language];
+  const taxInfo = [taxOffice, taxId].filter(Boolean).join(" / ");
   return (
     <section className="legal-seller-card">
       <span>—</span>
@@ -106,7 +129,12 @@ export function LegalSellerCard({
         <h2>{t.sellerCardTitle}</h2>
         <dl>
           <div><dt>{t.business}</dt><dd>{businessName || "Terragolds"}</dd></div>
+          {legalName && <div><dt>{t.legalName}</dt><dd>{legalName}</dd></div>}
+          {legalAddress && <div><dt>{t.legalAddress}</dt><dd>{legalAddress}</dd></div>}
           <div><dt>{t.address}</dt><dd>{address || t.fillFromAdmin}</dd></div>
+          {taxInfo && <div><dt>{t.taxInfo}</dt><dd>{taxInfo}</dd></div>}
+          {mersisNo && <div><dt>{t.mersisNo}</dt><dd>{mersisNo}</dd></div>}
+          {returnCarrier && <div><dt>{t.returnCarrier}</dt><dd>{returnCarrier}</dd></div>}
           <div><dt>{t.phone}</dt><dd>{phone || t.fillFromAdmin}</dd></div>
           <div><dt>{t.email}</dt><dd>{email || t.fillFromAdmin}</dd></div>
         </dl>

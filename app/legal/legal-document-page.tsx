@@ -66,15 +66,18 @@ export default async function LegalDocumentPage({ document }: { document: LegalD
           {document === "deliveryReturns" && <ReturnRequestForm />}
           <LegalSellerCard
             businessName={settings.businessName}
+            legalName={settings.legalName}
             address={address}
+            legalAddress={settings.legalAddress}
+            taxOffice={settings.taxOffice}
+            taxId={settings.taxId}
+            mersisNo={settings.mersisNo}
+            returnCarrier={
+              document === "deliveryReturns" ? settings.returnCarrier : undefined
+            }
             phone={settings.phone || settings.whatsapp}
             email={settings.email}
           />
-          <div className="legal-note">
-            Bu metin genel bilgilendirme taslağıdır. Şirket unvanı, vergi/MERSİS bilgileri,
-            iade taşıyıcısı ve fiili iş süreçleriyle eşleştirilerek yayından önce hukuk danışmanı
-            tarafından kontrol edilmelidir.
-          </div>
         </article>
       </div>
       <StoreSiteFooter

@@ -2009,6 +2009,45 @@ export default function AdminClient({
                           }
                         />
                       </label>
+                      <label className="admin-field">
+                        <span>MERSİS numarası</span>
+                        <input
+                          value={settings.mersisNo}
+                          onChange={(event) =>
+                            setSettings({
+                              ...settings,
+                              mersisNo: event.target.value,
+                            })
+                          }
+                        />
+                      </label>
+                      <label className="admin-field full">
+                        <span>Kayıtlı (ticaret sicili) adresi</span>
+                        <textarea
+                          rows={2}
+                          value={settings.legalAddress}
+                          onChange={(event) =>
+                            setSettings({
+                              ...settings,
+                              legalAddress: event.target.value,
+                            })
+                          }
+                          placeholder="Mahalle, cadde, bina, ilçe/il - iletişim adresinden farklıysa"
+                        />
+                      </label>
+                      <label className="admin-field">
+                        <span>İade kargo firması</span>
+                        <input
+                          value={settings.returnCarrier}
+                          onChange={(event) =>
+                            setSettings({
+                              ...settings,
+                              returnCarrier: event.target.value,
+                            })
+                          }
+                          placeholder="Aras Kargo"
+                        />
+                      </label>
                     </div>
                   </section>
 

@@ -56,6 +56,10 @@ export type StoreSettings = {
   legalName: string;
   taxOffice: string;
   taxId: string;
+  /** Tüzel kişiliğin kayıtlı (ticaret sicili) adresi - genelde fiili/iletişim adresinden farklı. */
+  legalAddress: string;
+  mersisNo: string;
+  returnCarrier: string;
   facebook: string;
   instagram: string;
   pinterest: string;
@@ -642,6 +646,9 @@ export const defaultSettings: StoreSettings = {
   legalName: "",
   taxOffice: "",
   taxId: "",
+  legalAddress: "",
+  mersisNo: "",
+  returnCarrier: "",
   facebook: "https://www.facebook.com/profile.php?id=61592677166035",
   instagram: "https://www.instagram.com/terragolds/",
   pinterest: "",
