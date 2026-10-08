@@ -11,6 +11,7 @@ import { pushStockAndPriceToHepsiburada } from "../hepsiburada/sync";
 import { pushStockAndPriceToN11 } from "../n11/sync";
 import { loadExcludedExternalIds } from "./excluded-products";
 import { ensureImageLockColumn } from "../product-image-lock";
+import { ensureDetailsLockColumn } from "../product-details-lock";
 import { ensurePriceLockColumn, costWithVat } from "../product-price-lock";
 import { correctMaterialWording } from "./material-correction";
 
@@ -123,6 +124,7 @@ async function hasActiveRunningLog(db: D1Database, supplierId: number): Promise<
 
 export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<SyncResult> {
   await ensureImageLockColumn(db);
+  await ensureDetailsLockColumn(db);
   await ensurePriceLockColumn(db);
   await ensureTrendyolColumns(db);
   // Clean up any orphaned row from a previous invocation first, then check
@@ -218,15 +220,24 @@ export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<
         // image_locked_at doluysa (admin bu ürünün görselini kendi panelimizden
         // elle düzeltmişse - bkz. lib/product-image-lock.ts) tedarikçinin
         // orijinal görseli buraya hiç yazılmıyor, mevcut (düzeltilmiş) görsel
-        // korunuyor. hover_image gibi diğer alanlar normal güncelleniyor.
-        // trendyol_lower/upper_limit_price aynı mantıkla korunuyor: sadece
-        // hâlâ NULL'sa (hiç admin/otomatik değer atanmamışsa) dolduruluyor -
-        // admin panelden (/api/admin/products/trendyol-limits) elle girilmiş
-        // bir sınırın üzerine XML senkronu bir daha asla yazmıyor.
+        // korunuyor. Aynı şekilde details_locked_at doluysa (admin isim/taş/
+        // kategori/açıklamayı elle düzeltmişse - bkz. lib/product-details-lock.ts)
+        // bu dört alana da tedarikçi verisi hiç yazılmıyor. hover_image/stock
+        // gibi diğer alanlar normal güncelleniyor. trendyol_lower/upper_limit_price
+        // aynı mantıkla korunuyor: sadece hâlâ NULL'sa (hiç admin/otomatik değer
+        // atanmamışsa) dolduruluyor - admin panelden
+        // (/api/admin/products/trendyol-limits) elle girilmiş bir sınırın
+        // üzerine XML senkronu bir daha asla yazmıyor.
         await db.prepare(
-          `UPDATE products SET name = ?, stone = ?, category = ?, price = ?, price_locked_at = ?, cost = ?, stock = ?,
+          `UPDATE products SET
+             name = CASE WHEN details_locked_at IS NULL THEN ? ELSE name END,
+             stone = CASE WHEN details_locked_at IS NULL THEN ? ELSE stone END,
+             category = CASE WHEN details_locked_at IS NULL THEN ? ELSE category END,
+             price = ?, price_locked_at = ?, cost = ?, stock = ?,
              image = CASE WHEN image_locked_at IS NULL THEN ? ELSE image END,
-             hover_image = COALESCE(?, hover_image), description = ?, xml_sync_status = 'synced',
+             hover_image = COALESCE(?, hover_image),
+             description = CASE WHEN details_locked_at IS NULL THEN ? ELSE description END,
+             xml_sync_status = 'synced',
              trendyol_lower_limit_price = CASE WHEN trendyol_lower_limit_price IS NULL THEN ? ELSE trendyol_lower_limit_price END,
              trendyol_upper_limit_price = CASE WHEN trendyol_upper_limit_price IS NULL THEN ? ELSE trendyol_upper_limit_price END,
              updated_at = CURRENT_TIMESTAMP WHERE id = ?`,

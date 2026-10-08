@@ -7,6 +7,7 @@ import { pushStockAndPriceToTrendyol } from "../../../../../lib/trendyol/sync";
 import { pushStockAndPriceToHepsiburada } from "../../../../../lib/hepsiburada/sync";
 import { pushStockAndPriceToN11 } from "../../../../../lib/n11/sync";
 import { ensureImageLockColumn } from "../../../../../lib/product-image-lock";
+import { ensureDetailsLockColumn } from "../../../../../lib/product-details-lock";
 import { recordDeletionRedirect, recordSlugChangeRedirect } from "../../../../../lib/product-redirects";
 import { categoryToSlug } from "../../../../../lib/category-slugs";
 
@@ -29,6 +30,7 @@ export async function PUT(request: Request, context: RouteContext) {
     await ensureSeedData();
     const db = getD1();
     await ensureImageLockColumn(db);
+    await ensureDetailsLockColumn(db);
     const slug = await resolveProductSlug(db, product.name, id, product.slug);
 
     // Admin ana görseli (image) burada, kendi panelimizden elle değiştirirse
@@ -37,10 +39,24 @@ export async function PUT(request: Request, context: RouteContext) {
     // tedarikçinin orijinal görseliyle EZMESİN diye kilitliyoruz - bkz.
     // lib/product-image-lock.ts ve syncSupplier()'daki CASE koruması.
     const current = await db
-      .prepare("SELECT image, slug FROM products WHERE id = ?")
+      .prepare("SELECT image, name, stone, category, description, slug FROM products WHERE id = ?")
       .bind(id)
-      .first<{ image: string; slug: string | null }>();
+      .first<{
+        image: string;
+        name: string;
+        stone: string;
+        category: string;
+        description: string;
+        slug: string | null;
+      }>();
     const imageChanged = Boolean(current) && current!.image !== product.image;
+    // Aynı mantık, isim/taş/kategori/açıklama için - bkz. lib/product-details-lock.ts.
+    const detailsChanged =
+      Boolean(current) &&
+      (current!.name !== product.name ||
+        current!.stone !== product.stone ||
+        current!.category !== product.category ||
+        current!.description !== product.description);
 
     const result = await db
       .prepare(
@@ -52,6 +68,7 @@ export async function PUT(request: Request, context: RouteContext) {
              shopier_sync_status = ?, slug = ?, meta_title = ?, meta_description = ?,
              featured = ?, sort_order = ?, is_daily_deal = ?, daily_deal_order = ?,
              image_locked_at = CASE WHEN ? THEN CURRENT_TIMESTAMP ELSE image_locked_at END,
+             details_locked_at = CASE WHEN ? THEN CURRENT_TIMESTAMP ELSE details_locked_at END,
              updated_at = CURRENT_TIMESTAMP
          WHERE id = ?`,
       )
@@ -82,6 +99,7 @@ export async function PUT(request: Request, context: RouteContext) {
         product.isDailyDeal ? 1 : 0,
         product.dailyDealOrder,
         imageChanged ? 1 : 0,
+        detailsChanged ? 1 : 0,
         id,
       )
       .run();
