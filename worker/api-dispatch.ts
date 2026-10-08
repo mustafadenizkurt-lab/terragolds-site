@@ -18,10 +18,12 @@ import * as adminPaymentProviderById from "../app/api/admin/payment-providers/[p
 import * as adminProducts from "../app/api/admin/products/route";
 import * as adminProductById from "../app/api/admin/products/[id]/route";
 import * as adminProductsBulk from "../app/api/admin/products/bulk/route";
+import * as adminProductsBackfillSeoDescriptions from "../app/api/admin/products/backfill-seo-descriptions/route";
 import * as adminProductsFixDuplicateDescriptions from "../app/api/admin/products/fix-duplicate-descriptions/route";
 import * as adminProductsLockTrendyolImage from "../app/api/admin/products/lock-trendyol-image/route";
 import * as adminReturnRequests from "../app/api/admin/return-requests/route";
 import * as adminReturnRequestById from "../app/api/admin/return-requests/[id]/route";
+import * as adminReviews from "../app/api/admin/reviews/route";
 import * as adminSettings from "../app/api/admin/settings/route";
 import * as adminShipping from "../app/api/admin/shipping/route";
 import * as adminShippingSettings from "../app/api/admin/shipping-settings/route";
@@ -90,9 +92,11 @@ const exactRoutes: Record<string, RouteModule> = {
   "/api/admin/payment-providers": adminPaymentProviders,
   "/api/admin/products": adminProducts,
   "/api/admin/products/bulk": adminProductsBulk,
+  "/api/admin/products/backfill-seo-descriptions": adminProductsBackfillSeoDescriptions,
   "/api/admin/products/fix-duplicate-descriptions": adminProductsFixDuplicateDescriptions,
   "/api/admin/products/lock-trendyol-image": adminProductsLockTrendyolImage,
   "/api/admin/return-requests": adminReturnRequests,
+  "/api/admin/reviews": adminReviews,
   "/api/admin/settings": adminSettings,
   "/api/admin/shipping": adminShipping,
   "/api/admin/shipping-settings": adminShippingSettings,
