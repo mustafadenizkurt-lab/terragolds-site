@@ -63,7 +63,22 @@ export default function CategoryNavDropdown({
 
   const openDropdown = () => {
     const rect = rootRef.current?.getBoundingClientRect();
-    if (rect) setPosition({ top: rect.bottom, left: rect.left + rect.width / 2 });
+    if (rect) {
+      // Panel is centered on this point via CSS translateX(-50%) - on a
+      // narrow/mobile viewport an item near either edge (e.g. "Yüzük",
+      // usually one of the last nav items) pushed the panel half off-screen,
+      // clipping its content. Panel width is CSS-driven (min-width 200-230px,
+      // see .category-nav-dropdown) - not measured here, so this clamps to a
+      // matching half-width estimate plus a small margin.
+      const halfWidth = 115;
+      const margin = 12;
+      const center = rect.left + rect.width / 2;
+      const clampedLeft = Math.min(
+        Math.max(center, halfWidth + margin),
+        window.innerWidth - halfWidth - margin,
+      );
+      setPosition({ top: rect.bottom, left: clampedLeft });
+    }
     setOpen(true);
   };
 

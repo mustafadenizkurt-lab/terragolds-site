@@ -228,17 +228,17 @@ export const defaultSiteContent: SiteContent = {
     "https://app.ebijuteri.com/storage/files/uploads/pimg/1754644550_BKO10451.jpg",
   homeTileRawStonesTitle: "Kolye Koleksiyonu",
   homeTileRawStonesTagline: "Zarif ve şık kolye modelleri",
-  homeTileRawStonesLink: "/kategori/kolye",
+  homeTileRawStonesLink: "/kategori/kolyeler",
   homeTileMeditationImage:
     "https://app.ebijuteri.com/storage/files/uploads/pimg/1751969179_BKP10911.jpg",
   homeTileMeditationTitle: "Küpe Koleksiyonu",
   homeTileMeditationTagline: "Her tarza uygun küpe seçenekleri",
-  homeTileMeditationLink: "/#shop",
+  homeTileMeditationLink: "/kategori/kupeler",
   homeTileCollectionSetsImage:
     "https://app.ebijuteri.com/storage/files/uploads/pimg/1770906964_BYK4144.jpg",
   homeTileCollectionSetsTitle: "Yüzük Koleksiyonu",
   homeTileCollectionSetsTagline: "Zamansız ve modern yüzük tasarımları",
-  homeTileCollectionSetsLink: "/#shop",
+  homeTileCollectionSetsLink: "/kategori/yuzuk",
   supportEyebrow: "Yardım merkezi",
   supportTitle: "Nasıl yardımcı olabiliriz?",
   supportDescription:

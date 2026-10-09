@@ -224,7 +224,7 @@ function ProductCard({
           )}
         </div>
         <span className="product-certified-badge">
-          <b aria-hidden="true">✓</b> Sertifikalı
+          <b aria-hidden="true">✓</b> {ui.certified}
         </span>
         <button
           type="button"
@@ -328,8 +328,19 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
   const [catalogMinPrice, setCatalogMinPrice] = useState("");
   const [catalogMaxPrice, setCatalogMaxPrice] = useState("");
   const [catalogInStockOnly, setCatalogInStockOnly] = useState(false);
-  const [catalogDiscountOnly, setCatalogDiscountOnly] = useState(false);
-  const [catalogCampaignOnly, setCatalogCampaignOnly] = useState(false);
+  // "indirim"/"kampanya" URL parametresinden okunuyor - "İndirim" ve
+  // "Her Şey 50 TL" nav linkleri artık gerçek, paylaşılabilir/taranabilir
+  // bir URL'ye gidiyor (sadece JS onClick ile state değiştirmiyor), aşağıdaki
+  // senkron effect'i de state değiştiğinde URL'i güncel tutuyor - "sayfa"
+  // parametresiyle aynı desen (bkz. catalogPageUrl).
+  const [catalogDiscountOnly, setCatalogDiscountOnly] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return new URLSearchParams(window.location.search).get("indirim") === "1";
+  });
+  const [catalogCampaignOnly, setCatalogCampaignOnly] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return new URLSearchParams(window.location.search).get("kampanya") === "1";
+  });
   const [catalogMaterial, setCatalogMaterial] = useState("");
   const [catalogColor, setCatalogColor] = useState("");
   const [catalogSort, setCatalogSort] = useState("");
@@ -850,6 +861,37 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
     const query = params.toString();
     return `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`;
   }
+
+  function catalogFilterUrl(overrides: { indirim?: boolean; kampanya?: boolean }) {
+    const params = new URLSearchParams(window.location.search);
+    const indirim = overrides.indirim ?? catalogDiscountOnly;
+    const kampanya = overrides.kampanya ?? catalogCampaignOnly;
+    if (indirim) params.set("indirim", "1");
+    else params.delete("indirim");
+    if (kampanya) params.set("kampanya", "1");
+    else params.delete("kampanya");
+    const query = params.toString();
+    return `${window.location.pathname}${query ? `?${query}` : ""}#shop`;
+  }
+
+  useEffect(() => {
+    // "sayfa" senkron effect'iyle aynı desen (üstteki uzun yorumdaki
+    // window.history gerekçesi burada da geçerli) - filtre durumunu URL'de
+    // tutar, böylece link gerçekten paylaşılabilir/taranabilir olur ve geri
+    // tuşu/sayfa yenileme filtreyi korur.
+    const params = new URLSearchParams(window.location.search);
+    const urlHasDiscount = params.get("indirim") === "1";
+    const urlHasCampaign = params.get("kampanya") === "1";
+    if (urlHasDiscount === catalogDiscountOnly && urlHasCampaign === catalogCampaignOnly) {
+      return;
+    }
+    window.history.replaceState(
+      window.history.state,
+      "",
+      catalogFilterUrl({ indirim: catalogDiscountOnly, kampanya: catalogCampaignOnly }),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catalogDiscountOnly, catalogCampaignOnly]);
 
   useEffect(() => {
     // Keep the URL correct when the page changes for a reason other than the
@@ -1456,23 +1498,29 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
             ))}
             <a
               className="mobile-menu-discount"
-              href="#shop"
-              onClick={() => {
+              href={catalogFilterUrl({ indirim: true, kampanya: false })}
+              onClick={(event) => {
+                event.preventDefault();
+                setCatalogCampaignOnly(false);
                 setCatalogDiscountOnly(true);
                 setMenuOpen(false);
+                document.getElementById("shop")?.scrollIntoView({ behavior: "smooth" });
               }}
             >
               {ui.sale}
             </a>
             <a
               className="mobile-menu-discount"
-              href="#shop"
-              onClick={() => {
+              href={catalogFilterUrl({ indirim: false, kampanya: true })}
+              onClick={(event) => {
+                event.preventDefault();
+                setCatalogDiscountOnly(false);
                 setCatalogCampaignOnly(true);
                 setMenuOpen(false);
+                document.getElementById("shop")?.scrollIntoView({ behavior: "smooth" });
               }}
             >
-              Her Şey 50 TL
+              {ui.everything50}
             </a>
             <a href="/blog" onClick={() => setMenuOpen(false)}>
               {ui.blog}
@@ -1504,24 +1552,28 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
             language={language}
           />
         ))}
-        <button
-          type="button"
-          onClick={() => {
+        <a
+          href={catalogFilterUrl({ indirim: true, kampanya: false })}
+          onClick={(event) => {
+            event.preventDefault();
+            setCatalogCampaignOnly(false);
             setCatalogDiscountOnly(true);
             document.getElementById("shop")?.scrollIntoView({ behavior: "smooth" });
           }}
         >
           {uiUpper(ui.sale, language)}
-        </button>
-        <button
-          type="button"
-          onClick={() => {
+        </a>
+        <a
+          href={catalogFilterUrl({ indirim: false, kampanya: true })}
+          onClick={(event) => {
+            event.preventDefault();
+            setCatalogDiscountOnly(false);
             setCatalogCampaignOnly(true);
             document.getElementById("shop")?.scrollIntoView({ behavior: "smooth" });
           }}
         >
-          Her Şey 50 TL
-        </button>
+          {uiUpper(ui.everything50, language)}
+        </a>
         <a href="/blog">{uiUpper(ui.blog, language)}</a>
       </nav>
 
@@ -1553,8 +1605,8 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
           <div className="market-section-title">
             <span aria-hidden="true">★</span>
             <div>
-              <small>Editörün seçimi</small>
-              <h2>Öne Çıkanlar</h2>
+              <small>{ui.editorsPick}</small>
+              <h2>{ui.featuredProductsHeading}</h2>
             </div>
           </div>
           <div className="featured-row">
@@ -1718,14 +1770,25 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
           <span>{uiUpper(ui.trustSupport, language)}</span>
         </div>
         <nav className="collection-nav collection-nav-top" aria-label="Koleksiyon bölümleri">
-          <a href="#shop">{ui.newArrivals}</a>
+          <a
+            href="#shop"
+            onClick={(event) => {
+              event.preventDefault();
+              setCatalogSort("yeni");
+              document.getElementById("shop")?.scrollIntoView({ behavior: "smooth" });
+            }}
+          >
+            {ui.newArrivals}
+          </a>
           <a href="/#shop">{ui.naturalStones}</a>
           <a href="/#shop">{ui.decorativePieces}</a>
-          <button
+          <a
             className="sale"
-            type="button"
-            onClick={() => {
+            href={catalogFilterUrl({ indirim: true, kampanya: false })}
+            onClick={(event) => {
+              event.preventDefault();
               setCategory(categories[0]);
+              setCatalogCampaignOnly(false);
               setCatalogDiscountOnly(true);
               document
                 .getElementById("shop")
@@ -1733,7 +1796,7 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
             }}
           >
             {ui.sale}
-          </button>
+          </a>
         </nav>
         <div
           className="gold-showcase stone-showcase"
