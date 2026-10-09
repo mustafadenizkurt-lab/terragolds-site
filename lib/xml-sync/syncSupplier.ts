@@ -333,7 +333,11 @@ async function uniqueDescriptionForNewProduct(product: {
 // iken tedarikçi önerisi sadece 100₺ idi, neredeyse hiç kâr kalmıyordu.
 // Bu yüzden site fiyatı artık HER ZAMAN kendi sabit formülümüzle
 // hesaplanıyor, tedarikçinin önerisi kullanılmıyor.
-const SITE_SHIPPING_FEE = 80; // TL, sipariş başına sabit kargo/hizmet bedeli
+// 80 TL idi - admin "zarar edip duruyoruz" diyerek tüm ürünlere (hem bu
+// formülden geçen 'synced' ürünlere hem de elle fiyatlanan 'manual'
+// ürünlere, bkz. o günkü tek seferlik UPDATE) 100 TL zam istedi. Marj burada
+// kalıcı olarak yükseltildi ki bir sonraki XML senkronu zammı geri almasın.
+const SITE_SHIPPING_FEE = 180; // TL, sipariş başına sabit kargo/hizmet bedeli
 
 export function mapRecord(record: XmlRecord, mapping: SupplierMapping) {
   const rawPrice = readMappedValue(record, mapping.price);
