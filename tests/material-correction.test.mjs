@@ -46,9 +46,23 @@ test("correctMaterialWording metal olmayan malzemelere (Deri, Doğal Taş) dokun
   );
 });
 
-test("correctMaterialWording zaten Çelik olan ürünlere dokunmaz", () => {
+test("correctMaterialWording zaten Çelik olan ürünlere malzeme değişimi uygulamaz", () => {
+  assert.equal(
+    correctMaterialWording("Çelik Altın Renk 45 cm İtalyan Zincir Model Kadın Kolye"),
+    "Çelik Altın Renk 45 cm İtalyan Zincir Model Kadın Kolye",
+  );
+});
+
+test("correctMaterialWording başındaki '316L' kalite kodunu siler (Trendyol bunu marka sanıp reddediyordu)", () => {
   assert.equal(
     correctMaterialWording("316L Çelik Altın Renk 45 cm İtalyan Zincir Model Kadın Kolye"),
-    "316L Çelik Altın Renk 45 cm İtalyan Zincir Model Kadın Kolye",
+    "Çelik Altın Renk 45 cm İtalyan Zincir Model Kadın Kolye",
+  );
+});
+
+test("correctMaterialWording ortadaki '316L' kalite kodunu da siler", () => {
+  assert.equal(
+    correctMaterialWording("Vintage Model 316L Çelik Gold Renk Kadın Küpe"),
+    "Vintage Model Çelik Gold Renk Kadın Küpe",
   );
 });
