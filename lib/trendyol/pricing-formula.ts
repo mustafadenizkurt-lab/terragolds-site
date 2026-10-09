@@ -24,8 +24,13 @@ export const COMMISSION_VAT_RATE = 0.2;
 // yorumu). Hem computeRequiredPrice (asıl fiyatlama) hem de
 // calculateTrendyolLimitsFromCost (güvenlik sınırı) aynı kademeyi kullanıyor.
 export const PROFIT_TIER_COST_THRESHOLD = 200; // TL, ham maliyet
-export const PROFIT_TARGET_LOW = 25; // TL, maliyet eşiğin altındaysa
-export const PROFIT_TARGET_HIGH = 50; // TL, maliyet eşiğe ulaşmış/üstündeyse
+// 25/50 TL idi - admin "zarar ediyoruz" diyerek kâr hedefini yükseltti.
+// computeRequiredPrice "sadece yükselt" kuralıyla çalıştığı için (bkz.
+// pricing.ts > priceCandidate), bu değişiklik mevcut 3246 bot-yönetimli
+// Trendyol fiyatının hemen hemen tamamını bir sonraki
+// applyTrendyolDynamicPricing çalıştırmasında yukarı çekecek.
+export const PROFIT_TARGET_LOW = 100; // TL, maliyet eşiğin altındaysa
+export const PROFIT_TARGET_HIGH = 150; // TL, maliyet eşiğe ulaşmış/üstündeyse
 
 export function targetProfitForCost(cost: number): number {
   return cost >= PROFIT_TIER_COST_THRESHOLD ? PROFIT_TARGET_HIGH : PROFIT_TARGET_LOW;
