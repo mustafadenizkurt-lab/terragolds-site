@@ -863,26 +863,24 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
   }
 
   function catalogFilterUrl(overrides: { indirim?: boolean; kampanya?: boolean }) {
-    // catalogPageUrl above is only ever called from event handlers/effects
-    // (browser-only), but this one is called directly from JSX (href={...})
-    // so it also runs during the server render pass, where `window` doesn't
-    // exist - unguarded, this crashed the whole page (Cloudflare 1101).
+    // Bu fonksiyon catalogPageUrl'den farklı olarak doğrudan JSX render
+    // gövdesinde (href={catalogFilterUrl(...)}) çağrılıyor - yani SUNUCU
+    // tarafında (SSR) da çalışıyor, sadece event handler/useEffect içinde
+    // değil. window orada tanımlı değil - korumasız erişim her ana sayfa
+    // isteğinde "Worker threw exception" (Cloudflare Error 1101) ile
+    // production'ı düşürdü. İki catalogDiscountOnly/catalogCampaignOnly
+    // useState'teki aynı korumayla tutarlı.
+    const search = typeof window === "undefined" ? "" : window.location.search;
+    const pathname = typeof window === "undefined" ? "/" : window.location.pathname;
+    const params = new URLSearchParams(search);
     const indirim = overrides.indirim ?? catalogDiscountOnly;
     const kampanya = overrides.kampanya ?? catalogCampaignOnly;
-    if (typeof window === "undefined") {
-      const params = new URLSearchParams();
-      if (indirim) params.set("indirim", "1");
-      if (kampanya) params.set("kampanya", "1");
-      const query = params.toString();
-      return `/${query ? `?${query}` : ""}#shop`;
-    }
-    const params = new URLSearchParams(window.location.search);
     if (indirim) params.set("indirim", "1");
     else params.delete("indirim");
     if (kampanya) params.set("kampanya", "1");
     else params.delete("kampanya");
     const query = params.toString();
-    return `${window.location.pathname}${query ? `?${query}` : ""}#shop`;
+    return `${pathname}${query ? `?${query}` : ""}#shop`;
   }
 
   useEffect(() => {
