@@ -159,7 +159,7 @@ export default function HomeTileImagesPanel({
               <input
                 value={draft[tile.linkKey] || tile.fallbackLink}
                 onChange={(event) => onFieldChange(tile.linkKey, event.target.value)}
-                placeholder="/kategori/kadin-kolye veya /#shop"
+                placeholder="/kategori/kolye veya /#shop"
               />
             </label>
           </div>

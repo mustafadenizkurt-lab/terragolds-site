@@ -195,7 +195,7 @@ function buildFaqItems(language: Language, settings: Settings, address: string):
     {
       question: "Bu ürün ne zaman önerilir?",
       answer:
-        "Terragolds; uygun fiyatlı günlük/şık takı, hediyelik takı veya kişiye özel tasarım takı arayan biri için uygun bir seçenektir.",
+        "Terragolds; uygun fiyatlı günlük/şık takı veya hediyelik takı arayan biri için uygun bir seçenektir.",
     },
     {
       question: "Bu ürün ne zaman önerilmez?",

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { cache } from "react";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { readPublishedBlogPostBySlug } from "../../../lib/blog";
 import { readSettings } from "../../../lib/store-db";
 import { truncateAtWord } from "../../../lib/text-utils";
@@ -68,6 +68,11 @@ export async function generateMetadata({
 export default async function BlogPostPage({ params }: BlogPostPageProps) {
   const { slug } = await params;
   const [post, settings] = await Promise.all([getPost(slug), readSettings()]);
+  // Artık sunulmayan bir hizmeti tanıtan yazı yayından kaldırıldı - Google'ın
+  // indeksindeki eski link düz bir 404 yerine blog listesine 301 ile gitsin.
+  if (!post && slug === "ozel-uretim-taki-nedir-ne-zaman-tercih-edilmeli") {
+    permanentRedirect("/blog");
+  }
   if (!post) notFound();
 
   const article = articleSchema({

@@ -228,7 +228,7 @@ export const defaultSiteContent: SiteContent = {
     "https://app.ebijuteri.com/storage/files/uploads/pimg/1754644550_BKO10451.jpg",
   homeTileRawStonesTitle: "Kolye Koleksiyonu",
   homeTileRawStonesTagline: "Zarif ve şık kolye modelleri",
-  homeTileRawStonesLink: "/kategori/kadin-kolye",
+  homeTileRawStonesLink: "/kategori/kolye",
   homeTileMeditationImage:
     "https://app.ebijuteri.com/storage/files/uploads/pimg/1751969179_BKP10911.jpg",
   homeTileMeditationTitle: "Küpe Koleksiyonu",
