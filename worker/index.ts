@@ -176,7 +176,9 @@ const worker = {
     // bile bir sonraki senkronda yeniden hotlink'e dönebilir. Bu, her
     // çalıştığında küçük bir grubu (30) kendi R2'mize taşıyarak bunu sürekli
     // temizliyor - idempotent, zaten taşınmış ürünlere dokunmuyor.
-    ctx.waitUntil(rehostHotlinkedImages(env.DB, 30).catch(() => {}));
+    // 30/tur, günde ~58 yeni senkronlanan üründen gelen doğal hotlink akışına
+    // zar zor yetişiyordu (net ilerleme neredeyse durdu) - 150'ye çıkarıldı.
+    ctx.waitUntil(rehostHotlinkedImages(env.DB, 150).catch(() => {}));
   },
 };
 
