@@ -863,9 +863,20 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
   }
 
   function catalogFilterUrl(overrides: { indirim?: boolean; kampanya?: boolean }) {
-    const params = new URLSearchParams(window.location.search);
+    // catalogPageUrl above is only ever called from event handlers/effects
+    // (browser-only), but this one is called directly from JSX (href={...})
+    // so it also runs during the server render pass, where `window` doesn't
+    // exist - unguarded, this crashed the whole page (Cloudflare 1101).
     const indirim = overrides.indirim ?? catalogDiscountOnly;
     const kampanya = overrides.kampanya ?? catalogCampaignOnly;
+    if (typeof window === "undefined") {
+      const params = new URLSearchParams();
+      if (indirim) params.set("indirim", "1");
+      if (kampanya) params.set("kampanya", "1");
+      const query = params.toString();
+      return `/${query ? `?${query}` : ""}#shop`;
+    }
+    const params = new URLSearchParams(window.location.search);
     if (indirim) params.set("indirim", "1");
     else params.delete("indirim");
     if (kampanya) params.set("kampanya", "1");
