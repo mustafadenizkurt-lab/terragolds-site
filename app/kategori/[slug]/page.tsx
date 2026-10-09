@@ -10,6 +10,8 @@ import { categoryGroupLabel, findCategoryGroupBySlug, groupForCategory } from ".
 import { subgroupsForGroup, tallyCategoryCounts } from "../../../lib/category-subgroups";
 import type { Product } from "../../../lib/store-data";
 import { readProducts, readSettings } from "../../../lib/store-db";
+import { readProductCategories } from "../../../lib/product-categories";
+import { truncateAtWord } from "../../../lib/text-utils";
 import { breadcrumbSchema, toJsonLd } from "../../../lib/seo/structured-data";
 import {
   productMatchesFacet,
@@ -69,10 +71,19 @@ function resolveCategoryOrGroup(products: Product[], slug: string, altSlug?: str
           // real English label, so it's the only part that can flip.
           titleEn: `${categoryGroupLabel(group, "en")} · ${subgroup.label}`,
           products: groupProducts.filter((product) => categorySet.has(product.category)),
+          rawCategoryName: null as string | null,
         };
       }
     }
-    return { title: group.label, titleEn: categoryGroupLabel(group, "en"), products: groupProducts };
+    return {
+      title: group.label,
+      titleEn: categoryGroupLabel(group, "en"),
+      products: groupProducts,
+      // A curated group spans several raw categories (no single matching
+      // product_categories row), so there's no one admin-authored
+      // description to show here - only single raw-category pages have one.
+      rawCategoryName: null as string | null,
+    };
   }
   const categories = [...new Set(products.map((product) => product.category))];
   const category = findCategoryBySlug(categories, slug);
@@ -83,7 +94,14 @@ function resolveCategoryOrGroup(products: Product[], slug: string, altSlug?: str
     // translation - stays Turkish in both languages, see lib/i18n.ts.
     titleEn: null as string | null,
     products: products.filter((product) => product.category === category),
+    rawCategoryName: category,
   };
+}
+
+async function readCategoryDescription(rawCategoryName: string | null) {
+  if (!rawCategoryName) return "";
+  const categories = await readProductCategories(false);
+  return categories.find((item) => item.name === rawCategoryName)?.description ?? "";
 }
 
 export async function generateMetadata({
@@ -99,7 +117,8 @@ export async function generateMetadata({
   // soft-404 with noindex + canonical to the homepage).
   if (!resolved) notFound();
 
-  const { title, products: categoryProducts } = resolved;
+  const { title, products: categoryProducts, rawCategoryName } = resolved;
+  const categoryDescription = await readCategoryDescription(rawCategoryName);
   const baseUrl = alt
     ? `${SITE_URL}/kategori/${slug}?alt=${encodeURIComponent(alt)}`
     : `${SITE_URL}/kategori/${slug}`;
@@ -125,7 +144,9 @@ export async function generateMetadata({
   const heroImage = categoryProducts[0]?.image
     ? new URL(categoryProducts[0].image, SITE_URL).toString()
     : `${SITE_URL}/og.jpg`;
-  const description = `${title} kategorisinde ${categoryProducts.length} seçilmiş ürün. Terragolds koleksiyonunu inceleyin.`;
+  const description = categoryDescription
+    ? truncateAtWord(categoryDescription, 155)
+    : `${title} kategorisinde ${categoryProducts.length} seçilmiş ürün. Terragolds koleksiyonunu inceleyin.`;
 
   const pageSuffix = page > 1 && !isFilteredView ? ` - Sayfa ${page}` : "";
 
@@ -161,6 +182,9 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
   if (!resolved) notFound();
   const title = resolved?.title ?? null;
   const titleEn = resolved?.titleEn ?? null;
+  const categoryDescription = await readCategoryDescription(
+    resolved?.rawCategoryName ?? null,
+  );
   const unfilteredCategoryProducts = resolved?.products ?? [];
   const categoryProducts = sortProducts(
     unfilteredCategoryProducts.filter(
@@ -210,6 +234,7 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
       <CategoryPageBody
         title={title}
         titleEn={titleEn}
+        description={categoryDescription}
         products={pagedProducts}
         totalCount={categoryProducts.length}
         page={page}

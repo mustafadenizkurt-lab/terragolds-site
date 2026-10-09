@@ -18,7 +18,7 @@ import {
   guessCategoryFromSlug,
 } from "../../../lib/product-redirects";
 import { optimizedImageUrl } from "../../../lib/image-transform";
-import { decodeHtmlEntities } from "../../../lib/text-utils";
+import { decodeHtmlEntities, truncateAtWord } from "../../../lib/text-utils";
 import { categoryToSlug } from "../../../lib/category-slugs";
 import {
   productSchema,
@@ -62,9 +62,12 @@ export async function generateMetadata({
     `${product.name}${code} – ${product.stone || product.category}`;
   const description =
     product.metaDescription ||
-    `${product.name}${code}, ${productDescriptorPhrase(product)}. ${decodeHtmlEntities(
-      product.seoDescription || product.description,
-    )}`.slice(0, 155);
+    truncateAtWord(
+      `${product.name}${code}, ${productDescriptorPhrase(product)}. ${decodeHtmlEntities(
+        product.seoDescription || product.description,
+      )}`,
+      155,
+    );
   const url = `https://www.terragolds.com/products/${product.slug || product.id}`;
   const images = [product.image, product.hoverImage, product.image3, product.image4]
     .filter(Boolean)

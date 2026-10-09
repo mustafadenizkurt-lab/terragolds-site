@@ -1525,8 +1525,8 @@ export default function HomeClient({ initialSettings }: HomeClientProps) {
         >
           Her Şey 50 TL
         </button>
-        <a href="/blog">{uiUpper(ui.blog, language)}</a>
         <a href="/ozel-uretim">{uiUpper(ui.customProduction, language)}</a>
+        <a href="/blog">{uiUpper(ui.blog, language)}</a>
       </nav>
 
       <section className="intro section-shell">

@@ -3,6 +3,7 @@ import { cache } from "react";
 import { notFound } from "next/navigation";
 import { readPublishedBlogPostBySlug } from "../../../lib/blog";
 import { readSettings } from "../../../lib/store-db";
+import { truncateAtWord } from "../../../lib/text-utils";
 import { FloatingSocialLinks } from "../../store-shared-chrome";
 import StoreSiteFooter from "../../store-site-footer";
 import StoreSubpageHeader from "../../store-subpage-header";
@@ -39,7 +40,7 @@ export async function generateMetadata({
   const pageTitle = post.metaTitle || post.title;
   const socialTitle = post.metaTitle || `${post.title} | Terragolds Blog`;
   const description =
-    post.metaDescription || post.excerpt || post.content.slice(0, 155);
+    post.metaDescription || post.excerpt || truncateAtWord(post.content, 155);
   const url = `${SITE_URL}/blog/${post.slug}`;
   const image = post.coverImage
     ? new URL(post.coverImage, SITE_URL).toString()

@@ -72,6 +72,7 @@ const copy = {
 export default function CategoryPageBody({
   title,
   titleEn,
+  description,
   products,
   totalCount,
   page,
@@ -84,6 +85,7 @@ export default function CategoryPageBody({
 }: {
   title: string | null;
   titleEn?: string | null;
+  description?: string;
   products: Product[];
   totalCount: number;
   page: number;
@@ -136,6 +138,7 @@ export default function CategoryPageBody({
         <p className="eyebrow">{t.collection}</p>
         <h1>{displayTitle ?? t.notFoundTitle}</h1>
         <p>{title ? t.piecesSelected(totalCount) : t.notFoundDetail}</p>
+        {description && <p className="category-description">{description}</p>}
       </section>
 
       {title ? (

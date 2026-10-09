@@ -73,7 +73,14 @@ export default async function LegalDocumentPage({ document }: { document: LegalD
             taxId={settings.taxId}
             mersisNo={settings.mersisNo}
             returnCarrier={
-              document === "deliveryReturns" ? settings.returnCarrier : undefined
+              document === "deliveryReturns" || document === "distanceSales"
+                ? settings.returnCarrier
+                : undefined
+            }
+            returnAddress={
+              document === "deliveryReturns" || document === "distanceSales"
+                ? address
+                : undefined
             }
             phone={settings.phone || settings.whatsapp}
             email={settings.email}

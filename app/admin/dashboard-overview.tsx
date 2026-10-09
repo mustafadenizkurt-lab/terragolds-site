@@ -319,11 +319,11 @@ export default function DashboardOverview({
           <div className="admin-stock-totals">
             <div>
               <strong>{dashboard.stock.totalUnits}</strong>
-              <span>Toplam adet</span>
+              <span>Tedarikçi stoğu (adet)</span>
             </div>
             <div>
               <strong>{currency.format(dashboard.summary.inventoryValue)}</strong>
-              <span>Stok satış değeri</span>
+              <span>Tedarikçi stoğunun satış fiyatı karşılığı</span>
             </div>
           </div>
           <div className="admin-stock-distribution" aria-label="Stok dağılımı">

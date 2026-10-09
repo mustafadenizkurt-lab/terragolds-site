@@ -30,6 +30,7 @@ const copy = {
     taxInfo: "Vergi dairesi / no",
     mersisNo: "MERSİS no",
     returnCarrier: "İade kargo firması",
+    returnAddress: "İade adresi",
     phone: "Telefon",
     email: "E-posta",
     fillFromAdmin: "Yönetim panelinden eklenmelidir.",
@@ -54,6 +55,7 @@ const copy = {
     taxInfo: "Tax office / number",
     mersisNo: "MERSİS no",
     returnCarrier: "Return shipping carrier",
+    returnAddress: "Return address",
     phone: "Phone",
     email: "Email",
     fillFromAdmin: "Must be added from the admin panel.",
@@ -105,6 +107,7 @@ export function LegalSellerCard({
   taxId,
   mersisNo,
   returnCarrier,
+  returnAddress,
   phone,
   email,
 }: {
@@ -116,6 +119,7 @@ export function LegalSellerCard({
   taxId?: string;
   mersisNo?: string;
   returnCarrier?: string;
+  returnAddress?: string;
   phone?: string;
   email?: string;
 }) {
@@ -135,6 +139,7 @@ export function LegalSellerCard({
           {taxInfo && <div><dt>{t.taxInfo}</dt><dd>{taxInfo}</dd></div>}
           {mersisNo && <div><dt>{t.mersisNo}</dt><dd>{mersisNo}</dd></div>}
           {returnCarrier && <div><dt>{t.returnCarrier}</dt><dd>{returnCarrier}</dd></div>}
+          {returnAddress && <div><dt>{t.returnAddress}</dt><dd>{returnAddress}</dd></div>}
           <div><dt>{t.phone}</dt><dd>{phone || t.fillFromAdmin}</dd></div>
           <div><dt>{t.email}</dt><dd>{email || t.fillFromAdmin}</dd></div>
         </dl>

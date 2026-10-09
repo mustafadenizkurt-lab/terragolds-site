@@ -28,3 +28,16 @@ export function decodeHtmlEntities(text: string): string {
     return lower in NAMED_ENTITIES ? NAMED_ENTITIES[lower] : match;
   });
 }
+
+/**
+ * Meta description gibi alanlarda düz `.slice(0, n)` kelimenin ortasından
+ * kesip "...daha uzun sü" gibi görünüyordu - burada son kelime sınırına geri
+ * sarıp "…" ekliyoruz.
+ */
+export function truncateAtWord(text: string, maxLength: number): string {
+  if (text.length <= maxLength) return text;
+  const cut = text.slice(0, maxLength);
+  const lastSpace = cut.lastIndexOf(" ");
+  const safe = lastSpace > maxLength * 0.6 ? cut.slice(0, lastSpace) : cut;
+  return `${safe.trimEnd()}…`;
+}
