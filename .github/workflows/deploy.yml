@@ -1,0 +1,40 @@
+name: Deploy to Cloudflare Workers
+
+# main'e her push, build/typecheck geçerse otomatik deploy eder - bundan
+# önce deploy sadece birinin kendi bilgisayarında elle "wrangler deploy"
+# çalıştırmasıyla oluyordu, bu da git'e giden bir değişikliğin siteye
+# gerçekten yansıyıp yansımadığını belirsiz bırakıyordu (bkz. 2026-10-09
+# ana sayfa çökmesi - kod main'e gitmiş ama kimse deploy etmeden saatlerce
+# beklemişti).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Enable corepack (pins pnpm to package.json's packageManager)
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
