@@ -1,7 +1,7 @@
 const SITE_ORIGIN = "https://www.terragolds.com";
 
-// Bazı entegrasyonlar (ör. bir zamanlar Shopify, hâlâ Trendyol/N11/
-// Hepsiburada) mutlak, düzgün encode edilmiş bir görsel URL'si istiyor.
+// Bazı entegrasyonlar (Trendyol/N11/Hepsiburada) mutlak, düzgün encode
+// edilmiş bir görsel URL'si istiyor.
 // D1'deki görsel değeri her zaman öyle değil: bazıları kendi medya
 // API'mizden gelen göreli yol (domain'siz), bazıları tedarikçi feed'inden
 // kopyalanmış, içinde boşluk veya kodlanmamış bir Türkçe karakter (ör. "İ")

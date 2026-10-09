@@ -183,6 +183,13 @@
       "when": 1791462377888,
       "tag": "0025_redundant_ultron",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "6",
+      "when": 1791528307922,
+      "tag": "0026_handy_nightshade",
+      "breakpoints": true
     }
   ]
 }

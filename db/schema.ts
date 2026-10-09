@@ -98,18 +98,6 @@ export const productRedirects = sqliteTable(
   (table) => [uniqueIndex("product_redirects_old_slug_unique").on(table.oldSlug)],
 );
 
-export const customProductionPhotos = sqliteTable(
-  "custom_production_photos",
-  {
-    id: integer("id").primaryKey({ autoIncrement: true }),
-    imageUrl: text("image_url").notNull(),
-    caption: text("caption").notNull().default(""),
-    sortOrder: integer("sort_order").notNull().default(0),
-    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-  },
-  (table) => [index("custom_production_photos_sort_order_idx").on(table.sortOrder)],
-);
-
 export const products = sqliteTable("products", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
