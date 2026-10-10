@@ -30,6 +30,7 @@ import * as adminShipping from "../app/api/admin/shipping/route";
 import * as adminShippingSettings from "../app/api/admin/shipping-settings/route";
 import * as adminSupplierImportPreview from "../app/api/admin/supplier-import/preview/route";
 import * as adminSupplierImportCommit from "../app/api/admin/supplier-import/commit/route";
+import * as adminSupplierImportMatchUnlinked from "../app/api/admin/supplier-import/match-unlinked/route";
 import * as adminSystemTests from "../app/api/admin/system-tests/route";
 import * as adminUpload from "../app/api/admin/upload/route";
 import * as adminXmlSuppliers from "../app/api/admin/xml-suppliers/route";
@@ -104,6 +105,7 @@ const exactRoutes: Record<string, RouteModule> = {
   "/api/admin/shipping-settings": adminShippingSettings,
   "/api/admin/supplier-import/preview": adminSupplierImportPreview,
   "/api/admin/supplier-import/commit": adminSupplierImportCommit,
+  "/api/admin/supplier-import/match-unlinked": adminSupplierImportMatchUnlinked,
   "/api/admin/system-tests": adminSystemTests,
   "/api/admin/upload": adminUpload,
   "/api/admin/xml-suppliers": adminXmlSuppliers,
