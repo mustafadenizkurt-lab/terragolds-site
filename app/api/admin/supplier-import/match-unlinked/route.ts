@@ -65,7 +65,7 @@ export async function GET(request: Request) {
       externalId: string;
       feedName: string;
     }[] = [];
-    const unmatched: { id: number; name: string; status: string; image: string }[] = [];
+    const stillUnmatched: { id: number; name: string; status: string; image: string }[] = [];
 
     for (const product of unlinked.results) {
       const imageMatch = product.image ? byImage.get(product.image) : undefined;
@@ -81,9 +81,83 @@ export async function GET(request: Request) {
           feedName: hit.name,
         });
       } else {
-        unmatched.push({ id: product.id, name: product.name, status: product.status, image: product.image });
+        stillUnmatched.push({ id: product.id, name: product.name, status: product.status, image: product.image });
       }
     }
+
+    // Tam eşleşme bulunamayan kalanlar için iki bulanık (fuzzy) ipucu daha:
+    // 1) Güncel feed'de benzer isimli bir kayıt var mı (tedarikçi ismi/fotoğrafı
+    //    zamanla değiştirmiş olabilir - tam eşleşme bunu yakalamıyor).
+    // 2) Kendi kataloğumuzda (bu tedarikçiye ZATEN bağlı, senkronlu) benzer
+    //    isimli bir ürün var mı - ilk 6 eşleşmede olduğu gibi bu, "aslında
+    //    zaten doğru şekilde takip edilen bir kopyası var" ihtimalini yakalar.
+    // Basit token (kelime) kesişimi / Jaccard benzerliği - ağır bir kütüphane
+    // gerektirmiyor, bu ölçekte (28 x ~4000-5000) yeterince hızlı.
+    const tokenize = (value: string): Set<string> =>
+      new Set(
+        value
+          .toLocaleLowerCase("tr-TR")
+          .normalize("NFD")
+          .replace(/[̀-ͯ]/g, "")
+          .split(/[^a-z0-9]+/)
+          .filter((token) => token.length >= 3),
+      );
+    const jaccard = (a: Set<string>, b: Set<string>): number => {
+      if (a.size === 0 || b.size === 0) return 0;
+      let intersection = 0;
+      for (const token of a) if (b.has(token)) intersection += 1;
+      const union = a.size + b.size - intersection;
+      return union === 0 ? 0 : intersection / union;
+    };
+    const bestMatch = <T,>(
+      targetTokens: Set<string>,
+      candidates: { tokens: Set<string>; item: T }[],
+    ): { item: T; score: number } | null => {
+      let best: { item: T; score: number } | null = null;
+      for (const candidate of candidates) {
+        const score = jaccard(targetTokens, candidate.tokens);
+        if (score >= 0.5 && (!best || score > best.score)) best = { item: candidate.item, score };
+      }
+      return best;
+    };
+
+    const feedCandidates = mapped
+      .filter((product) => product.externalId)
+      .map((product) => ({ tokens: tokenize(product.name), item: product }));
+
+    const ownCatalog = await db
+      .prepare(
+        `SELECT id, name, status, price, stock FROM products
+         WHERE xml_supplier_id = ? AND xml_sync_status = 'synced'`,
+      )
+      .bind(supplier.id)
+      .all<{ id: number; name: string; status: string; price: number; stock: number }>();
+    const catalogCandidates = ownCatalog.results.map((product) => ({
+      tokens: tokenize(product.name),
+      item: product,
+    }));
+
+    const unmatched = stillUnmatched.map((product) => {
+      const targetTokens = tokenize(product.name);
+      const feedHit = bestMatch(targetTokens, feedCandidates);
+      const catalogHit = bestMatch(targetTokens, catalogCandidates);
+      return {
+        ...product,
+        fuzzyFeedCandidate: feedHit
+          ? { name: feedHit.item.name, externalId: feedHit.item.externalId, score: Math.round(feedHit.score * 100) / 100 }
+          : null,
+        fuzzyCatalogDuplicate: catalogHit
+          ? {
+              id: catalogHit.item.id,
+              name: catalogHit.item.name,
+              status: catalogHit.item.status,
+              price: catalogHit.item.price,
+              stock: catalogHit.item.stock,
+              score: Math.round(catalogHit.score * 100) / 100,
+            }
+          : null,
+      };
+    });
 
     return Response.json({
       supplierId: supplier.id,
