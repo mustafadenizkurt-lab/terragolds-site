@@ -462,7 +462,7 @@ export type RestockResult = {
   total: number;
 };
 
-type StockRow = { id: number; xmlExternalId: string; stock: number };
+type StockRow = { id: number; xmlExternalId: string; stock: number; status: string };
 
 const RESTOCK_WRITE_BATCH_SIZE = 500; // db.batch() tek çağrıda çok fazla statement almasın diye
 
@@ -489,9 +489,19 @@ export async function restockSupplierProducts(
   const records = parseFeed(await fetchFeed(supplier.feedUrl));
   const excludedExternalIds = await loadExcludedExternalIds(db, supplier.id);
 
+  // status = 'deleted' burada kasıtlı olarak hariç - excluded_supplier_products
+  // tablosu (yukarıdaki satır) bunu zaten ayrıca engelliyor OLMALIYDI, ama
+  // bazı eski silinmiş ürünler o tabloya hiç kaydedilmemiş çıktı (muhtemelen
+  // bu koruma eklenmeden önce silinmişler) - sonuç: bu fonksiyon onları
+  // tedarikçi feed'i hâlâ sunduğu sürece sessizce "diriltip" stoklarını
+  // dolduruyor ve Trendyol/Hepsiburada/N11'e GERÇEKTEN SATIŞA açık olarak
+  // gönderiyordu (267 ürün - admin'in sitede "silinmiş/taslak" gördüğü ama
+  // Trendyol'da hâlâ satışta duran ürünlerle eşleşti). Bu WHERE koşulu,
+  // excluded_supplier_products tablosunun eksik/gecikmeli olduğu durumlarda
+  // bile ikinci bir güvence sağlıyor.
   const existingRows = await db
     .prepare(
-      "SELECT id, xml_external_id AS xmlExternalId, stock FROM products WHERE xml_supplier_id = ? AND xml_external_id IS NOT NULL",
+      "SELECT id, xml_external_id AS xmlExternalId, stock, status FROM products WHERE xml_supplier_id = ? AND xml_external_id IS NOT NULL AND status != 'deleted'",
     )
     .bind(supplier.id)
     .all<StockRow>();
@@ -499,7 +509,7 @@ export async function restockSupplierProducts(
 
   let skipped = 0;
   const seenExternalIds = new Set<string>();
-  const changed: { id: number; newStock: number; discontinued: boolean }[] = [];
+  const changed: { id: number; newStock: number; discontinued: boolean; status: string }[] = [];
 
   for (const record of records) {
     const product = mapRecord(record, mapping);
@@ -520,7 +530,7 @@ export async function restockSupplierProducts(
       skipped += 1;
       continue;
     }
-    changed.push({ id: existing.id, newStock: product.stock, discontinued: false });
+    changed.push({ id: existing.id, newStock: product.stock, discontinued: false, status: existing.status });
   }
 
   // markDiscontinuedProducts'ın (syncSupplier'ın kendi 'synced'-only
@@ -529,7 +539,7 @@ export async function restockSupplierProducts(
   // çekiliyor. Aynı bellekteki liste üzerinden, ekstra sorgu gerekmeden.
   for (const row of existingRows.results) {
     if (row.stock > 0 && !seenExternalIds.has(row.xmlExternalId)) {
-      changed.push({ id: row.id, newStock: 0, discontinued: true });
+      changed.push({ id: row.id, newStock: 0, discontinued: true, status: row.status });
     }
   }
 
@@ -544,7 +554,12 @@ export async function restockSupplierProducts(
   // Pazaryeri push'ları (ağ çağrıları) D1 yazımından ayrı, sıralı kalıyor -
   // bunlar zaten kendi rate limitleriyle sınırlı ve genelde çok daha az
   // sayıda (sadece gerçekten değişenler), D1 SELECT'leri gibi binlerce değil.
-  for (const { id } of changed) {
+  // SADECE 'published' ürünler gönderiliyor - 'draft' bir ürün bizim sitemizde
+  // satışa açık değilken Trendyol/Hepsiburada/N11'de satışta görünmesi
+  // (yukarıdaki 'deleted' hariç tutmasıyla aynı kök sorun) yanlış; D1'deki
+  // stok yine de güncelleniyor ki ürün yayına alındığında doğru sayıyla başlasın.
+  for (const { id, status } of changed) {
+    if (status !== "published") continue;
     await pushStockEverywhere(db, id);
   }
 
