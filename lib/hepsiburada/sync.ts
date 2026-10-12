@@ -263,10 +263,43 @@ export type HepsiburadaStockAuditResult = {
   outOfStockAtHepsiburada: HepsiburadaStockMismatch[];
   applied: number;
   error: string | null;
+  // Sadece ayrıştırma başarısız olduğunda dolu - gerçek yanıtın şeklini
+  // (hangi anahtar altında dizi geldiğini, bir örnek satırın alan adlarını)
+  // gösterir, bir sonraki düzeltmenin tahmin değil gerçek veriye dayanması için.
+  debugRawShape?: { topLevelKeys: string[]; sampleItemKeys?: string[] };
 };
 
 const HEPSIBURADA_LISTING_PAGE_SIZE = 1000;
 const HEPSIBURADA_LISTING_MAX_PAGES = 20; // güvenlik sınırı, ~20000 listing'e kadar
+
+const LISTING_ARRAY_KEYS = ["items", "listing", "listings", "content", "data", "products", "result", "results"];
+const SKU_FIELD_CANDIDATES = ["merchantSku", "MerchantSku", "sku", "Sku", "hepsiburadaSku", "HepsiburadaSku"];
+const STOCK_FIELD_CANDIDATES = [
+  "availableStock",
+  "AvailableStock",
+  "stock",
+  "Stock",
+  "quantity",
+  "Quantity",
+];
+
+function findListingArray(raw: unknown): unknown[] | null {
+  if (Array.isArray(raw)) return raw;
+  if (raw && typeof raw === "object") {
+    for (const key of LISTING_ARRAY_KEYS) {
+      const value = (raw as Record<string, unknown>)[key];
+      if (Array.isArray(value)) return value;
+    }
+  }
+  return null;
+}
+
+function readField(item: Record<string, unknown>, candidates: string[]): unknown {
+  for (const key of candidates) {
+    if (item[key] !== undefined) return item[key];
+  }
+  return undefined;
+}
 
 // Hepsiburada'nın GERÇEK (canlı) listeleme API'sinden okuduğu stokla D1'i
 // karşılaştırır - pushPendingHepsiburadaPrices gibi push mekanizmaları
@@ -285,9 +318,35 @@ export async function auditHepsiburadaStock(
   try {
     let offset = 0;
     for (let page = 0; page < HEPSIBURADA_LISTING_MAX_PAGES; page += 1) {
-      const { items } = await getProducts({ offset, limit: HEPSIBURADA_LISTING_PAGE_SIZE });
+      const raw = await getProducts({ offset, limit: HEPSIBURADA_LISTING_PAGE_SIZE });
+      const items = findListingArray(raw);
+      if (items === null) {
+        const topLevelKeys =
+          raw && typeof raw === "object" ? Object.keys(raw as Record<string, unknown>) : [];
+        return {
+          checked: 0,
+          mismatches: [],
+          outOfStockAtHepsiburada: [],
+          applied: 0,
+          error: "Hepsiburada yanıtında ürün dizisi bulunamadı (beklenen anahtarlardan hiçbiri yok).",
+          debugRawShape: { topLevelKeys },
+        };
+      }
       for (const item of items) {
-        liveStockBySku.set(item.merchantSku, item.availableStock);
+        if (!item || typeof item !== "object") continue;
+        const sku = readField(item as Record<string, unknown>, SKU_FIELD_CANDIDATES);
+        const stock = readField(item as Record<string, unknown>, STOCK_FIELD_CANDIDATES);
+        if (typeof sku !== "string" || typeof stock !== "number") {
+          return {
+            checked: 0,
+            mismatches: [],
+            outOfStockAtHepsiburada: [],
+            applied: 0,
+            error: "Hepsiburada ürün satırında beklenen sku/stok alanı bulunamadı.",
+            debugRawShape: { topLevelKeys: [], sampleItemKeys: Object.keys(item as Record<string, unknown>) },
+          };
+        }
+        liveStockBySku.set(sku, stock);
       }
       if (items.length < HEPSIBURADA_LISTING_PAGE_SIZE) break;
       offset += HEPSIBURADA_LISTING_PAGE_SIZE;

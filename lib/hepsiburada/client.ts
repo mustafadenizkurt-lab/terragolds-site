@@ -172,11 +172,17 @@ type HepsiburadaBatchResult = {
   trackingId: string;
 };
 
+// Dönüş tipi bilinçli olarak "unknown" - bu uç nokta (GET /listings/
+// merchantid/{merchantId}) hiç canlı doğrulanmamıştı (bkz. dosya başındaki
+// not: "Hepsiburada onayı henüz gelmedi"), gerçek sarmalayıcı anahtarı
+// (items/listing/content/...) belirsiz. Ayrıştırma çağıran tarafta
+// (auditHepsiburadaStock) olası birkaç şekli deneyerek, bulamazsa ham
+// anahtarları geri bildirerek yapılıyor.
 export async function getProducts(params: {
   offset?: number;
   limit?: number;
   merchantSku?: string;
-} = {}): Promise<{ items: HepsiburadaProduct[]; totalCount: number }> {
+} = {}): Promise<unknown> {
   const { merchantId } = await getHepsiburadaCredentials();
   const query = new URLSearchParams();
   if (params.offset !== undefined) query.set("offset", String(params.offset));
