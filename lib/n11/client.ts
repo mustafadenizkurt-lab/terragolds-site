@@ -148,6 +148,14 @@ export async function ensureN11Columns(db: D1Database) {
   if (!names.has("n11_override_price")) {
     await db.prepare("ALTER TABLE products ADD COLUMN n11_override_price INTEGER").run();
   }
+  // trendyol_stock_synced ile aynı amaç (bkz. trendyol/sync.ts'teki "315
+  // ürün" notu): n11_price_synced'ın TEK başına drift kontrolü, fiyatı
+  // DEĞİŞMEYİP sadece stoğu değişen ürünleri (ör. tedarikçide tükenen bir
+  // ürün) hiç yakalamıyordu - pushPendingN11Prices() bu yüzden onları
+  // sonsuza kadar "zaten senkron" sanıyordu.
+  if (!names.has("n11_stock_synced")) {
+    await db.prepare("ALTER TABLE products ADD COLUMN n11_stock_synced INTEGER").run();
+  }
   await db
     .prepare(
       "CREATE UNIQUE INDEX IF NOT EXISTS products_n11_stock_code_unique ON products(n11_stock_code) WHERE n11_stock_code IS NOT NULL",

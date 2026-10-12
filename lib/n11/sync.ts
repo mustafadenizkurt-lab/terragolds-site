@@ -314,8 +314,8 @@ export async function pushStockAndPriceToN11(
   );
 
   await db
-    .prepare("UPDATE products SET n11_price_synced = ? WHERE id = ?")
-    .bind(effectivePrice, productId)
+    .prepare("UPDATE products SET n11_price_synced = ?, n11_stock_synced = ? WHERE id = ?")
+    .bind(effectivePrice, product.stock, productId)
     .run();
 }
 
@@ -355,7 +355,10 @@ export async function pushPendingN11Prices(
   const where = force
     ? "n11_stock_code IS NOT NULL"
     : `n11_stock_code IS NOT NULL
-       AND (n11_price_synced IS NULL OR n11_price_synced != COALESCE(n11_override_price, price))`;
+       AND (
+         n11_price_synced IS NULL OR n11_price_synced != COALESCE(n11_override_price, price)
+         OR n11_stock_synced IS NULL OR n11_stock_synced != stock
+       )`;
   const pending = await db
     .prepare(
       `SELECT id, stock, price, n11_override_price AS n11OverridePrice,
@@ -404,8 +407,12 @@ export async function pushPendingN11Prices(
     };
   }
 
-  const updateStmt = db.prepare("UPDATE products SET n11_price_synced = ? WHERE id = ?");
-  await db.batch(pending.results.map((row) => updateStmt.bind(effectivePriceFor(row), row.id)));
+  const updateStmt = db.prepare(
+    "UPDATE products SET n11_price_synced = ?, n11_stock_synced = ? WHERE id = ?",
+  );
+  await db.batch(
+    pending.results.map((row) => updateStmt.bind(effectivePriceFor(row), row.stock, row.id)),
+  );
 
   return { pushed: pending.results.length, failed: 0, remaining: await remainingCount(), errors: [] };
 }
