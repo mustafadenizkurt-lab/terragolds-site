@@ -782,12 +782,19 @@ export async function pushPendingTrendyolPrices(
   // AYNI şekilde eklendi - sadece stok değişip fiyat aynı kalan ürünler
   // (ör. tedarikçi stoğu tükenmiş bir ürün) eskiden bu "pending" sorgusuna
   // hiç girmiyordu (bkz. ensureTrendyolColumns'taki not, 315 ürün örneği).
+  // status = 'published' şartı: TG-3911/BKO10923 vakasında keşfedildi -
+  // bu filtre olmadan, 'draft'/'deleted' bir ürünün D1'deki gerçek (satışa
+  // açık olmayan dönemde de değişebilen) stoğu buraya "pending" olarak
+  // girip Trendyol'a GERÇEK stokla yeniden gönderiliyordu - reconcileStray
+  // TrendyolListings() ile bilerek 0'a çekilmiş/pasifleştirilmiş bir ürünü
+  // bu yolla sessizce yeniden aktifleştirebiliyordu (bkz. aşağıdaki
+  // reconcileStrayTrendyolListings - aynı kök sorunun kalıcı temizliği).
   const pending = await db
     .prepare(
       `SELECT id, stock, trendyol_barcode AS trendyolBarcode,
               COALESCE(trendyol_override_price, price) AS salePrice
        FROM products
-       WHERE trendyol_barcode IS NOT NULL
+       WHERE trendyol_barcode IS NOT NULL AND status = 'published'
          AND (
            trendyol_price_synced IS NULL OR trendyol_price_synced != COALESCE(trendyol_override_price, price)
            OR trendyol_stock_synced IS NULL OR trendyol_stock_synced != stock
@@ -801,7 +808,7 @@ export async function pushPendingTrendyolPrices(
     const row = await db
       .prepare(
         `SELECT COUNT(*) AS c FROM products
-         WHERE trendyol_barcode IS NOT NULL
+         WHERE trendyol_barcode IS NOT NULL AND status = 'published'
            AND (
              trendyol_price_synced IS NULL OR trendyol_price_synced != COALESCE(trendyol_override_price, price)
              OR trendyol_stock_synced IS NULL OR trendyol_stock_synced != stock
@@ -997,4 +1004,110 @@ export async function applyTrendyolPriceIncrease(db: D1Database): Promise<PriceI
   }
 
   return { totalCandidates: candidates.length, increased, batches, stoppedEarly: false, error: null };
+}
+
+export type TrendyolStrayListingResult = {
+  checked: number;
+  stillLiveOnTrendyol: { id: number; barcode: string; status: string }[];
+  deactivated: number;
+  alreadyInactiveCleaned: number;
+  remaining: number;
+  errors: string[];
+};
+
+const STRAY_LISTING_BATCH_SIZE = 200; // getProductByBarcode'un gerçek 50/10sn hız limitine uysun diye
+
+// BKO10923 (CM 14K Gold Renk Lazerli Zincir) vakasında keşfedildi: ürün
+// bizim sitemizde 'draft'a alınmış ama Trendyol'da hâlâ "Son 3 Ürün"
+// etiketiyle gerçekten satışta duruyordu, kendi stoğumuzdan (1) farklı bir
+// stokla (3). trendyol_active ne yazık ki GÜVENİLİR bir "şu an canlı mı"
+// sinyali değil - kodda hiçbir yerde 0'a geri çekilmiyor, sadece barkod
+// alındığında bir kez 1 yapılıyor - bu yüzden D1'e güvenmek yerine her
+// aday Trendyol'un GERÇEK v2 "Ürün Filtreleme" servisiyle (getProductByBarcode)
+// tek tek doğrulanıyor.
+//
+// status != 'published' olup trendyol_active = 1 görünen (yani en azından
+// bir zamanlar barkod almış) ürünler taranır:
+// - Trendyol'da hâlâ approved && !archived (gerçekten canlı) ise quantity:0
+//   ile pasifleştirilir (tek bir toplu updateStockAndPrice çağrısıyla).
+// - Zaten onaysız/arşivlenmiş ise (Trendyol kendi tarafında zaten kapatmış)
+//   API'ye hiç gidilmeden sadece D1'deki trendyol_active bayrağı temizlenir.
+// Her iki durumda da trendyol_active = 0 yapılır ki (a) bu tarama bir daha
+// aynı satırı aday saymasın (kendiliğinden biten, imleçsiz bir kuyruk) ve
+// (b) uygulamadan tamamen bağımsız olarak dinamik fiyatlama botu (bkz.
+// pricing.ts'teki trendyol_active = 1 filtresi) bu ürüne bir daha dokunmasın.
+export async function reconcileStrayTrendyolListings(
+  db: D1Database,
+  apply: boolean,
+  batchSize = STRAY_LISTING_BATCH_SIZE,
+): Promise<TrendyolStrayListingResult> {
+  const candidates = await db
+    .prepare(
+      `SELECT id, status, trendyol_barcode AS barcode, price,
+              trendyol_override_price AS overridePrice
+       FROM products
+       WHERE status != 'published' AND trendyol_active = 1 AND trendyol_barcode IS NOT NULL
+       ORDER BY id LIMIT ?`,
+    )
+    .bind(batchSize)
+    .all<{ id: number; status: string; barcode: string; price: number; overridePrice: number | null }>();
+
+  const stillLive: { id: number; status: string; barcode: string; price: number; overridePrice: number | null }[] =
+    [];
+  const alreadyInactiveIds: number[] = [];
+  const errors: string[] = [];
+  let checked = 0;
+
+  for (const row of candidates.results) {
+    try {
+      const info = await getProductByBarcode(row.barcode);
+      checked += 1;
+      if (info.approved && !info.archived) {
+        stillLive.push(row);
+      } else {
+        alreadyInactiveIds.push(row.id);
+      }
+    } catch (error) {
+      errors.push(`${row.barcode}: ${error instanceof Error ? error.message : "bilinmeyen hata"}`);
+    }
+  }
+
+  let deactivated = 0;
+  if (apply) {
+    if (stillLive.length > 0) {
+      const salePriceFor = (row: (typeof stillLive)[number]) => row.overridePrice ?? row.price;
+      await updateStockAndPrice(
+        stillLive.map((row) => ({
+          barcode: row.barcode,
+          quantity: 0,
+          salePrice: salePriceFor(row),
+          listPrice: trendyolListPriceFor(salePriceFor(row)),
+        })),
+      );
+      deactivated = stillLive.length;
+    }
+    const allIds = [...stillLive.map((row) => row.id), ...alreadyInactiveIds];
+    if (allIds.length > 0) {
+      const updateStmt = db.prepare(
+        "UPDATE products SET trendyol_active = 0, trendyol_stock_synced = 0 WHERE id = ?",
+      );
+      await db.batch(allIds.map((id) => updateStmt.bind(id)));
+    }
+  }
+
+  const remainingRow = await db
+    .prepare(
+      `SELECT COUNT(*) AS c FROM products
+       WHERE status != 'published' AND trendyol_active = 1 AND trendyol_barcode IS NOT NULL`,
+    )
+    .first<{ c: number }>();
+
+  return {
+    checked,
+    stillLiveOnTrendyol: stillLive.map(({ id, barcode, status }) => ({ id, barcode, status })),
+    deactivated,
+    alreadyInactiveCleaned: alreadyInactiveIds.length,
+    remaining: remainingRow?.c ?? 0,
+    errors,
+  };
 }

@@ -13,6 +13,7 @@ import { reconcileN11CatalogStatus, reconcileN11Tasks } from "../lib/n11/reconci
 import { reconcilePendingPaytrOrders } from "../lib/paytr-reconcile";
 import { scanTrendyolArchivedProducts } from "../lib/trendyol/archived-scan";
 import { auditAndFixTrendyolPrices } from "../lib/trendyol/price-audit";
+import { reconcileStrayTrendyolListings } from "../lib/trendyol/sync";
 import { applyTrendyolDynamicPricing } from "../lib/trendyol/pricing";
 import { rehostHotlinkedImages } from "../lib/image-rehost";
 
@@ -173,6 +174,12 @@ const worker = {
     // (artık archived=false) ürünleri otomatik "kilitliyor" - bkz.
     // lib/trendyol/archived-scan.ts.
     ctx.waitUntil(scanTrendyolArchivedProducts(env.DB).catch(() => {}));
+    // BKO10923 siparişinde keşfedildi: 'draft'/'deleted' bir ürün Trendyol'da
+    // hâlâ gerçekten satışta kalabiliyordu (bkz. lib/trendyol/sync.ts >
+    // reconcileStrayTrendyolListings). Kendiliğinden biten bir kuyruk -
+    // pasifleştirilen her satır trendyol_active = 0 olup bir daha aday
+    // sayılmıyor, bu yüzden ayrı bir imleç gerekmiyor.
+    ctx.waitUntil(reconcileStrayTrendyolListings(env.DB, true).catch(() => {}));
     // BB8694 siparişinde keşfedildi: fiyat gönderimi (updateStockAndPrice)
     // sadece bir batchRequestId dönüyor, gerçek kabul/red Trendyol'da
     // ASENKRON gerçekleşiyor ve hiçbir yerde doğrulanmıyordu - D1
