@@ -7,7 +7,7 @@ import { getOptionalEnv } from "../runtime-env";
 import { pushStockAndPriceToTrendyol, categoryIdFor } from "../trendyol/sync";
 import { ensureTrendyolColumns } from "../trendyol/client";
 import { calculateTrendyolLimitsFromCost } from "../trendyol/pricing-formula";
-import { pushStockAndPriceToHepsiburada } from "../hepsiburada/sync";
+import { pushStockAndPriceToHepsiburada, auditHepsiburadaStock } from "../hepsiburada/sync";
 import { pushStockAndPriceToN11 } from "../n11/sync";
 import { loadExcludedExternalIds } from "./excluded-products";
 import { ensureImageLockColumn } from "../product-image-lock";
@@ -594,7 +594,7 @@ export async function restockSupplierProducts(
 // zaten "bu kanala hiç gönderilmemişse no-op" davranışında). N11 eskiden bu
 // listede yoktu - tedarikçi kaynaklı stok değişiklikleri (özellikle 0'a
 // düşenler) N11'e HİÇ gönderilmiyordu.
-async function pushStockEverywhere(db: D1Database, productId: number): Promise<void> {
+export async function pushStockEverywhere(db: D1Database, productId: number): Promise<void> {
   try {
     await pushStockAndPriceToTrendyol(db, productId);
   } catch {
@@ -610,6 +610,23 @@ async function pushStockEverywhere(db: D1Database, productId: number): Promise<v
   } catch {
     // Self-heals on the next stock change or a manual price/stock backfill.
   }
+}
+
+// restockSupplierProducts/syncSupplier'ın stok takibi sadece tedarikçi
+// feed'ine bağlı (xml_supplier_id+external_id eşleşen) satırları kapsıyor -
+// feed'e hiç bağlanmamış ("manual") ürünlerin D1 stoğu hiçbir otomasyonla
+// güncellenmiyordu (gerçek örnek: TG-3911, Hepsiburada'da 0 iken D1'de
+// hâlâ pozitif görünüyordu). Bu, Hepsiburada'nın KENDİ canlı listeleme
+// API'sini gerçeğin kaynağı sayıp (auditHepsiburadaStock) D1 ile
+// Trendyol/N11'i ona göre hizalıyor - admin'in artık elle /api/admin/
+// hepsiburada/stock-check?apply=1 açmasına gerek kalmasın diye 6 saatlik
+// cron'a eklendi (worker/index.ts).
+export async function reconcileHepsiburadaStock(db: D1Database) {
+  const result = await auditHepsiburadaStock(db, true);
+  for (const entry of result.outOfStockAtHepsiburada) {
+    await pushStockEverywhere(db, entry.id).catch(() => {});
+  }
+  return result;
 }
 
 export type HoverImageBackfillResult = {

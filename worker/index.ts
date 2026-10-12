@@ -2,7 +2,11 @@
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
 import { dispatchApiRequest } from "./api-dispatch";
-import { restockActiveSuppliers, syncActiveSuppliers } from "../lib/xml-sync/syncSupplier";
+import {
+  restockActiveSuppliers,
+  syncActiveSuppliers,
+  reconcileHepsiburadaStock,
+} from "../lib/xml-sync/syncSupplier";
 import { syncTrendyolOrders } from "../lib/trendyol/orders";
 import { syncN11Orders } from "../lib/n11/orders";
 import { reconcileN11CatalogStatus, reconcileN11Tasks } from "../lib/n11/reconcile";
@@ -127,6 +131,14 @@ const worker = {
     // değil - tedarikçide tükenen bir ürün fark edilmeden "stokta"
     // görünmeye devam edebiliyordu (gerçek bir sipariş kabul edildi).
     ctx.waitUntil(restockActiveSuppliers(env.DB).catch(() => {}));
+    // TG-3911 siparişinde keşfedildi: restockActiveSuppliers yukarıdaki
+    // "manual" korumasına rağmen SADECE tedarikçi feed'ine bağlı
+    // (xml_supplier_id+external_id eşleşen) satırları kapsıyor - feed'e hiç
+    // bağlanmamış ürünlerin stoğu hâlâ hiçbir otomasyonla güncellenmiyordu.
+    // Bu, Hepsiburada'nın kendi canlı listelemesini gerçeğin kaynağı sayıp
+    // D1 + Trendyol/N11'i ona göre hizalıyor - admin artık elle
+    // /api/admin/hepsiburada/stock-check?apply=1 açmak zorunda değil.
+    ctx.waitUntil(reconcileHepsiburadaStock(env.DB).catch(() => {}));
     // Trendyol siparişleri hiçbir zaman otomatik çekilmiyordu - admin
     // panelinde bunu tetikleyen bir buton da yoktu, cron'a da bağlı
     // değildi. Sonuç: Trendyol'da gerçek bir sipariş oluşsa bile biri elle

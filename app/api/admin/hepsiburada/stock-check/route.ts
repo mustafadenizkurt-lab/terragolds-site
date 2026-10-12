@@ -4,8 +4,7 @@ import {
 } from "../../../../../lib/admin-auth";
 import { getD1 } from "../../../../../lib/store-db";
 import { auditHepsiburadaStock } from "../../../../../lib/hepsiburada/sync";
-import { pushStockAndPriceToTrendyol } from "../../../../../lib/trendyol/sync";
-import { pushStockAndPriceToN11 } from "../../../../../lib/n11/sync";
+import { reconcileHepsiburadaStock } from "../../../../../lib/xml-sync/syncSupplier";
 
 export const dynamic = "force-dynamic";
 
@@ -16,34 +15,19 @@ export const dynamic = "force-dynamic";
 // otomatik stok senkronu bunları hiç izlemiyor (bkz. restockSupplierProducts
 // - sadece xml_supplier_id+external_id eşleşen satırları kapsıyor).
 // ?apply=1 verilmezse sadece önizleme - D1'e hiçbir yazma yapılmaz.
-// ?apply=1 ile: SADECE Hepsiburada'nın 0 dediği ama D1'in pozitif tuttuğu
-// satırlar D1'de 0'a çekilir ve Trendyol/N11'e de aynı stok bildirilir -
-// fiziksel gerçeklik tek, ürün hangi kanaldan satılırsa satılsın aynı anda
-// tükenmiş demektir.
+// ?apply=1 ile: reconcileHepsiburadaStock (artık 6 saatlik cron'da da
+// otomatik çalışıyor, bkz. worker/index.ts) SADECE Hepsiburada'nın 0 dediği
+// ama D1'in pozitif tuttuğu satırları D1'de 0'a çeker ve Trendyol/N11'e de
+// aynı stoğu bildirir.
 export async function GET(request: Request) {
   if (!(await getAuthorizedAdmin(request))) return unauthorizedAdminResponse();
   const { searchParams } = new URL(request.url);
   const apply = searchParams.get("apply") === "1";
   try {
     const db = getD1();
-    const result = await auditHepsiburadaStock(db, apply);
-    // D1'de 0'a çekilen satırlar Hepsiburada'da zaten 0 - aynı fiziksel
-    // ürün Trendyol/N11'de de satışta kalmasın diye oraya da bildiriliyor
-    // (restockSupplierProducts'taki pushStockEverywhere ile aynı fikir).
-    if (apply) {
-      for (const entry of result.outOfStockAtHepsiburada) {
-        try {
-          await pushStockAndPriceToTrendyol(db, entry.id);
-        } catch {
-          // Self-heals on the next stock change or a manual price/stock backfill.
-        }
-        try {
-          await pushStockAndPriceToN11(db, entry.id);
-        } catch {
-          // Self-heals on the next stock change or a manual price/stock backfill.
-        }
-      }
-    }
+    const result = apply
+      ? await reconcileHepsiburadaStock(db)
+      : await auditHepsiburadaStock(db, false);
     return Response.json(result);
   } catch (error) {
     return Response.json(
