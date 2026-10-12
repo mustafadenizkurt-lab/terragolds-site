@@ -1,4 +1,9 @@
-import { ensureHepsiburadaColumns, importProductsFile, updateStockAndPrice } from "./client";
+import {
+  ensureHepsiburadaColumns,
+  getProducts,
+  importProductsFile,
+  updateStockAndPrice,
+} from "./client";
 import { getHepsiburadaCredentials } from "./auth";
 import { buildImportItem, hepsiburadaCategoryFor, isMaleProduct, type HepsiburadaImportItem } from "./attributes";
 import { toAbsoluteImageUrl } from "../image-url";
@@ -238,6 +243,98 @@ export async function pushPendingHepsiburadaPrices(
   }
 
   return { pushed, failed, remaining: await remainingCount(), errors };
+}
+
+export type HepsiburadaStockMismatch = {
+  id: number;
+  name: string;
+  hepsiburadaSku: string;
+  d1Stock: number;
+  hepsiburadaStock: number;
+};
+
+export type HepsiburadaStockAuditResult = {
+  checked: number;
+  mismatches: HepsiburadaStockMismatch[];
+  // Hepsiburada'nın 0 dediği ama D1'in pozitif tuttuğu, en riskli alt küme -
+  // bunlar fiilen tükenmiş olup bizim hâlâ "stokta" sandığımız ürünler
+  // (ör. TG-3911 - admin panelinden elle girilmiş, tedarikçi senkronunun
+  // hiç izlemediği ürünler). apply=true ise bu satırlar D1'de 0'a çekilir.
+  outOfStockAtHepsiburada: HepsiburadaStockMismatch[];
+  applied: number;
+  error: string | null;
+};
+
+const HEPSIBURADA_LISTING_PAGE_SIZE = 1000;
+const HEPSIBURADA_LISTING_MAX_PAGES = 20; // güvenlik sınırı, ~20000 listing'e kadar
+
+// Hepsiburada'nın GERÇEK (canlı) listeleme API'sinden okuduğu stokla D1'i
+// karşılaştırır - pushPendingHepsiburadaPrices gibi push mekanizmaları
+// sadece D1 -> Hepsiburada yönünü garanti ediyor; bu, tersini (Hepsiburada'da
+// ne olduğunu) doğrudan sorguluyor. Özellikle tedarikçi feed'ine hiç
+// bağlanmamış ("manual") ürünlerde D1 stoğu hiçbir otomasyonla
+// güncellenmiyor, bu yüzden D1 ile gerçek (Hepsiburada'nın bildiği) durum
+// zamanla ayrışabiliyor.
+export async function auditHepsiburadaStock(
+  db: D1Database,
+  apply: boolean,
+): Promise<HepsiburadaStockAuditResult> {
+  await ensureHepsiburadaColumns(db);
+
+  const liveStockBySku = new Map<string, number>();
+  try {
+    let offset = 0;
+    for (let page = 0; page < HEPSIBURADA_LISTING_MAX_PAGES; page += 1) {
+      const { items } = await getProducts({ offset, limit: HEPSIBURADA_LISTING_PAGE_SIZE });
+      for (const item of items) {
+        liveStockBySku.set(item.merchantSku, item.availableStock);
+      }
+      if (items.length < HEPSIBURADA_LISTING_PAGE_SIZE) break;
+      offset += HEPSIBURADA_LISTING_PAGE_SIZE;
+    }
+  } catch (error) {
+    return {
+      checked: 0,
+      mismatches: [],
+      outOfStockAtHepsiburada: [],
+      applied: 0,
+      error: error instanceof Error ? error.message : "Hepsiburada listeleme sorgusu başarısız.",
+    };
+  }
+
+  const rows = await db
+    .prepare(
+      `SELECT id, name, stock, hepsiburada_sku AS hepsiburadaSku
+       FROM products WHERE hepsiburada_sku IS NOT NULL`,
+    )
+    .all<{ id: number; name: string; stock: number; hepsiburadaSku: string }>();
+
+  const mismatches: HepsiburadaStockMismatch[] = [];
+  const outOfStockAtHepsiburada: HepsiburadaStockMismatch[] = [];
+  for (const row of rows.results) {
+    const hepsiburadaStock = liveStockBySku.get(row.hepsiburadaSku);
+    if (hepsiburadaStock === undefined || hepsiburadaStock === row.stock) continue;
+    const entry: HepsiburadaStockMismatch = {
+      id: row.id,
+      name: row.name,
+      hepsiburadaSku: row.hepsiburadaSku,
+      d1Stock: row.stock,
+      hepsiburadaStock,
+    };
+    mismatches.push(entry);
+    if (hepsiburadaStock === 0 && row.stock > 0) outOfStockAtHepsiburada.push(entry);
+  }
+
+  let applied = 0;
+  if (apply && outOfStockAtHepsiburada.length > 0) {
+    const updateStmt = db.prepare(
+      "UPDATE products SET stock = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+    );
+    await db.batch(outOfStockAtHepsiburada.map((entry) => updateStmt.bind(entry.id)));
+    applied = outOfStockAtHepsiburada.length;
+  }
+
+  return { checked: rows.results.length, mismatches, outOfStockAtHepsiburada, applied, error: null };
 }
 
 export type HepsiburadaTitleRefreshResult = {
