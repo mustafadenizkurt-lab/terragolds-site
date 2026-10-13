@@ -156,7 +156,6 @@ test("hepsiburadaCategoryFor sitedeki kategorileri Hepsiburada Bijuteri kategori
   assert.equal(hepsiburadaCategoryFor({ category: "Takı", name: "Kalp Kolye" }), HB_CATEGORY.kolye);
   assert.equal(hepsiburadaCategoryFor({ category: "Hal Hal", name: "Halhal" }), HB_CATEGORY.halhal);
   assert.equal(hepsiburadaCategoryFor({ category: "Şahmeran", name: "Şahmeran" }), null);
-  assert.equal(hepsiburadaCategoryFor({ category: "Antika ~ Vintage", name: "Biblo" }), null);
 });
 
 test("buildImportItem zorunlu özellikleri üretir, yüzükte cinsiyet ekler", () => {

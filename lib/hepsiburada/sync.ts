@@ -26,7 +26,7 @@ export type HepsiburadaSyncResult = {
 // (kategori + zorunlu özellikler, multipart içe aktarma) gönderir. trackingId
 // hepsiburada_listing_id'ye yazılır AMA bu kabul demek değil - sonuç
 // reconcileHepsiburadaImports ile doğrulanır. Kategori karşılığı olmayan
-// ürünler (Şahmeran, Antika, Saat...) hepsiburada_last_error ile işaretlenip
+// ürünler (Şahmeran, Saat...) hepsiburada_last_error ile işaretlenip
 // tekrar tekrar denenmez.
 export async function syncProductsToHepsiburada(
   db: D1Database,
@@ -99,7 +99,7 @@ export async function syncProductsToHepsiburada(
     if (unmapped.length > 0) {
       const stmt = db.prepare("UPDATE products SET hepsiburada_last_error = ? WHERE id = ?");
       await db.batch(
-        unmapped.map((id) => stmt.bind("Hepsiburada kategori eşlemesi yok (Şahmeran/Antika/Saat vb.)", id)),
+        unmapped.map((id) => stmt.bind("Hepsiburada kategori eşlemesi yok (Şahmeran/Saat vb.)", id)),
       );
     }
     let created = 0;

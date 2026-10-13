@@ -161,12 +161,11 @@ test("Cinsiyet değer ID'leri kategoriye özgü (kolyede yüzük ID'si kullanıl
   assert.equal(genderValueId(1191220, p), null);
 });
 
-test("Broş/Piercing/Şahmeran/Halhal Cinsiyet göndermez, Antika hiç özellik göndermez", () => {
+test("Broş/Piercing/Şahmeran/Halhal Cinsiyet göndermez", () => {
   const p = { category: "x", name: "Gold Renk Broş" };
   for (const id of [1191220, 1191217, 1191218]) {
     assert.deepEqual(attributesForCategory(id, p).map((a) => a.id), [1, 429]);
   }
-  assert.deepEqual(attributesForCategory(1003526, p), []);
 });
 
 test("kategori kuralı olmayan ID için hata fırlatır", () => {
@@ -195,7 +194,6 @@ test("316L/çelik ürünler Çelik Takılar kategorilerine yönlenir", () => {
   assert.equal(steelCategoryId("kupeler", "316L Çelik Küpe"), 1219222);
   assert.equal(steelCategoryId("kolyeler", "316L Çelik Kolye Küpe Set"), 1219223);
   assert.equal(steelCategoryId("kolyeler", "Gold Renk Pirinç Kolye"), undefined);
-  assert.equal(steelCategoryId("antika-vintage", "Çelik Biblo"), undefined);
 });
 
 test("Çelik Kolye zincir uzunluğu adındaki cm'den valueId, yoksa Standart", () => {

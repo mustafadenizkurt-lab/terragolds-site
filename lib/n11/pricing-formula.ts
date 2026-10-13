@@ -6,7 +6,7 @@
 // Kaynak: N11'in resmi "Komisyon Oranları" sayfası DEĞİL (oraya API/ağ
 // erişimimiz yok) - kullanıcının paylaştığı bir arama özeti. Terragolds'un
 // sattığı ürünler hep "Bijuteri ve Takı Aksesuarları" (Yüzük/Kolye/Bileklik/
-// Küpe/Broş/Piercing/Çelik Takılar/2.El Antika) kategorisinde - bu aralığın
+// Küpe/Broş/Piercing/Çelik Takılar) kategorisinde - bu aralığın
 // (%18-%20,34) ÜST ucu (%20) kasıtlı olarak seçildi: komisyonu olduğundan
 // düşük varsaymak fiyatı gerektiğinden az yükseltip kâr marjını eritir,
 // olduğundan yüksek varsaymak sadece fiyatı gereğinden biraz fazla yükseltir

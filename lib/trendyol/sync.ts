@@ -42,7 +42,7 @@ function barcodeFor(product: { id: number; xmlExternalId: string | null }): stri
 // kategori ağacındaki ID'si. Admin panelindeki "Kategori ara" ile bulundu;
 // hepsi mümkün olduğunda "Çelik ..." (paslanmaz çelik/gold kaplama)
 // alt kategorisi - Terragolds'un asıl sattığı ürün tipiyle eşleşiyor.
-// "antika-vintage", "saat-kombin" ve "aksesuar" grupları için henüz uygun
+// "saat-kombin" ve "aksesuar" grupları için henüz uygun
 // bir Trendyol kategorisi netleştirilmedi, o yüzden şimdilik Kolye'yle aynı
 // varsayılana düşüyorlar - gerçek ID'ler bulununca burada güncellenmeli.
 //
@@ -67,88 +67,7 @@ const TRENDYOL_FALLBACK_CATEGORY_ID = 2853; // Çelik Kolye - eşleşmeyen/bilin
 // bulunan, tescilli marka bekletmeyen "Genel Markalar" kaydının ID'si.
 const TRENDYOL_DEFAULT_BRAND_ID = 1041874;
 
-// "Antika ~ Vintage" (grup: antika-vintage) karma bir kategori - içinde hem
-// gerçek takı (burç yüzükleri, antik sikke kolye) hem de takı OLMAYAN ev
-// dekorasyon/aksesuar ürünleri (biblo, heykel, tablo, tesbih) var. Bunları
-// çelik takı kategorisine göndermek yanlış olur - admin panelindeki
-// "Kategori ara" ile bulunan gerçek Trendyol kategorilerine, ürün adındaki
-// anahtar kelimeye göre yönlendiriliyor. Eşleşmeyen (yüzük/kolye gibi
-// gerçek takı isimli) ürünler normal akışa (Kolye varsayılanı) düşer.
-//
-// Her kategorinin kendi zorunlu özellikleri var (admin panelindeki
-// "Kategori özellikleri" teşhis aracıyla tek tek doğrulandı) - jewelry
-// varsayılanlarından (Materyal: Paslanmaz Çelik vb.) tamamen farklı, bu
-// yüzden ayrı bir attributes listesi taşıyorlar. "Çerçeve Tipi" (id 5),
-// Biblo kategorisinde zorunlu görünüyor ama Trendyol'da hiç tanımlı
-// değeri yok - gönderilemediği için atlandı.
-type NonJewelryCategory = {
-  keywords: string[];
-  categoryId: number;
-  attributes: TrendyolProductAttribute[];
-};
-
-const NON_JEWELRY_CATEGORIES: NonJewelryCategory[] = [
-  {
-    keywords: ["tesbih"],
-    categoryId: 1823, // Aksesuar > Diğer Aksesuar > Tesbih
-    attributes: [
-      { attributeId: 348, attributeValueId: 7001 }, // Web Color: Kahverengi
-      { attributeId: 260, attributeValueId: 1209593 }, // Taş Cinsi: Yok
-      { attributeId: 1186, attributeValueId: 10559446 }, // Kutu Durumu: Kutu yok
-      { attributeId: 1192, attributeValueId: 10617344 }, // Menşei: TR
-      { attributeId: 47, customAttributeValue: "Kahverengi" }, // Renk (allowCustom)
-      { attributeId: 14, attributeValueId: 1215244 }, // Materyal: Ağaç
-    ],
-  },
-  {
-    keywords: ["tablo", "pano"],
-    categoryId: 842, // Ev & Mobilya > Ev Dekorasyon > Tablo
-    attributes: [
-      { attributeId: 348, attributeValueId: 7001 }, // Web Color: Kahverengi
-      { attributeId: 14, attributeValueId: 1256806 }, // Materyal: Belirtilmemiş
-      { attributeId: 47, customAttributeValue: "Kahverengi" }, // Renk (allowCustom)
-      { attributeId: 1192, attributeValueId: 10617344 }, // Menşei: TR
-      { attributeId: 18, attributeValueId: 1256822 }, // Parça Sayısı: Belirtilmemiş
-      { attributeId: 20, attributeValueId: 1256823 }, // Tema/Stil: Belirtilmemiş
-    ],
-  },
-  {
-    keywords: ["biblo", "heykel", "figür"],
-    categoryId: 1877, // Ev & Mobilya > Ev Dekorasyon > Dekoratif Obje ve Biblo
-    attributes: [
-      { attributeId: 47, customAttributeValue: "Kahverengi" }, // Renk (allowCustom)
-      { attributeId: 348, attributeValueId: 7001 }, // Web Color: Kahverengi
-      { attributeId: 92, attributeValueId: 142196 }, // Boyut/Ebat: Tek Ebat
-      { attributeId: 14, attributeValueId: 1256806 }, // Materyal: Belirtilmemiş
-      { attributeId: 20, attributeValueId: 1256823 }, // Tema/Stil: Belirtilmemiş
-      { attributeId: 1192, attributeValueId: 10617344 }, // Menşei: TR
-      { attributeId: 18, attributeValueId: 1256822 }, // Parça Sayısı: Belirtilmemiş
-    ],
-  },
-];
-
-// "Figür" gibi kelimeler gerçek takı ürünlerinde de sıfat olarak geçebiliyor
-// (ör. "Figürlü Eskitme Yüzük Seti") - isimde ayrıca gerçek bir takı ismi
-// varsa bu, dekor değil takı demektir, non-jewelry eşlemesi atlanır.
-const JEWELRY_NAME_KEYWORDS = ["yüzük", "kolye", "küpe", "bileklik", "halhal"];
-
-function nonJewelryCategoryFor(
-  product: { category: string; name: string },
-): NonJewelryCategory | null {
-  const group = groupForCategory(product.category);
-  if (group?.slug !== "antika-vintage") return null;
-  const name = product.name.toLocaleLowerCase("tr-TR");
-  if (JEWELRY_NAME_KEYWORDS.some((keyword) => name.includes(keyword))) return null;
-  return (
-    NON_JEWELRY_CATEGORIES.find((entry) =>
-      entry.keywords.some((keyword) => name.includes(keyword)),
-    ) ?? null
-  );
-}
-
 export function categoryIdFor(product: { category: string; name: string }): number {
-  const nonJewelry = nonJewelryCategoryFor(product);
-  if (nonJewelry) return nonJewelry.categoryId;
   const group = groupForCategory(product.category);
   return (group && TRENDYOL_CATEGORY_BY_GROUP_SLUG[group.slug]) || TRENDYOL_FALLBACK_CATEGORY_ID;
 }
@@ -225,11 +144,6 @@ const TRENDYOL_FALLBACK_EXTRA_ATTRIBUTES = TRENDYOL_EXTRA_ATTRIBUTES_BY_GROUP_SL
 function attributesFor(
   product: { category: string; name: string },
 ): TrendyolProductAttribute[] {
-  // Biblo/tablo/tesbih çelik takı değil - Materyal: Paslanmaz Çelik gibi
-  // takıya özgü varsayılanlar bu kategorilerde anlamsız/yanlış olur, kendi
-  // (NON_JEWELRY_CATEGORIES'teki) özellik listeleri kullanılıyor.
-  const nonJewelry = nonJewelryCategoryFor(product);
-  if (nonJewelry) return nonJewelry.attributes;
   const group = groupForCategory(product.category);
   const extra =
     (group && TRENDYOL_EXTRA_ATTRIBUTES_BY_GROUP_SLUG[group.slug]) ||
@@ -660,9 +574,7 @@ export async function refreshTrendyolColors(db: D1Database): Promise<TrendyolCol
   return { updated, remaining: 0, batches, error: null };
 }
 
-// Bir ürün Trendyol'a yanlış categoryId ile gönderildiğinde (ör. Antika ~
-// Vintage'daki biblo/tablo/tesbih ürünleri önce Kolye kategorisine
-// gitmişti), aynı barkodla tekrar createProduct() çağırmak Trendyol'un
+// Bir ürün Trendyol'a yanlış categoryId ile gönderildiğinde, aynı barkodla tekrar createProduct() çağırmak Trendyol'un
 // "Aynı barkodlu bir ürününüz bulunduğundan yeni ürün oluşturulamaz"
 // hatasına düşüyor - barkod zaten var olan bir ürünü updateProduct() ile
 // (aynı endpoint, aynı POST metodu, sadece isim farkı) güncellemek

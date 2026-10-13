@@ -13,8 +13,6 @@ export type N11Attribute = { id: number; valueId?: number; customValue?: string 
 //   Broş/Şahmeran/Halhal (1191220/1191217/1191218): Marka(1) + Renk(429)
 //   (Kolye/Bileklik/Piercing'deki ek özellikler ilk taramadan SONRA N11
 //   tarafından zorunlu yapıldı - bkz. CategoryRule.bijuChain/beden.)
-//   2.El Antika & Koleksiyon (1003526): zorunlu özellik YOK (Marka/Renk/
-//     Cinsiyet bu kategoride hiç tanımlı değil - göndermek geçersiz ID olur)
 type CategoryRule = {
   gender: boolean;
   size: boolean;
@@ -72,7 +70,6 @@ const RULES: Record<number, CategoryRule> = {
   1191216: { gender: false, size: false, brandAndColor: true, beden: true },
   1191217: { gender: false, size: false, brandAndColor: true },
   1191218: { gender: false, size: false, brandAndColor: true },
-  1003526: { gender: false, size: false, brandAndColor: false },
 };
 
 // Cinsiyet değer ID'leri KATEGORİYE ÖZGÜ (yüzükteki "Kadın" ID'si kolyede

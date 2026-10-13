@@ -31,7 +31,7 @@ export function isMaleProduct(product: { category: string; name: string }): bool
 }
 
 // Sitedeki ham kategori/ad -> Hepsiburada kategorisi. Karşılığı olmayan
-// (Şahmeran, Antika/Vintage, Saat, Aksesuar) ürünler için null: sessizce
+// (Şahmeran, Saat, Aksesuar) ürünler için null: sessizce
 // yanlış kategoriye göndermek yerine çağıran atlar.
 export function hepsiburadaCategoryFor(product: {
   category: string;
@@ -43,7 +43,7 @@ export function hepsiburadaCategoryFor(product: {
   if (category.includes("piercing")) return HB_CATEGORY.piercing;
   if (category.includes("broş")) return HB_CATEGORY.bros;
   if (category.includes("halhal") || category.includes("hal hal")) return HB_CATEGORY.halhal;
-  if (category.includes("şahmeran") || category.includes("antika") || category.includes("vintage")) return null;
+  if (category.includes("şahmeran")) return null;
   if (category.includes("saat")) return null;
   const text = category.trim() === "takı" ? name : category;
   if (text.includes("yüzük")) return male ? HB_CATEGORY.erkekYuzuk : HB_CATEGORY.yuzuk;
