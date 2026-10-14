@@ -39,6 +39,7 @@ type ProductRow = {
   featured: number;
   sort_order: number;
   xml_external_id: string | null;
+  xml_sync_status: string | null;
   is_daily_deal: number;
   daily_deal_order: number;
   created_at: string;
@@ -232,7 +233,12 @@ function mapProduct(row: ProductRow): Product {
     reviewCount: Number(row.review_count) || 0,
     description: row.description,
     seoDescription: row.seo_description ?? undefined,
-    status: row.status === "draft" ? "draft" : "published",
+    // "deleted" de ayrıca taşınmalı - önceden draft dışındaki her şey
+    // "published"a düşüyordu, admin panelinde silinmiş ürünler "Yayında"
+    // görünüyor, "Silinenler" filtresi boş kalıyordu ve böyle bir ürünü
+    // düzenleyip kaydetmek (veya stok +/-) onu gerçekten yeniden yayına alıyordu.
+    status:
+      row.status === "draft" || row.status === "deleted" ? row.status : "published",
     shopierUrl: row.shopier_url ?? undefined,
     shopierProductId: row.shopier_product_id ?? undefined,
     shopierSyncStatus:
@@ -247,6 +253,7 @@ function mapProduct(row: ProductRow): Product {
     featured: Boolean(row.featured),
     sortOrder: row.sort_order,
     xmlExternalId: row.xml_external_id ?? undefined,
+    xmlSynced: row.xml_sync_status === "synced",
     isDailyDeal: Boolean(row.is_daily_deal),
     dailyDealOrder: row.daily_deal_order,
     createdAt: row.created_at,

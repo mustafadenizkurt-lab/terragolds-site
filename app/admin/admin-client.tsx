@@ -484,7 +484,14 @@ export default function AdminClient({
   const normalizedProductSearch = productSearch
     .trim()
     .toLocaleLowerCase("tr-TR");
-  const filteredProducts = products.filter((product) => {
+  // XML tedarikçi senkronunun eklediği ve henüz incelenip yayına alınmamış
+  // ürünler - senkron yeni ürünü her zaman 'draft' + xml_sync_status='synced'
+  // olarak ekliyor (lib/xml-sync/syncSupplier.ts), elle eklenen ürünler ise
+  // hiç 'synced' olmuyor.
+  const isNewXmlProduct = (product: Product) =>
+    product.status === "draft" && Boolean(product.xmlSynced);
+  const newXmlProductCount = products.filter(isNewXmlProduct).length;
+  const unsortedFilteredProducts = products.filter((product) => {
     const matchesSearch =
       !normalizedProductSearch ||
       [product.name, product.stone, product.category]
@@ -505,9 +512,15 @@ export default function AdminClient({
         : product.status !== "deleted" &&
           (productStatusFilter === "all" ||
             product.status === productStatusFilter ||
-            (productStatusFilter === "low-stock" && product.stock <= 2));
+            (productStatusFilter === "low-stock" && product.stock <= 2) ||
+            (productStatusFilter === "xml-new" && isNewXmlProduct(product)));
     return matchesSearch && matchesCategory && matchesStatus;
   });
+  // "XML'den yeni gelenler"de en son gelen en üstte.
+  const filteredProducts =
+    productStatusFilter === "xml-new"
+      ? [...unsortedFilteredProducts].sort((a, b) => b.id - a.id)
+      : unsortedFilteredProducts;
   const productPageCount = Math.max(
     1,
     Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE),
@@ -817,6 +830,23 @@ export default function AdminClient({
 
             {view === "products" && (
               <div className="admin-products">
+                {newXmlProductCount > 0 && productStatusFilter !== "xml-new" && (
+                  <section className="admin-xml-new-banner">
+                    <span>
+                      <strong>{newXmlProductCount} yeni ürün</strong> XML
+                      tedarikçisinden taslak olarak geldi ve incelenmeyi bekliyor.
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProductStatusFilter("xml-new");
+                        setProductPage(1);
+                      }}
+                    >
+                      Yeni gelenleri göster
+                    </button>
+                  </section>
+                )}
                 <section className="admin-product-filters">
                   <label className="admin-product-search">
                     <span aria-hidden="true">⌕</span>
@@ -857,6 +887,9 @@ export default function AdminClient({
                     <option value="published">Yayında</option>
                     <option value="draft">Taslak</option>
                     <option value="low-stock">Düşük stok</option>
+                    <option value="xml-new">
+                      XML&apos;den yeni gelenler ({newXmlProductCount})
+                    </option>
                     <option value="deleted">Silinenler</option>
                   </select>
                   <span>
@@ -1001,6 +1034,12 @@ export default function AdminClient({
                       <span>
                         <strong>{product.name}</strong>
                         <small>{product.category} · {product.stone}</small>
+                        {isNewXmlProduct(product) && product.createdAt && (
+                          <small className="admin-xml-new">
+                            XML&apos;den geldi ·{" "}
+                            {new Date(`${product.createdAt.replace(" ", "T")}Z`).toLocaleDateString("tr-TR")}
+                          </small>
+                        )}
                         {product.discountPercent > 0 && (
                           <em>
                             %{product.discountPercent} indirim ·{" "}

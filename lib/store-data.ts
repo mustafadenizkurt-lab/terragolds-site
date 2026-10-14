@@ -34,6 +34,8 @@ export type Product = {
   featured: boolean;
   sortOrder: number;
   xmlExternalId?: string;
+  /** XML tedarikçi senkronunun yönettiği ürün (xml_sync_status = 'synced'). */
+  xmlSynced?: boolean;
   /** Manually curated for the homepage "Günün Fırsatları" row - see dailyDealOrder. */
   isDailyDeal?: boolean;
   /** Display order within "Günün Fırsatları" (lower first); irrelevant when isDailyDeal is false. */

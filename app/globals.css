@@ -5709,6 +5709,29 @@ footer {
 .footer-managed-copy {
   white-space: pre-line;
 }
+.admin-xml-new-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border: 1px solid #e6cf8f;
+  background: #fff8e6;
+  color: var(--admin-ink);
+}
+.admin-xml-new-banner button {
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--admin-forest);
+  background: var(--admin-forest);
+  color: #fff;
+  cursor: pointer;
+}
+.admin-xml-new {
+  color: #9a6b00;
+}
 .admin-product-search {
   display: flex;
   align-items: center;
