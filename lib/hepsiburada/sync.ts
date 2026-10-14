@@ -563,3 +563,74 @@ export async function importHepsiburadaTest(
   const result = await importProductsFile(items, importPath, userAgentOverride);
   return { sent: items.length, skipped, status: result.status, body: result.body, headers: result.headers, items };
 }
+
+// Admin panelinden görseli değiştirilen ürünlerin (bkz. lib/marketplace-images.ts)
+// TÜM görsellerini Hepsiburada'ya gönderir. Hepsiburada'da güncelleme de
+// içe aktarma (import) üzerinden merchantSku eşleşmesiyle yapılıyor - bkz.
+// refreshHepsiburadaTitles; aynı doğrulanmış gövde, Image1..Image4 ile.
+export async function pushHepsiburadaImagesFor(
+  db: D1Database,
+  productIds: number[],
+): Promise<{ sent: number }> {
+  await ensureHepsiburadaColumns(db);
+  if (productIds.length === 0) return { sent: 0 };
+  const placeholders = productIds.map(() => "?").join(",");
+  const rows = await db
+    .prepare(
+      `SELECT id, name, COALESCE(NULLIF(seo_description, ''), description) AS description,
+              price, hepsiburada_override_price AS overridePrice, stock,
+              image, hover_image AS hoverImage, image3, image4, category, xml_external_id AS xmlExternalId
+       FROM products
+       WHERE id IN (${placeholders}) AND hepsiburada_listing_id IS NOT NULL AND hepsiburada_last_error IS NULL`,
+    )
+    .bind(...productIds)
+    .all<{
+      id: number;
+      name: string;
+      description: string;
+      price: number;
+      overridePrice: number | null;
+      stock: number;
+      image: string;
+      hoverImage: string | null;
+      image3: string | null;
+      image4: string | null;
+      category: string;
+      xmlExternalId: string | null;
+    }>();
+  const mapped = rows.results.filter((row) => hepsiburadaCategoryFor(row) !== null);
+  if (mapped.length === 0) return { sent: 0 };
+  const { merchantId } = await getHepsiburadaCredentials();
+  let sent = 0;
+  for (let offset = 0; offset < mapped.length; offset += 100) {
+    // Peş peşe import çağrıları Hepsiburada'nın WAF'ını tetikleyebiliyor -
+    // bkz. refreshHepsiburadaTitles.
+    if (offset > 0) await new Promise((resolve) => setTimeout(resolve, 2000));
+    const items: HepsiburadaImportItem[] = mapped.slice(offset, offset + 100).map((row) =>
+      buildImportItem({
+        merchantId,
+        categoryId: hepsiburadaCategoryFor(row)!,
+        productId: row.id,
+        price: row.overridePrice ?? row.price,
+        stock: row.stock,
+        merchantSku: merchantSkuFor(row),
+        title: row.name,
+        description: row.description?.trim() || row.name,
+        images: [row.image, row.hoverImage, row.image3, row.image4]
+          .map((url) => (url ? toAbsoluteImageUrl(url) : null))
+          .filter((url): url is string => Boolean(url)),
+        male: isMaleProduct(row),
+      }),
+    );
+    let result = await importProductsFile(items);
+    if (result.status === 403) {
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+      result = await importProductsFile(items);
+    }
+    if (result.status !== 200) {
+      throw new Error(`Hepsiburada içe aktarma başarısız (${result.status}): ${result.body.slice(0, 300)}`);
+    }
+    sent += items.length;
+  }
+  return { sent };
+}

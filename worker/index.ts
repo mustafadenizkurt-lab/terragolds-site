@@ -14,6 +14,7 @@ import { reconcilePendingPaytrOrders } from "../lib/paytr-reconcile";
 import { scanTrendyolArchivedProducts } from "../lib/trendyol/archived-scan";
 import { auditAndFixTrendyolPrices } from "../lib/trendyol/price-audit";
 import { reconcileStrayTrendyolListings } from "../lib/trendyol/sync";
+import { pushMarketplaceImages } from "../lib/marketplace-images";
 import { applyTrendyolDynamicPricing } from "../lib/trendyol/pricing";
 import { rehostHotlinkedImages } from "../lib/image-rehost";
 
@@ -198,6 +199,10 @@ const worker = {
     // 30/tur, günde ~58 yeni senkronlanan üründen gelen doğal hotlink akışına
     // zar zor yetişiyordu (net ilerleme neredeyse durdu) - 150'ye çıkarıldı.
     ctx.waitUntil(rehostHotlinkedImages(env.DB, 150).catch(() => {}));
+    // Admin panelinden değiştirilen ürün görselleri önceden pazaryerlerine
+    // hiç gitmiyordu - kaydederken anında gönderim başarısız olursa veya
+    // birikmiş kuyruk varsa burada tamamlanıyor (bkz. lib/marketplace-images.ts).
+    ctx.waitUntil(pushMarketplaceImages(env.DB).catch(() => {}));
   },
 };
 

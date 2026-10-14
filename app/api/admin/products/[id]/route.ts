@@ -3,6 +3,7 @@ import { parseProductInput } from "../../../../../lib/product-input";
 import { resolveProductSlug } from "../../../../../lib/product-slugs";
 import { ensureSeedData, getD1 } from "../../../../../lib/store-db";
 import { excludeSupplierProducts } from "../../../../../lib/xml-sync/excluded-products";
+import { ensureMarketplaceImageColumns, pushMarketplaceImages } from "../../../../../lib/marketplace-images";
 import { pushStockAndPriceToTrendyol } from "../../../../../lib/trendyol/sync";
 import { pushStockAndPriceToHepsiburada } from "../../../../../lib/hepsiburada/sync";
 import { pushStockAndPriceToN11 } from "../../../../../lib/n11/sync";
@@ -33,6 +34,7 @@ export async function PUT(request: Request, context: RouteContext) {
     await ensureImageLockColumn(db);
     await ensureDetailsLockColumn(db);
     await ensurePriceLockColumn(db);
+    await ensureMarketplaceImageColumns(db);
     const slug = await resolveProductSlug(db, product.name, id, product.slug);
 
     // Admin ana görseli (image) burada, kendi panelimizden elle değiştirirse
@@ -44,10 +46,13 @@ export async function PUT(request: Request, context: RouteContext) {
     // (price_locked_at) için de geçerli - admin resim/açıklama DIŞINDA
     // fiyatı da elle değiştirince aynı otomatik kilit devreye girsin istedi.
     const current = await db
-      .prepare("SELECT image, name, stone, category, description, price, slug FROM products WHERE id = ?")
+      .prepare("SELECT image, hover_image, image3, image4, name, stone, category, description, price, slug FROM products WHERE id = ?")
       .bind(id)
       .first<{
         image: string;
+        hover_image: string | null;
+        image3: string | null;
+        image4: string | null;
         name: string;
         stone: string;
         category: string;
@@ -56,6 +61,14 @@ export async function PUT(request: Request, context: RouteContext) {
         slug: string | null;
       }>();
     const imageChanged = Boolean(current) && current!.image !== product.image;
+    // Herhangi bir görsel (ana, 2., 3., 4.) değiştiyse pazaryerlerine de
+    // gönderilmek üzere işaretlenir - bkz. lib/marketplace-images.ts.
+    const anyImageChanged =
+      imageChanged ||
+      (Boolean(current) &&
+        ((current!.hover_image ?? null) !== (product.hoverImage ?? null) ||
+          (current!.image3 ?? null) !== (product.image3 ?? null) ||
+          (current!.image4 ?? null) !== (product.image4 ?? null)));
     const detailsChanged =
       Boolean(current) &&
       (current!.name !== product.name ||
@@ -76,6 +89,7 @@ export async function PUT(request: Request, context: RouteContext) {
              image_locked_at = CASE WHEN ? THEN CURRENT_TIMESTAMP ELSE image_locked_at END,
              details_locked_at = CASE WHEN ? THEN CURRENT_TIMESTAMP ELSE details_locked_at END,
              price_locked_at = CASE WHEN ? THEN CURRENT_TIMESTAMP ELSE price_locked_at END,
+             images_changed_at = CASE WHEN ? THEN CURRENT_TIMESTAMP ELSE images_changed_at END,
              updated_at = CURRENT_TIMESTAMP
          WHERE id = ?`,
       )
@@ -108,6 +122,7 @@ export async function PUT(request: Request, context: RouteContext) {
         imageChanged ? 1 : 0,
         detailsChanged ? 1 : 0,
         priceChanged ? 1 : 0,
+        anyImageChanged ? 1 : 0,
         id,
       )
       .run();
@@ -120,6 +135,12 @@ export async function PUT(request: Request, context: RouteContext) {
     // indeksindeki eski link 404 yerine 301 ile yeni sayfaya gitsin.
     if (current?.slug && current.slug !== slug) {
       await recordSlugChangeRedirect(db, current.slug, slug).catch(() => {});
+    }
+
+    // Yeni görseller hemen pazaryerlerine gönderilmeye çalışılır; başarısız
+    // olursa ürün kuyrukta kalır ve 6 saatlik cron tekrar dener.
+    if (anyImageChanged) {
+      await pushMarketplaceImages(db, { productIds: [id] }).catch(() => {});
     }
 
     return Response.json({ ok: true });

@@ -1023,3 +1023,40 @@ export async function reconcileStrayTrendyolListings(
     errors,
   };
 }
+
+// Admin panelinden görseli değiştirilen ürünlerin (bkz. lib/marketplace-images.ts)
+// TÜM görsellerini (image, hover_image, image3, image4) Trendyol'a gönderir.
+// refreshTrendyolImages'tan farkı: sadece verilen ürünler, hover_image boş
+// olsa da gönderilir ve trendyol_image_locked_at'e bakılmaz - o kilit eski
+// tedarikçi görselinin tekrar gönderilmesini engellemek içindi; admin'in
+// kendi yüklediği yeni görsel ise tam olarak Trendyol'a gitmesi gereken şey.
+export async function pushTrendyolImagesFor(
+  db: D1Database,
+  productIds: number[],
+): Promise<{ sent: number; skipped: number; batchRequestIds: string[] }> {
+  await ensureTrendyolColumns(db);
+  if (productIds.length === 0) return { sent: 0, skipped: 0, batchRequestIds: [] };
+  const placeholders = productIds.map(() => "?").join(",");
+  const rows = await db
+    .prepare(
+      `SELECT id, image, hover_image AS hoverImage, image3, image4, trendyol_content_id AS contentId
+       FROM products WHERE id IN (${placeholders}) AND trendyol_content_id IS NOT NULL`,
+    )
+    .bind(...productIds)
+    .all<{ id: number; image: string; hoverImage: string | null; image3: string | null; image4: string | null; contentId: number }>();
+  const items = rows.results
+    .map((product) => ({
+      contentId: product.contentId,
+      images: [product.image, product.hoverImage, product.image3, product.image4]
+        .map((url) => (url ? toAbsoluteImageUrl(url) : null))
+        .filter((url): url is string => Boolean(url))
+        .map((url) => ({ url })),
+    }))
+    .filter((item) => item.images.length > 0);
+  const batchRequestIds: string[] = [];
+  for (let offset = 0; offset < items.length; offset += IMAGE_REFRESH_BATCH_SIZE) {
+    const { batchRequestId } = await updateProductImages(items.slice(offset, offset + IMAGE_REFRESH_BATCH_SIZE));
+    batchRequestIds.push(batchRequestId);
+  }
+  return { sent: items.length, skipped: productIds.length - items.length, batchRequestIds };
+}

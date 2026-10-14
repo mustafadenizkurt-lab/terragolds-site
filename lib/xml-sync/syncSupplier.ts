@@ -298,7 +298,7 @@ export async function syncSupplier(db: D1Database, supplier: Supplier): Promise<
          category = CASE WHEN details_locked_at IS NULL THEN ? ELSE category END,
          price = ?, price_locked_at = ?, cost = ?, stock = ?,
          image = CASE WHEN image_locked_at IS NULL THEN ? ELSE image END,
-         hover_image = COALESCE(?, hover_image),
+         hover_image = CASE WHEN image_locked_at IS NULL THEN COALESCE(?, hover_image) ELSE hover_image END,
          description = CASE WHEN details_locked_at IS NULL THEN ? ELSE description END,
          xml_sync_status = 'synced',
          trendyol_lower_limit_price = CASE WHEN trendyol_lower_limit_price IS NULL THEN ? ELSE trendyol_lower_limit_price END,

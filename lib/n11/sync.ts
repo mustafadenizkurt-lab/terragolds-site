@@ -574,3 +574,44 @@ export async function sendN11TitleExperiment(
   }
   return result;
 }
+
+// Admin panelinden görseli değiştirilen ürünlerin (bkz. lib/marketplace-images.ts)
+// TÜM görsellerini N11'e gönderir. N11'de sadece görsel güncelleyen ayrı bir
+// servis yok - refreshN11Titles ile aynı product-update görevi (tam ürün
+// gövdesi) kullanılıyor, images alanı image3/image4'ü de içerecek şekilde
+// genişletilmiş. n11_last_error dolu (katalogda reddedilmiş) ürünler hariç -
+// bkz. refreshN11Titles yorumu.
+export async function pushN11ImagesFor(
+  db: D1Database,
+  productIds: number[],
+): Promise<{ sent: number; taskIds: string[] }> {
+  await ensureN11Columns(db);
+  if (productIds.length === 0) return { sent: 0, taskIds: [] };
+  const placeholders = productIds.map(() => "?").join(",");
+  const rows = await db
+    .prepare(
+      `SELECT id, name, description, price, n11_override_price AS n11OverridePrice, stock,
+              image, hover_image AS hoverImage, image3, image4, category,
+              xml_external_id AS xmlExternalId, n11_stock_code AS n11StockCode
+       FROM products
+       WHERE id IN (${placeholders}) AND n11_stock_code IS NOT NULL AND n11_last_error IS NULL`,
+    )
+    .bind(...productIds)
+    .all<PendingProduct & { n11StockCode: string; image3: string | null; image4: string | null }>();
+  if (rows.results.length === 0) return { sent: 0, taskIds: [] };
+  const credentials = await getN11Credentials();
+  const taskIds: string[] = [];
+  for (let offset = 0; offset < rows.results.length; offset += 100) {
+    const items = rows.results.slice(offset, offset + 100).map((product) => {
+      const base = toN11Product(product, credentials);
+      const images = [product.image, product.hoverImage, product.image3, product.image4]
+        .map((url) => (url ? toAbsoluteImageUrl(url) : null))
+        .filter((url): url is string => Boolean(url))
+        .map((url, index) => ({ url, order: index + 1 }));
+      return { ...base, images, stockCode: product.n11StockCode, productMainId: product.n11StockCode };
+    });
+    const task = await updateProduct(items, credentials.integrator);
+    taskIds.push(String(task.id ?? ""));
+  }
+  return { sent: rows.results.length, taskIds };
+}
