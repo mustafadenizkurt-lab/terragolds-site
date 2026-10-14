@@ -512,7 +512,16 @@ export default function AdminClient({
   const filteredProducts = products.filter((product) => {
     const matchesSearch =
       !normalizedProductSearch ||
-      [product.name, product.stone, product.category]
+      // Ürün kodu (tedarikçi stok kodu / Trendyol-Hepsiburada barkodu, ör.
+      // BKP12173) ve kendi ürün numaramız (#5833 veya TG-5833) ile de aranabilir.
+      [
+        product.name,
+        product.stone,
+        product.category,
+        product.xmlExternalId ?? "",
+        `#${product.id}`,
+        `TG-${product.id}`,
+      ]
         .join(" ")
         .toLocaleLowerCase("tr-TR")
         .includes(normalizedProductSearch);
@@ -904,7 +913,7 @@ export default function AdminClient({
                         setProductSearch(event.target.value);
                         setProductPage(1);
                       }}
-                      placeholder="Ürün adı, taş veya kategori ara"
+                      placeholder="Ürün adı, ürün kodu (BKP12173), taş veya kategori ara"
                       aria-label="Ürünlerde ara"
                     />
                   </label>
@@ -1080,7 +1089,10 @@ export default function AdminClient({
                       <img src={optimizedImageUrl(product.image, 80)} alt="" />
                       <span>
                         <strong>{product.name}</strong>
-                        <small>{product.category} · {product.stone}</small>
+                        <small>
+                          {product.category} · {product.stone}
+                          {product.xmlExternalId ? ` · Kod: ${product.xmlExternalId}` : ""}
+                        </small>
                         {isNewXmlProduct(product) && product.createdAt && (
                           <small className="admin-xml-new">
                             XML&apos;den geldi ·{" "}
