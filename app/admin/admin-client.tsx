@@ -39,10 +39,12 @@ import type {
 import type { ProductCategory } from "../../lib/category-types";
 import { optimizedImageUrl } from "../../lib/image-transform";
 import { buildPageWindow } from "../../lib/pagination";
+import XmlNewProductsPanel, { isNewXmlProduct } from "./xml-new-products-panel";
 
 type AdminView =
   | "overview"
   | "products"
+  | "xmlNew"
   | "editor"
   | "categories"
   | "content"
@@ -122,6 +124,9 @@ export default function AdminClient({
   user: { name: string; email: string };
 }) {
   const [view, setView] = useState<AdminView>("overview");
+  // Ürün düzenleyiciden "kaydet"/"vazgeç" sonrası dönülecek ekran - XML'den
+  // yeni gelenler ekranından açılan ürün oraya geri dönsün.
+  const [editorReturnView, setEditorReturnView] = useState<AdminView>("products");
   const [editSupplierId, setEditSupplierId] = useState<number | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [settings, setSettings] =
@@ -228,11 +233,13 @@ export default function AdminClient({
       ...emptyProduct,
       sortOrder: products.length + 1,
     });
+    setEditorReturnView("products");
     setView("editor");
   };
 
-  const openProduct = (product: Product) => {
+  const openProduct = (product: Product, returnTo: AdminView = "products") => {
     setDraft({ ...product });
+    setEditorReturnView(returnTo);
     setView("editor");
   };
 
@@ -242,6 +249,7 @@ export default function AdminClient({
       category: categoryName,
       sortOrder: products.length + 1,
     });
+    setEditorReturnView("products");
     setView("editor");
   };
 
@@ -255,6 +263,7 @@ export default function AdminClient({
       // A fresh slug is generated on save — copying the original's would collide.
       slug: "",
     });
+    setEditorReturnView("products");
     setView("editor");
     flash("Ürün kopyalandı, taslak olarak düzenleyebilirsiniz.");
   };
@@ -300,7 +309,8 @@ export default function AdminClient({
       );
       await readJson(response);
       await loadAdminData();
-      setView("products");
+      setView(editorReturnView);
+      setEditorReturnView("products");
       flash(draft.id ? "Ürün güncellendi." : "Yeni ürün oluşturuldu.");
     } catch (saveError) {
       setError(
@@ -484,14 +494,8 @@ export default function AdminClient({
   const normalizedProductSearch = productSearch
     .trim()
     .toLocaleLowerCase("tr-TR");
-  // XML tedarikçi senkronunun eklediği ve henüz incelenip yayına alınmamış
-  // ürünler - senkron yeni ürünü her zaman 'draft' + xml_sync_status='synced'
-  // olarak ekliyor (lib/xml-sync/syncSupplier.ts), elle eklenen ürünler ise
-  // hiç 'synced' olmuyor.
-  const isNewXmlProduct = (product: Product) =>
-    product.status === "draft" && Boolean(product.xmlSynced);
   const newXmlProductCount = products.filter(isNewXmlProduct).length;
-  const unsortedFilteredProducts = products.filter((product) => {
+  const filteredProducts = products.filter((product) => {
     const matchesSearch =
       !normalizedProductSearch ||
       [product.name, product.stone, product.category]
@@ -512,15 +516,9 @@ export default function AdminClient({
         : product.status !== "deleted" &&
           (productStatusFilter === "all" ||
             product.status === productStatusFilter ||
-            (productStatusFilter === "low-stock" && product.stock <= 2) ||
-            (productStatusFilter === "xml-new" && isNewXmlProduct(product)));
+            (productStatusFilter === "low-stock" && product.stock <= 2));
     return matchesSearch && matchesCategory && matchesStatus;
   });
-  // "XML'den yeni gelenler"de en son gelen en üstte.
-  const filteredProducts =
-    productStatusFilter === "xml-new"
-      ? [...unsortedFilteredProducts].sort((a, b) => b.id - a.id)
-      : unsortedFilteredProducts;
   const productPageCount = Math.max(
     1,
     Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE),
@@ -568,6 +566,16 @@ export default function AdminClient({
             onClick={() => setView("products")}
           >
             <span>◇</span> Ürünler
+          </button>
+          <button
+            type="button"
+            className={view === "xmlNew" ? "active" : ""}
+            onClick={() => setView("xmlNew")}
+          >
+            <span>✦</span> XML&apos;den Yeni Gelenler
+            {newXmlProductCount > 0 && (
+              <em className="admin-nav-count">{newXmlProductCount}</em>
+            )}
           </button>
           <button
             type="button"
@@ -754,6 +762,7 @@ export default function AdminClient({
             <h1>
               {view === "overview" && "Genel bakış"}
               {view === "products" && "Ürünler"}
+              {view === "xmlNew" && "XML'den Yeni Gelenler"}
               {view === "editor" &&
                 (draft.id ? "Ürünü düzenle" : "Yeni ürün")}
               {view === "categories" && "Kategoriler"}
@@ -828,9 +837,18 @@ export default function AdminClient({
               />
             )}
 
+            {view === "xmlNew" && (
+              <XmlNewProductsPanel
+                products={products}
+                onOpenProduct={(product) => openProduct(product, "xmlNew")}
+                onChanged={loadAdminData}
+                onNotice={flash}
+              />
+            )}
+
             {view === "products" && (
               <div className="admin-products">
-                {newXmlProductCount > 0 && productStatusFilter !== "xml-new" && (
+                {newXmlProductCount > 0 && (
                   <section className="admin-xml-new-banner">
                     <span>
                       <strong>{newXmlProductCount} yeni ürün</strong> XML
@@ -838,12 +856,9 @@ export default function AdminClient({
                     </span>
                     <button
                       type="button"
-                      onClick={() => {
-                        setProductStatusFilter("xml-new");
-                        setProductPage(1);
-                      }}
+                      onClick={() => setView("xmlNew")}
                     >
-                      Yeni gelenleri göster
+                      Yeni gelenleri incele
                     </button>
                   </section>
                 )}
@@ -887,9 +902,6 @@ export default function AdminClient({
                     <option value="published">Yayında</option>
                     <option value="draft">Taslak</option>
                     <option value="low-stock">Düşük stok</option>
-                    <option value="xml-new">
-                      XML&apos;den yeni gelenler ({newXmlProductCount})
-                    </option>
                     <option value="deleted">Silinenler</option>
                   </select>
                   <span>
@@ -1827,7 +1839,10 @@ export default function AdminClient({
                   <button
                     type="button"
                     className="admin-secondary-button"
-                    onClick={() => setView("products")}
+                    onClick={() => {
+                      setView(editorReturnView);
+                      setEditorReturnView("products");
+                    }}
                   >
                     Vazgeç
                   </button>
