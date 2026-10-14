@@ -45,6 +45,7 @@ type AdminView =
   | "overview"
   | "products"
   | "xmlNew"
+  | "outOfStock"
   | "editor"
   | "categories"
   | "content"
@@ -495,6 +496,19 @@ export default function AdminClient({
     .trim()
     .toLocaleLowerCase("tr-TR");
   const newXmlProductCount = products.filter(isNewXmlProduct).length;
+  const outOfStockCount = products.filter(
+    (product) =>
+      product.status !== "deleted" && !isNewXmlProduct(product) && product.stock <= 0,
+  ).length;
+  // Ürünler / Stoğu Bitenler arasında geçerken filtre, sayfa ve seçim
+  // sıfırlanır - bir ekranda seçilen ürünler diğerinde görünmeden toplu
+  // işleme girmesin.
+  const openProductList = (nextView: "products" | "outOfStock") => {
+    setView(nextView);
+    setProductStatusFilter("all");
+    setProductPage(1);
+    setSelectedProductIds([]);
+  };
   const filteredProducts = products.filter((product) => {
     const matchesSearch =
       !normalizedProductSearch ||
@@ -517,7 +531,15 @@ export default function AdminClient({
           (productStatusFilter === "all" ||
             product.status === productStatusFilter ||
             (productStatusFilter === "low-stock" && product.stock <= 2));
-    return matchesSearch && matchesCategory && matchesStatus;
+    // "Ürünler" yalnızca stoğu olan ürünleri gösterir; stoğu bitenler ayrı
+    // "Stoğu Bitenler" ekranında, XML'den gelip henüz incelenmemiş taslaklar
+    // ise "XML'den Yeni Gelenler" ekranında bekler. "Silinenler" filtresi
+    // bu ayrımdan bağımsız (silinen ürünün stoğu zaten 0'a çekiliyor).
+    const matchesSection =
+      productStatusFilter === "deleted" ||
+      (!isNewXmlProduct(product) &&
+        (view === "outOfStock" ? product.stock <= 0 : product.stock > 0));
+    return matchesSearch && matchesCategory && matchesStatus && matchesSection;
   });
   const productPageCount = Math.max(
     1,
@@ -563,9 +585,19 @@ export default function AdminClient({
             className={
               view === "products" || view === "editor" ? "active" : ""
             }
-            onClick={() => setView("products")}
+            onClick={() => openProductList("products")}
           >
             <span>◇</span> Ürünler
+          </button>
+          <button
+            type="button"
+            className={view === "outOfStock" ? "active" : ""}
+            onClick={() => openProductList("outOfStock")}
+          >
+            <span>○</span> Stoğu Bitenler
+            {outOfStockCount > 0 && (
+              <em className="admin-nav-count muted">{outOfStockCount}</em>
+            )}
           </button>
           <button
             type="button"
@@ -763,6 +795,7 @@ export default function AdminClient({
               {view === "overview" && "Genel bakış"}
               {view === "products" && "Ürünler"}
               {view === "xmlNew" && "XML'den Yeni Gelenler"}
+              {view === "outOfStock" && "Stoğu Bitenler"}
               {view === "editor" &&
                 (draft.id ? "Ürünü düzenle" : "Yeni ürün")}
               {view === "categories" && "Kategoriler"}
@@ -846,9 +879,9 @@ export default function AdminClient({
               />
             )}
 
-            {view === "products" && (
+            {(view === "products" || view === "outOfStock") && (
               <div className="admin-products">
-                {newXmlProductCount > 0 && (
+                {view === "products" && newXmlProductCount > 0 && (
                   <section className="admin-xml-new-banner">
                     <span>
                       <strong>{newXmlProductCount} yeni ürün</strong> XML
@@ -902,7 +935,9 @@ export default function AdminClient({
                     <option value="published">Yayında</option>
                     <option value="draft">Taslak</option>
                     <option value="low-stock">Düşük stok</option>
-                    <option value="deleted">Silinenler</option>
+                    {view === "products" && (
+                      <option value="deleted">Silinenler</option>
+                    )}
                   </select>
                   <span>
                     <strong>{filteredProducts.length}</strong> ürün
@@ -1040,7 +1075,7 @@ export default function AdminClient({
                     <button
                       className="admin-product-main"
                       type="button"
-                      onClick={() => openProduct(product)}
+                      onClick={() => openProduct(product, view)}
                     >
                       <img src={optimizedImageUrl(product.image, 80)} alt="" />
                       <span>
@@ -1121,7 +1156,7 @@ export default function AdminClient({
                           <button
                             type="button"
                             aria-label={`${product.name} ürününü düzenle`}
-                            onClick={() => openProduct(product)}
+                            onClick={() => openProduct(product, view)}
                           >
                             Düzenle
                           </button>

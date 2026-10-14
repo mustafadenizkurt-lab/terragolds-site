@@ -5744,6 +5744,10 @@ footer {
   font-weight: 700;
   text-align: center;
 }
+.admin-nav-count.muted {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
 .admin-xml-new-panel {
   display: grid;
   gap: 12px;
