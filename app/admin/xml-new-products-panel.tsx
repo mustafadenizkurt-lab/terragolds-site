@@ -8,8 +8,10 @@ import type { Product } from "../../lib/store-data";
 // XML tedarikçi senkronunun taslak olarak eklediği, henüz incelenmemiş
 // ürünler (status = 'draft' + xml_sync_status = 'synced' - bkz.
 // lib/xml-sync/syncSupplier.ts). Elle eklenen ürünler hiç 'synced' olmaz.
+// Stoğu 0 olanlar burada değil "Stoğu Bitenler"de durur - yayına alınsa bile
+// satılamazlar; tedarikçi stoğu geri gelince senkronla buraya geri düşerler.
 export function isNewXmlProduct(product: Product): boolean {
-  return product.status === "draft" && Boolean(product.xmlSynced);
+  return product.status === "draft" && Boolean(product.xmlSynced) && product.stock > 0;
 }
 
 const PER_PAGE = 20;
