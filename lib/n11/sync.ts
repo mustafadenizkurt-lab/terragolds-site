@@ -12,6 +12,7 @@ import { attributesForCategory } from "./attributes";
 import { CATALOG_REJECTED_MESSAGE } from "./reconcile";
 import { n11ListPriceFor } from "./pricing-formula";
 import { toAbsoluteImageUrl } from "../image-url";
+import { selectByIds } from "../d1-chunks";
 import { groupForCategory } from "../category-groups";
 
 type PendingProduct = {
@@ -587,22 +588,21 @@ export async function pushN11ImagesFor(
 ): Promise<{ sent: number; taskIds: string[] }> {
   await ensureN11Columns(db);
   if (productIds.length === 0) return { sent: 0, taskIds: [] };
-  const placeholders = productIds.map(() => "?").join(",");
-  const rows = await db
-    .prepare(
+  const rows = await selectByIds<PendingProduct & { n11StockCode: string; image3: string | null; image4: string | null }>(
+    db,
+    productIds,
+    (placeholders) =>
       `SELECT id, name, description, price, n11_override_price AS n11OverridePrice, stock,
               image, hover_image AS hoverImage, image3, image4, category,
               xml_external_id AS xmlExternalId, n11_stock_code AS n11StockCode
        FROM products
        WHERE id IN (${placeholders}) AND n11_stock_code IS NOT NULL AND n11_last_error IS NULL`,
-    )
-    .bind(...productIds)
-    .all<PendingProduct & { n11StockCode: string; image3: string | null; image4: string | null }>();
-  if (rows.results.length === 0) return { sent: 0, taskIds: [] };
+  );
+  if (rows.length === 0) return { sent: 0, taskIds: [] };
   const credentials = await getN11Credentials();
   const taskIds: string[] = [];
-  for (let offset = 0; offset < rows.results.length; offset += 100) {
-    const items = rows.results.slice(offset, offset + 100).map((product) => {
+  for (let offset = 0; offset < rows.length; offset += 100) {
+    const items = rows.slice(offset, offset + 100).map((product) => {
       const base = toN11Product(product, credentials);
       const images = [product.image, product.hoverImage, product.image3, product.image4]
         .map((url) => (url ? toAbsoluteImageUrl(url) : null))
@@ -613,5 +613,5 @@ export async function pushN11ImagesFor(
     const task = await updateProduct(items, credentials.integrator);
     taskIds.push(String(task.id ?? ""));
   }
-  return { sent: rows.results.length, taskIds };
+  return { sent: rows.length, taskIds };
 }

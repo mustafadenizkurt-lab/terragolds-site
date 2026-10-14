@@ -1,6 +1,7 @@
 import { ensureTrendyolColumns, createProduct, updateProduct, updateProductAttributes, updateProductImages, updateProductTitles, updateStockAndPrice, getProductByBarcode, getBatchRequestResult, type TrendyolProduct, type TrendyolProductAttribute } from "./client";
 import { trendyolListPriceFor } from "./pricing-formula";
 import { toAbsoluteImageUrl } from "../image-url";
+import { selectByIds } from "../d1-chunks";
 import { groupForCategory } from "../category-groups";
 import { COLOR_FACETS } from "../product-facets";
 
@@ -1036,15 +1037,14 @@ export async function pushTrendyolImagesFor(
 ): Promise<{ sent: number; skipped: number; batchRequestIds: string[] }> {
   await ensureTrendyolColumns(db);
   if (productIds.length === 0) return { sent: 0, skipped: 0, batchRequestIds: [] };
-  const placeholders = productIds.map(() => "?").join(",");
-  const rows = await db
-    .prepare(
+  const rows = await selectByIds<{ id: number; image: string; hoverImage: string | null; image3: string | null; image4: string | null; contentId: number }>(
+    db,
+    productIds,
+    (placeholders) =>
       `SELECT id, image, hover_image AS hoverImage, image3, image4, trendyol_content_id AS contentId
        FROM products WHERE id IN (${placeholders}) AND trendyol_content_id IS NOT NULL`,
-    )
-    .bind(...productIds)
-    .all<{ id: number; image: string; hoverImage: string | null; image3: string | null; image4: string | null; contentId: number }>();
-  const items = rows.results
+  );
+  const items = rows
     .map((product) => ({
       contentId: product.contentId,
       images: [product.image, product.hoverImage, product.image3, product.image4]

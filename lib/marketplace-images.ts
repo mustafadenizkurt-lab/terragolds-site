@@ -1,6 +1,7 @@
 import { pushTrendyolImagesFor } from "./trendyol/sync";
 import { pushHepsiburadaImagesFor } from "./hepsiburada/sync";
 import { pushN11ImagesFor } from "./n11/sync";
+import { chunkIds } from "./d1-chunks";
 
 // Admin panelinden bir ürünün görselleri (image, hover_image, image3,
 // image4) değiştirildiğinde bu değişiklik önceden SADECE D1'e (yani sitemize)
@@ -75,19 +76,22 @@ export async function pushMarketplaceImages(
         result.errors.push(`${name}: ${error instanceof Error ? error.message : "bilinmeyen hata"}`);
       }
     }
-    const placeholders = ids.map(() => "?").join(",");
-    if (result.errors.length === 0) {
-      await db
-        .prepare(
-          `UPDATE products SET images_pushed_at = CURRENT_TIMESTAMP, images_push_error = NULL WHERE id IN (${placeholders})`,
-        )
-        .bind(...ids)
-        .run();
-    } else {
-      await db
-        .prepare(`UPDATE products SET images_push_error = ? WHERE id IN (${placeholders})`)
-        .bind(result.errors.join(" | ").slice(0, 500), ...ids)
-        .run();
+    const errorText = result.errors.join(" | ").slice(0, 500);
+    for (const chunk of chunkIds(ids)) {
+      const placeholders = chunk.map(() => "?").join(",");
+      if (result.errors.length === 0) {
+        await db
+          .prepare(
+            `UPDATE products SET images_pushed_at = CURRENT_TIMESTAMP, images_push_error = NULL WHERE id IN (${placeholders})`,
+          )
+          .bind(...chunk)
+          .run();
+      } else {
+        await db
+          .prepare(`UPDATE products SET images_push_error = ? WHERE id IN (${placeholders})`)
+          .bind(errorText, ...chunk)
+          .run();
+      }
     }
   }
   const remaining = await db

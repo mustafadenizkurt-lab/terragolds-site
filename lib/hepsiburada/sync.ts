@@ -7,6 +7,7 @@ import {
 import { getHepsiburadaCredentials } from "./auth";
 import { buildImportItem, hepsiburadaCategoryFor, isMaleProduct, type HepsiburadaImportItem } from "./attributes";
 import { toAbsoluteImageUrl } from "../image-url";
+import { selectByIds } from "../d1-chunks";
 
 // Hepsiburada her ürün için bir merchantSku (bizim kendi ürün kodumuz)
 // zorunlu tutuyor - tedarikçi ürün kodumuz (xml_external_id) varsa onu
@@ -574,31 +575,30 @@ export async function pushHepsiburadaImagesFor(
 ): Promise<{ sent: number }> {
   await ensureHepsiburadaColumns(db);
   if (productIds.length === 0) return { sent: 0 };
-  const placeholders = productIds.map(() => "?").join(",");
-  const rows = await db
-    .prepare(
+  const rows = await selectByIds<{
+    id: number;
+    name: string;
+    description: string;
+    price: number;
+    overridePrice: number | null;
+    stock: number;
+    image: string;
+    hoverImage: string | null;
+    image3: string | null;
+    image4: string | null;
+    category: string;
+    xmlExternalId: string | null;
+  }>(
+    db,
+    productIds,
+    (placeholders) =>
       `SELECT id, name, COALESCE(NULLIF(seo_description, ''), description) AS description,
               price, hepsiburada_override_price AS overridePrice, stock,
               image, hover_image AS hoverImage, image3, image4, category, xml_external_id AS xmlExternalId
        FROM products
        WHERE id IN (${placeholders}) AND hepsiburada_listing_id IS NOT NULL AND hepsiburada_last_error IS NULL`,
-    )
-    .bind(...productIds)
-    .all<{
-      id: number;
-      name: string;
-      description: string;
-      price: number;
-      overridePrice: number | null;
-      stock: number;
-      image: string;
-      hoverImage: string | null;
-      image3: string | null;
-      image4: string | null;
-      category: string;
-      xmlExternalId: string | null;
-    }>();
-  const mapped = rows.results.filter((row) => hepsiburadaCategoryFor(row) !== null);
+  );
+  const mapped = rows.filter((row) => hepsiburadaCategoryFor(row) !== null);
   if (mapped.length === 0) return { sent: 0 };
   const { merchantId } = await getHepsiburadaCredentials();
   let sent = 0;
