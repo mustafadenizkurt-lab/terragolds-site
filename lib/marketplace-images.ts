@@ -29,6 +29,8 @@ export type MarketplaceImagePushResult = {
   trendyol: number;
   hepsiburada: number;
   n11: number;
+  /** Trendyol'da onay beklediği için görseli henüz gönderilemeyen ürün sayısı. */
+  deferred: number;
   remaining: number;
   errors: string[];
 };
@@ -60,12 +62,20 @@ export async function pushMarketplaceImages(
     trendyol: 0,
     hepsiburada: 0,
     n11: 0,
+    deferred: 0,
     remaining: 0,
     errors: [],
   };
+  // Trendyol'da henüz onaylanmamış (contentId'si olmayan) ürünler - görselleri
+  // gönderilemedi, kuyrukta kalıp sonraki çalıştırmada tekrar denenecekler.
+  let deferred: number[] = [];
   if (ids.length > 0) {
     const steps: [string, () => Promise<void>][] = [
-      ["Trendyol", async () => { result.trendyol = (await pushTrendyolImagesFor(db, ids)).sent; }],
+      ["Trendyol", async () => {
+        const trendyol = await pushTrendyolImagesFor(db, ids);
+        result.trendyol = trendyol.sent;
+        deferred = trendyol.deferredIds;
+      }],
       ["Hepsiburada", async () => { result.hepsiburada = (await pushHepsiburadaImagesFor(db, ids)).sent; }],
       ["N11", async () => { result.n11 = (await pushN11ImagesFor(db, ids)).sent; }],
     ];
@@ -77,7 +87,26 @@ export async function pushMarketplaceImages(
       }
     }
     const errorText = result.errors.join(" | ").slice(0, 500);
-    for (const chunk of chunkIds(ids)) {
+    const deferredSet = new Set(deferred);
+    const doneIds = ids.filter((id) => !deferredSet.has(id));
+    for (const chunk of chunkIds(deferred)) {
+      await db
+        .prepare(`UPDATE products SET images_push_error = ? WHERE id IN (${chunk.map(() => "?").join(",")})`)
+        .bind("Trendyol: ürün henüz onaylanmadı (contentId yok), tekrar denenecek", ...chunk)
+        .run();
+      // Trendyol'da 7 gündür hâlâ onaylanmamış (muhtemelen reddedilmiş) bir
+      // ürün kuyrukta sonsuza kadar kalıp her 6 saatte Hepsiburada/N11'e
+      // aynı görselleri tekrar göndermesin - artık bırakılıyor.
+      await db
+        .prepare(
+          `UPDATE products SET images_pushed_at = CURRENT_TIMESTAMP
+           WHERE id IN (${chunk.map(() => "?").join(",")}) AND images_changed_at < datetime('now', '-7 day')`,
+        )
+        .bind(...chunk)
+        .run();
+    }
+    result.deferred = deferred.length;
+    for (const chunk of chunkIds(doneIds)) {
       const placeholders = chunk.map(() => "?").join(",");
       if (result.errors.length === 0) {
         await db

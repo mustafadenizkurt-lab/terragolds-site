@@ -1031,22 +1031,60 @@ export async function reconcileStrayTrendyolListings(
 // olsa da gönderilir ve trendyol_image_locked_at'e bakılmaz - o kilit eski
 // tedarikçi görselinin tekrar gönderilmesini engellemek içindi; admin'in
 // kendi yüklediği yeni görsel ise tam olarak Trendyol'a gitmesi gereken şey.
+//
+// Görsel güncellemesi contentId istiyor; Trendyol'a yeni eklenmiş ürünlerde
+// bu henüz D1'de yok (backfillTrendyolContentIds hiçbir cron'a bağlı
+// değildi). Eksik olanlar burada Trendyol'dan sorgulanıp kaydediliyor;
+// hâlâ contentId'si olmayanlar (onay bekleyen ürünler) "deferredIds" olarak
+// dönüyor - çağıran bunları gönderilmiş SAYMAMALI, sonra tekrar denemeli.
+// Önceden bu ürünler sessizce atlanıp "gönderildi" işaretleniyordu.
+const MAX_CONTENT_ID_LOOKUPS_PER_PUSH = 100;
+
 export async function pushTrendyolImagesFor(
   db: D1Database,
   productIds: number[],
-): Promise<{ sent: number; skipped: number; batchRequestIds: string[] }> {
+): Promise<{ sent: number; deferredIds: number[]; batchRequestIds: string[] }> {
   await ensureTrendyolColumns(db);
-  if (productIds.length === 0) return { sent: 0, skipped: 0, batchRequestIds: [] };
-  const rows = await selectByIds<{ id: number; image: string; hoverImage: string | null; image3: string | null; image4: string | null; contentId: number }>(
+  if (productIds.length === 0) return { sent: 0, deferredIds: [], batchRequestIds: [] };
+  type Row = { id: number; image: string; hoverImage: string | null; image3: string | null; image4: string | null; contentId: number | null; barcode: string | null };
+  const rows = await selectByIds<Row>(
     db,
     productIds,
     (placeholders) =>
-      `SELECT id, image, hover_image AS hoverImage, image3, image4, trendyol_content_id AS contentId
-       FROM products WHERE id IN (${placeholders}) AND trendyol_content_id IS NOT NULL`,
+      `SELECT id, image, hover_image AS hoverImage, image3, image4, trendyol_content_id AS contentId,
+              trendyol_barcode AS barcode
+       FROM products WHERE id IN (${placeholders}) AND trendyol_barcode IS NOT NULL`,
   );
+
+  const deferredIds: number[] = [];
+  let lookups = 0;
+  for (const row of rows) {
+    if (row.contentId !== null || !row.barcode) continue;
+    if (lookups >= MAX_CONTENT_ID_LOOKUPS_PER_PUSH) {
+      deferredIds.push(row.id);
+      continue;
+    }
+    lookups += 1;
+    try {
+      const info = await getProductByBarcode(row.barcode);
+      if (typeof info.contentId === "number") {
+        row.contentId = info.contentId;
+        await db
+          .prepare("UPDATE products SET trendyol_content_id = ? WHERE id = ?")
+          .bind(info.contentId, row.id)
+          .run();
+      } else {
+        deferredIds.push(row.id);
+      }
+    } catch {
+      deferredIds.push(row.id);
+    }
+  }
+
   const items = rows
+    .filter((product) => product.contentId !== null)
     .map((product) => ({
-      contentId: product.contentId,
+      contentId: product.contentId as number,
       images: [product.image, product.hoverImage, product.image3, product.image4]
         .map((url) => (url ? toAbsoluteImageUrl(url) : null))
         .filter((url): url is string => Boolean(url))
@@ -1058,5 +1096,5 @@ export async function pushTrendyolImagesFor(
     const { batchRequestId } = await updateProductImages(items.slice(offset, offset + IMAGE_REFRESH_BATCH_SIZE));
     batchRequestIds.push(batchRequestId);
   }
-  return { sent: items.length, skipped: productIds.length - items.length, batchRequestIds };
+  return { sent: items.length, deferredIds, batchRequestIds }
 }
