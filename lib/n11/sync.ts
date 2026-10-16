@@ -242,14 +242,38 @@ export async function syncProductsToN11(
   let created = 0;
   let failed = 0;
   const errors: string[] = [];
+  // N11 kategori eşlemesi olmayan tek bir ürün categoryIdFor() içinde hata
+  // fırlatıp TÜM partiyi düşürüyordu - ve aynı ürünler ORDER BY id ile her
+  // seferinde başa geldiği için kuyruk kalıcı olarak tıkanıyordu (otomatik
+  // cron listelemesinde kritik). Eşlemesi olmayanlar n11_last_error ile
+  // işaretlenip ayıklanıyor, Hepsiburada'daki "unmapped" deseniyle aynı.
+  const sendable: PendingProduct[] = [];
+  for (const product of pending.results) {
+    try {
+      categoryIdFor(product);
+      sendable.push(product);
+    } catch (error) {
+      await db
+        .prepare("UPDATE products SET n11_last_error = ? WHERE id = ?")
+        .bind(
+          `N11 kategori eşlemesi yok: ${error instanceof Error ? error.message : "bilinmeyen"}`.slice(0, 300),
+          product.id,
+        )
+        .run();
+      failed += 1;
+    }
+  }
+  if (sendable.length === 0) {
+    return { created, failed, remaining: await remainingCount(), errors };
+  }
   try {
     const credentials = await getN11Credentials();
-    const n11Products = pending.results.map((product) => toN11Product(product, credentials));
+    const n11Products = sendable.map((product) => toN11Product(product, credentials));
     const task = await createProduct(n11Products, credentials.integrator);
     // N11 taskId'yi JSON sayısı olarak döndürüyor; string'e çevrilmezse D1'e
     // REAL olarak bağlanıp "3344070382.0" şeklinde kaydediliyordu.
     const taskId = String(task.id ?? "");
-    for (const product of pending.results) {
+    for (const product of sendable) {
       await db
         .prepare(
           `UPDATE products SET n11_stock_code = ?, n11_task_id = ?,
@@ -260,7 +284,7 @@ export async function syncProductsToN11(
       created += 1;
     }
   } catch (error) {
-    failed = pending.results.length;
+    failed += sendable.length;
     errors.push(error instanceof Error ? error.message : "bilinmeyen hata");
   }
 

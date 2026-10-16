@@ -15,6 +15,7 @@ import { scanTrendyolArchivedProducts } from "../lib/trendyol/archived-scan";
 import { auditAndFixTrendyolPrices } from "../lib/trendyol/price-audit";
 import { reconcileStrayTrendyolListings } from "../lib/trendyol/sync";
 import { pushMarketplaceImages } from "../lib/marketplace-images";
+import { listNewProductsOnMarketplaces } from "../lib/marketplace-listing";
 import { applyTrendyolDynamicPricing } from "../lib/trendyol/pricing";
 import { rehostHotlinkedImages } from "../lib/image-rehost";
 
@@ -203,6 +204,10 @@ const worker = {
     // hiç gitmiyordu - kaydederken anında gönderim başarısız olursa veya
     // birikmiş kuyruk varsa burada tamamlanıyor (bkz. lib/marketplace-images.ts).
     ctx.waitUntil(pushMarketplaceImages(env.DB).catch(() => {}));
+    // Yeni yayına alınan ürünler önceden pazaryerlerine sadece admin elle
+    // gönderim adımını çalıştırınca ekleniyordu - artık her 6 saatte bir
+    // otomatik (bkz. lib/marketplace-listing.ts).
+    ctx.waitUntil(listNewProductsOnMarketplaces(env.DB).catch(() => {}));
   },
 };
 
