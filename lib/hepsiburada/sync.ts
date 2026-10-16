@@ -48,7 +48,7 @@ export async function syncProductsToHepsiburada(
     .prepare(
       `SELECT id, name, COALESCE(NULLIF(seo_description, ''), description) AS description,
               price, hepsiburada_override_price AS overridePrice, stock,
-              image, hover_image AS hoverImage, category, xml_external_id AS xmlExternalId
+              image, hover_image AS hoverImage, image3, image4, category, xml_external_id AS xmlExternalId
        FROM products WHERE ${pendingWhere} ORDER BY id LIMIT ?`,
     )
     .bind(batchSize)
@@ -61,6 +61,8 @@ export async function syncProductsToHepsiburada(
       stock: number;
       image: string;
       hoverImage: string | null;
+      image3?: string | null;
+      image4?: string | null;
       category: string;
       xmlExternalId: string | null;
     }>();
@@ -89,7 +91,7 @@ export async function syncProductsToHepsiburada(
           merchantSku: merchantSkuFor(row),
           title: row.name,
           description: row.description?.trim() || row.name,
-          images: [row.image, row.hoverImage]
+          images: [row.image, row.hoverImage, row.image3, row.image4]
             .map((url) => (url ? toAbsoluteImageUrl(url) : null))
             .filter((url): url is string => Boolean(url)),
           male: isMaleProduct(row),
@@ -421,7 +423,7 @@ export async function refreshHepsiburadaTitles(
     .prepare(
       `SELECT id, name, COALESCE(NULLIF(seo_description, ''), description) AS description,
               price, hepsiburada_override_price AS overridePrice, stock,
-              image, hover_image AS hoverImage, category, xml_external_id AS xmlExternalId
+              image, hover_image AS hoverImage, image3, image4, category, xml_external_id AS xmlExternalId
        FROM products
        WHERE hepsiburada_listing_id IS NOT NULL AND hepsiburada_last_error IS NULL
        ORDER BY id`,
@@ -435,6 +437,8 @@ export async function refreshHepsiburadaTitles(
       stock: number;
       image: string;
       hoverImage: string | null;
+      image3?: string | null;
+      image4?: string | null;
       category: string;
       xmlExternalId: string | null;
     }>();
@@ -468,7 +472,7 @@ export async function refreshHepsiburadaTitles(
           merchantSku: merchantSkuFor(row),
           title: row.name,
           description: row.description?.trim() || row.name,
-          images: [row.image, row.hoverImage]
+          images: [row.image, row.hoverImage, row.image3, row.image4]
             .map((url) => (url ? toAbsoluteImageUrl(url) : null))
             .filter((url): url is string => Boolean(url)),
           male: isMaleProduct(row),
@@ -509,7 +513,7 @@ export async function importHepsiburadaTest(
     .prepare(
       `SELECT id, name, COALESCE(NULLIF(seo_description, ''), description) AS description,
               price, hepsiburada_override_price AS overridePrice, stock,
-              image, hover_image AS hoverImage, category, xml_external_id AS xmlExternalId
+              image, hover_image AS hoverImage, image3, image4, category, xml_external_id AS xmlExternalId
        FROM products WHERE xml_external_id IN (${codes.map(() => "?").join(",")})`,
     )
     .bind(...codes)
@@ -522,6 +526,8 @@ export async function importHepsiburadaTest(
       stock: number;
       image: string;
       hoverImage: string | null;
+      image3?: string | null;
+      image4?: string | null;
       category: string;
       xmlExternalId: string | null;
     }>();
@@ -544,7 +550,7 @@ export async function importHepsiburadaTest(
         merchantSku: merchantSkuFor(row),
         title: row.name,
         description: row.description?.trim() || row.name,
-        images: [row.image, row.hoverImage]
+        images: [row.image, row.hoverImage, row.image3, row.image4]
           .map((url) => (url ? toAbsoluteImageUrl(url) : null))
           .filter((url): url is string => Boolean(url)),
         male: isMaleProduct(row),

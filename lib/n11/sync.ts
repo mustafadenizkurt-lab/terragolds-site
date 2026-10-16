@@ -24,6 +24,8 @@ type PendingProduct = {
   stock: number;
   image: string;
   hoverImage: string | null;
+  image3?: string | null;
+  image4?: string | null;
   category: string;
   xmlExternalId: string | null;
 };
@@ -136,14 +138,14 @@ function attributesFor(
   return attributesForCategory(categoryId, product);
 }
 
-// N11 en fazla kaç görsel kabul ediyor net değil - Trendyol'daki gibi ana
-// görsel (image) + hover görseli (hoverImage) sırasıyla, N11'in resmi
-// şemasındaki order alanıyla (1, 2, ...) gönderiliyor.
+// Ürünün dört görseli (image, hover_image, image3, image4) Trendyol'daki
+// gibi bu sırayla, N11'in resmi şemasındaki order alanıyla (1, 2, ...)
+// gönderiliyor - boş olanlar atlanıyor.
 function toN11Product(
   product: PendingProduct,
   settings: Pick<N11Credentials, "shipmentTemplate" | "preparingDay">,
 ): N11Product {
-  const imageUrls = [product.image, product.hoverImage]
+  const imageUrls = [product.image, product.hoverImage, product.image3, product.image4]
     .map((url) => (url ? toAbsoluteImageUrl(url) : null))
     .filter((url): url is string => Boolean(url));
   const stockCode = stockCodeFor(product);
@@ -216,7 +218,7 @@ export async function syncProductsToN11(
   const pending = await db
     .prepare(
       `SELECT id, name, description, price, n11_override_price AS n11OverridePrice, stock,
-              image, hover_image AS hoverImage, category, xml_external_id AS xmlExternalId
+              image, hover_image AS hoverImage, image3, image4, category, xml_external_id AS xmlExternalId
        FROM products
        WHERE status = 'published' AND n11_task_id IS NULL AND n11_last_error IS NULL
        ORDER BY id LIMIT ?`,
@@ -433,7 +435,7 @@ export async function refreshN11Titles(
   const pending = await db
     .prepare(
       `SELECT id, name, description, price, n11_override_price AS n11OverridePrice, stock,
-              image, hover_image AS hoverImage, category, xml_external_id AS xmlExternalId,
+              image, hover_image AS hoverImage, image3, image4, category, xml_external_id AS xmlExternalId,
               n11_stock_code AS n11StockCode
        FROM products WHERE n11_stock_code IS NOT NULL AND n11_last_error IS NULL ORDER BY id`,
     )
@@ -494,7 +496,7 @@ export async function resubmitRejectedToN11(
     ? await db
         .prepare(
           `SELECT id, name, description, price, n11_override_price AS n11OverridePrice, stock,
-                  image, hover_image AS hoverImage, category, xml_external_id AS xmlExternalId
+                  image, hover_image AS hoverImage, image3, image4, category, xml_external_id AS xmlExternalId
            FROM products WHERE n11_stock_code = ? ORDER BY id LIMIT ?`,
         )
         .bind(options.stockCode, limit)
@@ -502,7 +504,7 @@ export async function resubmitRejectedToN11(
     : await db
         .prepare(
           `SELECT id, name, description, price, n11_override_price AS n11OverridePrice, stock,
-                  image, hover_image AS hoverImage, category, xml_external_id AS xmlExternalId
+                  image, hover_image AS hoverImage, image3, image4, category, xml_external_id AS xmlExternalId
            FROM products WHERE n11_last_error = ? OR n11_last_error LIKE ?
            ORDER BY id LIMIT ?`,
         )
@@ -549,7 +551,7 @@ export async function sendN11TitleExperiment(
   const rows = await db
     .prepare(
       `SELECT id, name, description, price, n11_override_price AS n11OverridePrice, stock,
-              image, hover_image AS hoverImage, category, xml_external_id AS xmlExternalId
+              image, hover_image AS hoverImage, image3, image4, category, xml_external_id AS xmlExternalId
        FROM products WHERE xml_external_id IN (${codes.map(() => "?").join(",")})`,
     )
     .bind(...codes)
@@ -588,7 +590,7 @@ export async function pushN11ImagesFor(
 ): Promise<{ sent: number; taskIds: string[] }> {
   await ensureN11Columns(db);
   if (productIds.length === 0) return { sent: 0, taskIds: [] };
-  const rows = await selectByIds<PendingProduct & { n11StockCode: string; image3: string | null; image4: string | null }>(
+  const rows = await selectByIds<PendingProduct & { n11StockCode: string }>(
     db,
     productIds,
     (placeholders) =>
