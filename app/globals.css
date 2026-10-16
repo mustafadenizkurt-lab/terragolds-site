@@ -5698,7 +5698,7 @@ footer {
 }
 .admin-product-filters {
   display: grid;
-  grid-template-columns: minmax(260px, 1fr) 190px 160px auto;
+  grid-template-columns: minmax(240px, 1fr) 180px 150px 180px auto;
   align-items: center;
   gap: 10px;
   padding: 14px;
@@ -5743,6 +5743,10 @@ footer {
   font-style: normal;
   font-weight: 700;
   text-align: center;
+}
+.admin-image-edited {
+  color: #2f7a4a;
+  font-weight: 600;
 }
 .admin-nav-count.muted {
   background: rgba(255, 255, 255, 0.18);

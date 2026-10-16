@@ -40,6 +40,8 @@ type ProductRow = {
   sort_order: number;
   xml_external_id: string | null;
   xml_sync_status: string | null;
+  image_locked_at?: string | null;
+  images_changed_at?: string | null;
   is_daily_deal: number;
   daily_deal_order: number;
   created_at: string;
@@ -254,6 +256,7 @@ function mapProduct(row: ProductRow): Product {
     sortOrder: row.sort_order,
     xmlExternalId: row.xml_external_id ?? undefined,
     xmlSynced: row.xml_sync_status === "synced",
+    imagesEditedAt: row.images_changed_at ?? row.image_locked_at ?? undefined,
     isDailyDeal: Boolean(row.is_daily_deal),
     dailyDealOrder: row.daily_deal_order,
     createdAt: row.created_at,

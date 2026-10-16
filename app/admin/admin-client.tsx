@@ -145,6 +145,26 @@ export default function AdminClient({
   const [bulkCategory, setBulkCategory] = useState("");
   const [productSearch, setProductSearch] = useState("");
   const [productCategoryFilter, setProductCategoryFilter] = useState("all");
+  // Görselini admin panelinden düzenlediği ürünler listede tekrar tekrar
+  // karşısına çıkıyordu - hangilerini bitirdiğini ayırt edebilmesi için
+  // filtre. Seçim tarayıcıda hatırlanır (sayfa yenilense de kalır).
+  const [productImageFilter, setProductImageFilterState] = useState<"all" | "unedited" | "edited">("all");
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem("admin-product-image-filter");
+      if (saved === "unedited" || saved === "edited") setProductImageFilterState(saved);
+    } catch {
+      // Tarayıcı depolaması kapalıysa varsayılan "Tümü" ile devam.
+    }
+  }, []);
+  const setProductImageFilter = (value: "all" | "unedited" | "edited") => {
+    setProductImageFilterState(value);
+    try {
+      window.localStorage.setItem("admin-product-image-filter", value);
+    } catch {
+      // Hatırlanamasa da filtre bu oturumda çalışır.
+    }
+  };
   const [productStatusFilter, setProductStatusFilter] = useState("all");
   const [productPage, setProductPage] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -548,7 +568,10 @@ export default function AdminClient({
       productStatusFilter === "deleted" ||
       (!isNewXmlProduct(product) &&
         (view === "outOfStock" ? product.stock <= 0 : product.stock > 0));
-    return matchesSearch && matchesCategory && matchesStatus && matchesSection;
+    const matchesImage =
+      productImageFilter === "all" ||
+      (productImageFilter === "edited" ? Boolean(product.imagesEditedAt) : !product.imagesEditedAt);
+    return matchesSearch && matchesCategory && matchesStatus && matchesSection && matchesImage;
   });
   const productPageCount = Math.max(
     1,
@@ -948,6 +971,18 @@ export default function AdminClient({
                       <option value="deleted">Silinenler</option>
                     )}
                   </select>
+                  <select
+                    value={productImageFilter}
+                    onChange={(event) => {
+                      setProductImageFilter(event.target.value as "all" | "unedited" | "edited");
+                      setProductPage(1);
+                    }}
+                    aria-label="Görsel durumuna göre filtrele"
+                  >
+                    <option value="all">Tüm görseller</option>
+                    <option value="unedited">Görseli düzenlenmemiş</option>
+                    <option value="edited">Görseli düzenlenmiş</option>
+                  </select>
                   <span>
                     <strong>{filteredProducts.length}</strong> ürün
                   </span>
@@ -1093,6 +1128,12 @@ export default function AdminClient({
                           {product.category} · {product.stone}
                           {product.xmlExternalId ? ` · Kod: ${product.xmlExternalId}` : ""}
                         </small>
+                        {product.imagesEditedAt && (
+                          <small className="admin-image-edited">
+                            ✓ Görsel düzenlendi ·{" "}
+                            {new Date(`${product.imagesEditedAt.replace(" ", "T")}Z`).toLocaleDateString("tr-TR")}
+                          </small>
+                        )}
                         {isNewXmlProduct(product) && product.createdAt && (
                           <small className="admin-xml-new">
                             XML&apos;den geldi ·{" "}

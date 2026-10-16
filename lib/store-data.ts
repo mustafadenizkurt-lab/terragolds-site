@@ -36,6 +36,8 @@ export type Product = {
   xmlExternalId?: string;
   /** XML tedarikçi senkronunun yönettiği ürün (xml_sync_status = 'synced'). */
   xmlSynced?: boolean;
+  /** Admin panelinden görseli en son ne zaman değiştirildi (hiç değiştirilmediyse boş). */
+  imagesEditedAt?: string;
   /** Manually curated for the homepage "Günün Fırsatları" row - see dailyDealOrder. */
   isDailyDeal?: boolean;
   /** Display order within "Günün Fırsatları" (lower first); irrelevant when isDailyDeal is false. */
