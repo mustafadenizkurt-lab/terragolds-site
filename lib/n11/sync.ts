@@ -611,9 +611,9 @@ export async function sendN11TitleExperiment(
 export async function pushN11ImagesFor(
   db: D1Database,
   productIds: number[],
-): Promise<{ sent: number; taskIds: string[] }> {
+): Promise<{ sent: number; taskIds: string[]; refsById: Record<number, string> }> {
   await ensureN11Columns(db);
-  if (productIds.length === 0) return { sent: 0, taskIds: [] };
+  if (productIds.length === 0) return { sent: 0, taskIds: [], refsById: {} };
   const rows = await selectByIds<PendingProduct & { n11StockCode: string }>(
     db,
     productIds,
@@ -624,9 +624,10 @@ export async function pushN11ImagesFor(
        FROM products
        WHERE id IN (${placeholders}) AND n11_stock_code IS NOT NULL AND n11_last_error IS NULL`,
   );
-  if (rows.length === 0) return { sent: 0, taskIds: [] };
+  if (rows.length === 0) return { sent: 0, taskIds: [], refsById: {} };
   const credentials = await getN11Credentials();
   const taskIds: string[] = [];
+  const refsById: Record<number, string> = {};
   for (let offset = 0; offset < rows.length; offset += 100) {
     const items = rows.slice(offset, offset + 100).map((product) => {
       const base = toN11Product(product, credentials);
@@ -637,7 +638,9 @@ export async function pushN11ImagesFor(
       return { ...base, images, stockCode: product.n11StockCode, productMainId: product.n11StockCode };
     });
     const task = await updateProduct(items, credentials.integrator);
-    taskIds.push(String(task.id ?? ""));
+    const taskId = String(task.id ?? "");
+    taskIds.push(taskId);
+    for (const product of rows.slice(offset, offset + 100)) refsById[product.id] = taskId;
   }
-  return { sent: rows.length, taskIds };
+  return { sent: rows.length, taskIds, refsById };
 }

@@ -1043,9 +1043,9 @@ const MAX_CONTENT_ID_LOOKUPS_PER_PUSH = 100;
 export async function pushTrendyolImagesFor(
   db: D1Database,
   productIds: number[],
-): Promise<{ sent: number; deferredIds: number[]; batchRequestIds: string[] }> {
+): Promise<{ sent: number; deferredIds: number[]; batchRequestIds: string[]; refsById: Record<number, string> }> {
   await ensureTrendyolColumns(db);
-  if (productIds.length === 0) return { sent: 0, deferredIds: [], batchRequestIds: [] };
+  if (productIds.length === 0) return { sent: 0, deferredIds: [], batchRequestIds: [], refsById: {} };
   type Row = { id: number; image: string; hoverImage: string | null; image3: string | null; image4: string | null; contentId: number | null; barcode: string | null };
   const rows = await selectByIds<Row>(
     db,
@@ -1084,6 +1084,7 @@ export async function pushTrendyolImagesFor(
   const items = rows
     .filter((product) => product.contentId !== null)
     .map((product) => ({
+      productId: product.id,
       contentId: product.contentId as number,
       images: [product.image, product.hoverImage, product.image3, product.image4]
         .map((url) => (url ? toAbsoluteImageUrl(url) : null))
@@ -1092,9 +1093,14 @@ export async function pushTrendyolImagesFor(
     }))
     .filter((item) => item.images.length > 0);
   const batchRequestIds: string[] = [];
+  const refsById: Record<number, string> = {};
   for (let offset = 0; offset < items.length; offset += IMAGE_REFRESH_BATCH_SIZE) {
-    const { batchRequestId } = await updateProductImages(items.slice(offset, offset + IMAGE_REFRESH_BATCH_SIZE));
+    const chunk = items.slice(offset, offset + IMAGE_REFRESH_BATCH_SIZE);
+    const { batchRequestId } = await updateProductImages(
+      chunk.map(({ contentId, images }) => ({ contentId, images })),
+    );
     batchRequestIds.push(batchRequestId);
+    for (const item of chunk) refsById[item.productId] = batchRequestId;
   }
-  return { sent: items.length, deferredIds, batchRequestIds }
+  return { sent: items.length, deferredIds, batchRequestIds, refsById };
 }

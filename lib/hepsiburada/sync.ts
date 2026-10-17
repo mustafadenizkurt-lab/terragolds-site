@@ -578,9 +578,9 @@ export async function importHepsiburadaTest(
 export async function pushHepsiburadaImagesFor(
   db: D1Database,
   productIds: number[],
-): Promise<{ sent: number }> {
+): Promise<{ sent: number; refsById: Record<number, string> }> {
   await ensureHepsiburadaColumns(db);
-  if (productIds.length === 0) return { sent: 0 };
+  if (productIds.length === 0) return { sent: 0, refsById: {} };
   const rows = await selectByIds<{
     id: number;
     name: string;
@@ -605,9 +605,10 @@ export async function pushHepsiburadaImagesFor(
        WHERE id IN (${placeholders}) AND hepsiburada_listing_id IS NOT NULL AND hepsiburada_last_error IS NULL`,
   );
   const mapped = rows.filter((row) => hepsiburadaCategoryFor(row) !== null);
-  if (mapped.length === 0) return { sent: 0 };
+  if (mapped.length === 0) return { sent: 0, refsById: {} };
   const { merchantId } = await getHepsiburadaCredentials();
   let sent = 0;
+  const refsById: Record<number, string> = {};
   for (let offset = 0; offset < mapped.length; offset += 100) {
     // Peş peşe import çağrıları Hepsiburada'nın WAF'ını tetikleyebiliyor -
     // bkz. refreshHepsiburadaTitles.
@@ -636,7 +637,13 @@ export async function pushHepsiburadaImagesFor(
     if (result.status !== 200) {
       throw new Error(`Hepsiburada içe aktarma başarısız (${result.status}): ${result.body.slice(0, 300)}`);
     }
+    // trackingId sonradan /api/admin/marketplace/verify-images ile içe
+    // aktarmanın gerçek sonucunu sorgulamak için saklanıyor.
+    const trackingId = (JSON.parse(result.body || "{}") as { data?: { trackingId?: string } }).data?.trackingId;
+    if (trackingId) {
+      for (const row of mapped.slice(offset, offset + 100)) refsById[row.id] = trackingId;
+    }
     sent += items.length;
   }
-  return { sent };
+  return { sent, refsById };
 }

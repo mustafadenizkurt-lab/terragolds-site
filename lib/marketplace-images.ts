@@ -22,6 +22,13 @@ export async function ensureMarketplaceImageColumns(db: D1Database): Promise<voi
   if (!names.has("images_push_error")) {
     await db.prepare("ALTER TABLE products ADD COLUMN images_push_error TEXT").run();
   }
+  // Son görsel gönderiminde pazaryerlerinin döndürdüğü işlem numaraları
+  // ({"trendyol": batchRequestId, "hepsiburada": trackingId, "n11": taskId}) -
+  // gönderimin pazaryerinde GERÇEKTEN işlenip işlenmediğini sonradan
+  // sorgulamak için (bkz. lib/marketplace-image-verify.ts).
+  if (!names.has("images_push_refs")) {
+    await db.prepare("ALTER TABLE products ADD COLUMN images_push_refs TEXT").run();
+  }
 }
 
 export type MarketplaceImagePushResult = {
@@ -69,21 +76,47 @@ export async function pushMarketplaceImages(
   // Trendyol'da henüz onaylanmamış (contentId'si olmayan) ürünler - görselleri
   // gönderilemedi, kuyrukta kalıp sonraki çalıştırmada tekrar denenecekler.
   let deferred: number[] = [];
+  const refs: Record<number, { trendyol?: string; hepsiburada?: string; n11?: string }> = {};
+  const addRefs = (key: "trendyol" | "hepsiburada" | "n11", refsById: Record<number, string>) => {
+    for (const [id, ref] of Object.entries(refsById)) {
+      (refs[Number(id)] ??= {})[key] = ref;
+    }
+  };
   if (ids.length > 0) {
     const steps: [string, () => Promise<void>][] = [
       ["Trendyol", async () => {
         const trendyol = await pushTrendyolImagesFor(db, ids);
         result.trendyol = trendyol.sent;
         deferred = trendyol.deferredIds;
+        addRefs("trendyol", trendyol.refsById);
       }],
-      ["Hepsiburada", async () => { result.hepsiburada = (await pushHepsiburadaImagesFor(db, ids)).sent; }],
-      ["N11", async () => { result.n11 = (await pushN11ImagesFor(db, ids)).sent; }],
+      ["Hepsiburada", async () => {
+        const hepsiburada = await pushHepsiburadaImagesFor(db, ids);
+        result.hepsiburada = hepsiburada.sent;
+        addRefs("hepsiburada", hepsiburada.refsById);
+      }],
+      ["N11", async () => {
+        const n11 = await pushN11ImagesFor(db, ids);
+        result.n11 = n11.sent;
+        addRefs("n11", n11.refsById);
+      }],
     ];
     for (const [name, step] of steps) {
       try {
         await step();
       } catch (error) {
         result.errors.push(`${name}: ${error instanceof Error ? error.message : "bilinmeyen hata"}`);
+      }
+    }
+    const refEntries = Object.entries(refs);
+    if (refEntries.length > 0) {
+      const refStmt = db.prepare("UPDATE products SET images_push_refs = ? WHERE id = ?");
+      for (let offset = 0; offset < refEntries.length; offset += 100) {
+        await db.batch(
+          refEntries
+            .slice(offset, offset + 100)
+            .map(([id, value]) => refStmt.bind(JSON.stringify(value), Number(id))),
+        );
       }
     }
     const errorText = result.errors.join(" | ").slice(0, 500);
