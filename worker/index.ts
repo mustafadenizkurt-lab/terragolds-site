@@ -16,6 +16,7 @@ import { auditAndFixTrendyolPrices } from "../lib/trendyol/price-audit";
 import { reconcileStrayTrendyolListings } from "../lib/trendyol/sync";
 import { pushMarketplaceImages } from "../lib/marketplace-images";
 import { listNewProductsOnMarketplaces } from "../lib/marketplace-listing";
+import { resendHepsiburadaImages } from "../lib/hepsiburada/image-resend";
 import { applyTrendyolDynamicPricing } from "../lib/trendyol/pricing";
 import { rehostHotlinkedImages } from "../lib/image-rehost";
 
@@ -208,6 +209,9 @@ const worker = {
     // gönderim adımını çalıştırınca ekleniyordu - artık her 6 saatte bir
     // otomatik (bkz. lib/marketplace-listing.ts).
     ctx.waitUntil(listNewProductsOnMarketplaces(env.DB).catch(() => {}));
+    // Görseli değiştirilmiş ürünlerin Hepsiburada'ya yeniden gönderim sırası
+    // (bkz. lib/hepsiburada/image-resend.ts) - sıra bitince no-op.
+    ctx.waitUntil(resendHepsiburadaImages(env.DB).catch(() => {}));
   },
 };
 
